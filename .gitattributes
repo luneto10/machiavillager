@@ -1,0 +1,7 @@
+* text=auto eol=lf
+
+# Gradle start scripts
+/mod/gradlew    text eol=lf
+*.bat           text eol=crlf
+*.jar           binary
+*.png           binary
