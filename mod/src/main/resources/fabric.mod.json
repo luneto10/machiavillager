@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "machiavillager",
+	"version": "${version}",
+	"name": "Machiavillager",
+	"description": "A scheming, emerald-obsessed AI companion who lives in your world.",
+	"authors": ["Luciano Carvalho"],
+	"contact": {
+		"sources": "https://github.com/luneto10/machiavillager"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["io.github.luneto10.machiavillager.Machiavillager"],
+		"client": ["io.github.luneto10.machiavillager.client.MachiavillagerClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
