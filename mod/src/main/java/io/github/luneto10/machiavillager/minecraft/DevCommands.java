@@ -1,8 +1,13 @@
 package io.github.luneto10.machiavillager.minecraft;
 
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
+import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -12,12 +17,17 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /** Developer commands under /machiavillager. Operators only. */
 public final class DevCommands {
+    private static final int MIN_DEV_VALUE = 0;
+    private static final int MAX_DEV_VALUE = 100;
+    private static final String VALUE_ARG = "value";
+
     private DevCommands() {}
 
     public static void register() {
@@ -69,7 +79,38 @@ public final class DevCommands {
     // /machiavillager brain (dev only)
     private static LiteralArgumentBuilder<CommandSourceStack> brain() {
         return Commands.literal("brain")
-                .then(Commands.literal("next").executes(DevCommands::runBrainNext));
+                .then(Commands.literal("next").executes(DevCommands::runBrainNext))
+                .then(Commands.literal("set")
+                        .then(Commands.literal("ambition")
+                                .then(valueArgument(DevCommands::runSetAmbition)))
+                        .then(Commands.literal("independence")
+                                .then(valueArgument(DevCommands::runSetIndependence))));
+    }
+
+    private static RequiredArgumentBuilder<CommandSourceStack, Integer> valueArgument(
+            Command<CommandSourceStack> action) {
+        return Commands.argument(VALUE_ARG, IntegerArgumentType.integer(MIN_DEV_VALUE, MAX_DEV_VALUE))
+                .executes(action);
+    }
+
+    // Sets ambition in the saved story. Works even with no NPC spawned.
+    private static int runSetAmbition(CommandContext<CommandSourceStack> context) {
+        MinecraftServer server = context.getSource().getServer();
+        StoryData data = StoryData.get(server);
+        data.setAmbition(IntegerArgumentType.getInteger(context, VALUE_ARG), StoryData.personality(server));
+        StoryProgress progress = data.progress();
+        String message = "Ambition is now " + (int) progress.ambition() + " (" + progress.phase() + ").";
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
+
+    // Sets independence in the saved story. Works even with no NPC spawned.
+    private static int runSetIndependence(CommandContext<CommandSourceStack> context) {
+        StoryData data = StoryData.get(context.getSource().getServer());
+        data.setIndependence(IntegerArgumentType.getInteger(context, VALUE_ARG));
+        String message = "Independence is now " + data.relationships().independence() + ".";
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
     }
 
     // Forces every Machiavillager in every loaded level to decide on the next tick.

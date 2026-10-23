@@ -8,8 +8,10 @@ import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.behavior.TeleportPolicy;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
+import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +28,8 @@ public final class NpcBrain {
     private static final int MIN_DECISION_TICKS = 200; // 10 s
     private static final int MAX_DECISION_TICKS = 600; // 30 s
     private static final long CATCH_UP_COOLDOWN_TICKS = 100; // 5 s between teleports to the same player
+    private static final int STORY_CLOCK_TICKS = 20; // grows once per second
+    private static final double PRESENCE_RADIUS = 32.0; // same radius he sees players in
 
     private static final Barks IDLE_LINES = new Barks(
             "%s, have you noticed how much the villagers charge for bread?",
@@ -38,8 +42,8 @@ public final class NpcBrain {
     // The brain runs on the single server thread, so caching the thread-local generator in a field is safe.
     private final Countdown decisionTimer = Countdown.randomBetween(
             MIN_DECISION_TICKS, MAX_DECISION_TICKS, ThreadLocalRandom.current());
+    private final Countdown storyClock = Countdown.every(STORY_CLOCK_TICKS);
     private Mood mood = Mood.CALM;
-    private Relationships relationships = Relationships.initial();
     // Server game time of the last catch-up teleport, per player. One entry per friend, so it stays tiny.
     private final Map<UUID, Long> lastCatchUpTick = new HashMap<>();
 
@@ -48,9 +52,45 @@ public final class NpcBrain {
         if (decisionTimer.tick()) {
             decide(npc, level);
         }
+        if (storyClock.tick()) {
+            growStory(npc, level);
+        }
+        StoryData data = StoryData.get(level.getServer());
         // Supplier: the text is only built when the overlay actually shows (dev, every 10 ticks).
         BrainDebugOverlay.show(
-                npc, level, () -> describe(current, level), mood, decisionTimer.remainingTicks(), relationships);
+                npc,
+                level,
+                () -> describe(current, level),
+                mood,
+                decisionTimer.remainingTicks(),
+                data.relationships(),
+                data.progress());
+    }
+
+    /** Ambition grows only while players are near him: an empty server never advances the story. */
+    private void growStory(PathfinderMob npc, ServerLevel level) {
+        if (level.getNearestPlayer(npc, PRESENCE_RADIUS) == null) {
+            return;
+        }
+        StoryData data = StoryData.get(level.getServer());
+        Phase before = data.progress().phase();
+        data.setProgress(data.progress().grow(STORY_CLOCK_TICKS, StoryData.personality(level.getServer())));
+        Phase after = data.progress().phase();
+        if (before != after) {
+            Machiavillager.LOGGER.info("Machiavillager phase: {} -> {}", before, after);
+        }
+    }
+
+    /** Being hit lowers his affinity for the attacker and raises his independence. */
+    public void onHurtBy(ServerLevel level, UUID attacker) {
+        StoryData data = StoryData.get(level.getServer());
+        data.setRelationships(data.relationships().whenHurtBy(attacker));
+        Relationships after = data.relationships();
+        Machiavillager.LOGGER.info(
+                "Machiavillager was hit by {}: affinity {}, independence {}",
+                attacker,
+                after.affinityOf(attacker),
+                after.independence());
     }
 
     private void decide(PathfinderMob npc, ServerLevel level) {
@@ -87,7 +127,9 @@ public final class NpcBrain {
                 mood,
                 npc.distanceTo(player),
                 npc.level() == player.level(),
-                relationships.caresAbout(player.getUUID()));
+                StoryData.get(((ServerLevel) npc.level()).getServer())
+                        .relationships()
+                        .caresAbout(player.getUUID()));
         if (allowed) {
             lastCatchUpTick.put(player.getUUID(), now);
         }

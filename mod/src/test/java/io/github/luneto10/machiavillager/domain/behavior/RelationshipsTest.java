@@ -73,6 +73,20 @@ class RelationshipsTest {
     }
 
     @Test
+    void restored_roundTripsAffinitiesAndIndependence() {
+        Relationships original = Relationships.initial()
+                .withAffinity(ALICE, SOME_AFFINITY)
+                .withAffinity(BOB, BELOW_MIN)
+                .withIndependence(SOME_INDEPENDENCE);
+
+        Relationships restored = Relationships.restored(original.affinities(), original.independence());
+
+        assertEquals(SOME_AFFINITY, restored.affinityOf(ALICE));
+        assertEquals(Relationships.MIN, restored.affinityOf(BOB));
+        assertEquals(SOME_INDEPENDENCE, restored.independence());
+    }
+
+    @Test
     void whenHurtBy_otherPlayersUnchanged() {
         Relationships relations = Relationships.initial().withAffinity(BOB, SOME_AFFINITY);
 

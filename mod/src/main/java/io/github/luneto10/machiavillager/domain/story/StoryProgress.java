@@ -1,5 +1,7 @@
 package io.github.luneto10.machiavillager.domain.story;
 
+import java.util.Objects;
+
 /**
  * Ambition and the story phase it maps to. Immutable: every change returns a new object.
  * Phases have hysteresis so a value near a threshold does not flip back and forth.
@@ -26,6 +28,19 @@ public final class StoryProgress {
     /** Ambition 0, in the PARTNER phase, never past it. */
     public static StoryProgress initial() {
         return new StoryProgress(MIN, Phase.PARTNER, Phase.PARTNER);
+    }
+
+    /** Rebuilds a saved state as-is (no growth, no hysteresis). Rejects values that could not have been saved. */
+    public static StoryProgress restored(double ambition, Phase phase, Phase highestPhase) {
+        Objects.requireNonNull(phase, "phase");
+        Objects.requireNonNull(highestPhase, "highestPhase");
+        if (!(ambition >= MIN && ambition <= MAX)) {
+            throw new IllegalArgumentException("ambition out of range: " + ambition);
+        }
+        if (highestPhase.ordinal() < phase.ordinal()) {
+            throw new IllegalArgumentException("highestPhase " + highestPhase + " is below phase " + phase);
+        }
+        return new StoryProgress(ambition, phase, highestPhase);
     }
 
     public double ambition() {

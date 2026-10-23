@@ -37,8 +37,21 @@ public final class Relationships {
         return affinities.getOrDefault(Objects.requireNonNull(player, "player"), DEFAULT_AFFINITY);
     }
 
+    /** All known affinities, immutable. */
+    public Map<UUID, Integer> affinities() {
+        return affinities;
+    }
+
     public int independence() {
         return independence;
+    }
+
+    /** Rebuilds a saved state. Values are clamped to [0, 100], like the other methods. */
+    public static Relationships restored(Map<UUID, Integer> affinities, int independence) {
+        Map<UUID, Integer> clamped = new HashMap<>();
+        affinities.forEach((player, value) ->
+                clamped.put(Objects.requireNonNull(player, "player"), clamp(value)));
+        return new Relationships(clamped, clamp(independence));
     }
 
     /** Returns a new object with the player's affinity set, clamped to [0, 100]. */

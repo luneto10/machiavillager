@@ -3,6 +3,7 @@ package io.github.luneto10.machiavillager.minecraft.npc;
 import io.github.luneto10.machiavillager.domain.Barks;
 import io.github.luneto10.machiavillager.minecraft.behavior.NpcBrain;
 import java.util.concurrent.ThreadLocalRandom;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
@@ -74,6 +75,16 @@ public class MachiavillagerEntity extends PathfinderMob {
     protected void customServerAiStep(ServerLevel level) {
         super.customServerAiStep(level);
         brain.tick(this, level);
+    }
+
+    // A player's hit is what makes him trust people less. Super decides whether the hit landed.
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        boolean hurt = super.hurtServer(level, source, amount);
+        if (hurt && source.getEntity() instanceof Player player) {
+            brain.onHurtBy(level, player.getUUID());
+        }
+        return hurt;
     }
 
     // Right-click. Runs on both sides; NpcSpeech only talks on the server, so the line appears once.

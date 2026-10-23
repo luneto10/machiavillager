@@ -2,6 +2,7 @@ package io.github.luneto10.machiavillager.minecraft.behavior;
 
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
+import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import java.util.UUID;
 import java.util.function.Supplier;
 import net.fabricmc.loader.api.FabricLoader;
@@ -27,13 +28,15 @@ final class BrainDebugOverlay {
             Supplier<String> actionText,
             Mood mood,
             int ticksUntilNextDecision,
-            Relationships relationships) {
+            Relationships relationships,
+            StoryProgress progress) {
         if (!ENABLED || npc.tickCount % REFRESH_INTERVAL_TICKS != 0 || level.players().isEmpty()) {
             return;
         }
         int seconds = (int) Math.ceil(Math.max(ticksUntilNextDecision, 0) / (double) TICKS_PER_SECOND);
         // Zero-padded so the centered text keeps the same width while the timer counts down.
-        String shared = "[brain] " + actionText.get() + " | " + mood + " | next " + String.format("%02d", seconds) + "s";
+        String shared = "[brain] " + actionText.get() + " | " + mood + " | next " + String.format("%02d", seconds) + "s"
+                + " | " + progress.phase() + " ambition " + (int) progress.ambition();
         for (Player player : level.players()) {
             player.sendOverlayMessage(Component.literal(shared + ownPart(player, relationships)));
         }

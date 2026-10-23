@@ -101,6 +101,21 @@ class StoryProgressTest {
     }
 
     @Test
+    void restored_keepsValues() {
+        StoryProgress progress = StoryProgress.restored(FOUR_HOUR_AMBITION, Phase.SEEDS, Phase.REGIME);
+
+        assertEquals(FOUR_HOUR_AMBITION, progress.ambition());
+        assertEquals(Phase.SEEDS, progress.phase());
+        assertEquals(Phase.REGIME, progress.highestPhase());
+    }
+
+    @Test
+    void restored_highestBelowPhase_throws() {
+        assertThrows(IllegalArgumentException.class,
+                () -> StoryProgress.restored(REGIME_AMBITION, Phase.REGIME, Phase.SEEDS));
+    }
+
+    @Test
     void withAmbition_clamped() {
         assertEquals(StoryProgress.MAX, StoryProgress.initial().withAmbition(ABOVE_MAX, STANDARD).ambition());
         assertEquals(Phase.WAR, StoryProgress.initial().withAmbition(ABOVE_MAX, STANDARD).phase());
