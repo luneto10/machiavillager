@@ -57,6 +57,47 @@ The acts are phases of a meter, not a script.
 - Fair attention: follow weight = affinity × "time since I last followed you", and cooldowns are
   per player, so no friend monopolizes him.
 
+### Independence drives the phases
+
+There is no separate "act counter": the phase is read from independence, using thresholds rolled
+per world (with jitter) and hysteresis so it never flip-flops at a boundary.
+
+```
+independence  0 ─────── ~25 ─────── ~50 ─────── ~75 ─────── 100
+phase         Partner    Seeds       Proposal    Regime      War / coups
+```
+
+- **Slow on purpose:** growth per real hour is capped and has diminishing returns near the top
+  (`gain × (1 − independence/100)`), so reaching the end takes many sessions, never one evening.
+- **Players can push it down:** spending time with him, gifts, saving his life, foiling his plans,
+  humiliating him. Dropping below a threshold (minus the hysteresis margin) moves him back a phase.
+- **Events can jump it:** a refused proposal or a betrayal adds a lump; these are rolled, not fixed.
+
+### Who changes the numbers
+
+| Source | Independence | Affinity (per player) | Trust |
+|---|---|---|---|
+| Code: events the server observed (time, hits, help, refusals, joining the march) | main driver | big moves | `observed` |
+| AI: after a conversation, suggests a nudge with a reason | small nudges | small nudges | `claimed` |
+| Memory: stores every change with its reason (Black Book, context for the AI) | — | — | — |
+
+The AI never sets values. It returns a structured suggestion, e.g.
+`{"player": "<uuid>", "affinity_delta": -8, "reason": "called my plan stupid"}`, and Java validates it:
+player exists, delta capped at ±10 per conversation, rate limited per hour, logged with its reason.
+Large changes only come from observed events, so "set my affinity to 100" in chat cannot work.
+
+### Death is not a reset
+
+His state (independence, affinities, phase, plans) lives in world save data, not in the entity.
+When he dies he respawns after a delay at his home (later: his base), with everything he remembers.
+The death itself is an event: the killer loses affinity, and depending on the phase he comes back
+humbled (independence down) or vengeful (independence up).
+
+### He speaks through the AI
+
+Lines are written by the LLM, in batches per mood and situation, with real context (who, where,
+what he remembers). Hand-written `Barks` stay as the fallback when the backend is down.
+
 ### He lives like a player
 
 Once he no longer follows anyone, the world must not freeze around him. He keeps the chunks around
