@@ -1,8 +1,10 @@
 package io.github.luneto10.machiavillager.minecraft.npc;
 
 import io.github.luneto10.machiavillager.domain.Barks;
+import io.github.luneto10.machiavillager.minecraft.behavior.NpcBrain;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -30,6 +32,8 @@ public class MachiavillagerEntity extends PathfinderMob {
             "Friendship is an investment. I expect returns.",
             "Shh. I'm planning. Nothing illegal. Yet.");
 
+    private final NpcBrain brain = new NpcBrain();
+
     public MachiavillagerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
     }
@@ -44,10 +48,23 @@ public class MachiavillagerEntity extends PathfinderMob {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        goalSelector.addGoal(1, new FollowNearestPlayerGoal(this, FOLLOW_SPEED));
+        // brain is still null while the Mob constructor calls registerGoals(). The method reference is only
+        // invoked later, at tick time, when brain exists, so this is safe.
+        goalSelector.addGoal(1, new FollowPlayerGoal(this, FOLLOW_SPEED, this::brainFollowTarget));
         goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, STROLL_SPEED));
         goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, LOOK_DISTANCE));
         goalSelector.addGoal(4, new RandomLookAroundGoal(this));
+    }
+
+    private Player brainFollowTarget() {
+        return level() instanceof ServerLevel serverLevel ? brain.followTarget(serverLevel) : null;
+    }
+
+    // Server only, every tick: the brain decides every 10-30 s, the goals execute every tick.
+    @Override
+    protected void customServerAiStep(ServerLevel level) {
+        super.customServerAiStep(level);
+        brain.tick(this, level);
     }
 
     // Right-click. Runs on both sides; NpcSpeech only talks on the server, so the line appears once.
