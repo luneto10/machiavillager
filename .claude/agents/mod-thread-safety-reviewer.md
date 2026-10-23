@@ -17,7 +17,7 @@ Report only real problems, one line each, most severe first, as `path:line: prob
 4. Backend action handled without allowlist check, schema validation, or rate limit; unknown fields silently ignored.
 5. Missing `request_id` echo or missing terminal status for an action.
 6. Shared mutable state between bridge thread and server thread without a thread-safe handoff (queue, `server.execute`).
-7. `net.minecraft` imports inside the `core` package.
+7. `net.minecraft` / `net.fabricmc` imports inside the `domain` or `application` packages.
 8. API names that look like Yarn or pre-26 names; ask to verify against `genSources`.
 9. Secrets (bridge token) logged.
 

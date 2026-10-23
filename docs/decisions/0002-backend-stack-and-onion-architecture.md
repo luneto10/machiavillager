@@ -4,7 +4,7 @@ Date: 2026-10-18 · Status: accepted
 
 ## Decision
 
-- Python **3.13**, **uv**, **FastAPI**, **PydanticAI** (from Checkpoint 4), **Pydantic** models.
+- Python **3.13**, **uv**, **FastAPI**, **PydanticAI** (from Checkpoint 5), **Pydantic** models.
 - Onion layers `domain → application → infrastructure → api`, dependencies point inward only.
 - Enforced by `backend/tests/test_architecture.py` (stdlib `ast`), not by import-linter:
   its Rust extension is blocked by Windows Smart App Control on the dev machine.

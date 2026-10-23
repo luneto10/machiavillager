@@ -6,7 +6,7 @@ description: Use when adding, changing, or debugging a message between the Minec
 # Mod ⇄ backend bridge protocol
 
 Transport: one authenticated WebSocket from the mod (client side of the socket) to the backend.
-JSON messages. Schema source of truth: `shared/protocol.schema.json` (created in Checkpoint 3).
+JSON messages. Schema source of truth: `shared/protocol.schema.json` (created in Checkpoint 4).
 
 ## Message shapes
 
@@ -39,10 +39,10 @@ Mod → backend (event, no reply expected):
 1. **Schema**: add the action name and its `args` schema to `shared/protocol.schema.json`.
 2. **Python domain**: add a Pydantic model for the args in `backend/.../domain/`.
 3. **Python tests**: valid + invalid args round-trip against the schema.
-4. **Java core**: add a record for the args + validation in `mod/.../core/` (no Minecraft imports);
+4. **Java domain**: add a record for the args + validation in `mod/.../domain/` (no Minecraft imports);
    add the name to the action allowlist.
 5. **Java tests**: JUnit for validation and rejection reasons.
-6. **Java executor**: implement in `mod/.../game/`; runs on the server thread via `server.execute`;
+6. **Java executor**: implement in `mod/.../minecraft/`; runs on the server thread via `server.execute`;
    long-running actions emit `running` then a terminal status.
 7. **Agent tool** (if the LLM should use it): see the `npc-agent-tools` skill.
 8. Manual check in `runClient` + backend running: request it, watch both logs show the same `request_id`.

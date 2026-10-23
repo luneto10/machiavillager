@@ -21,9 +21,10 @@ description: Use when writing or changing Java code in mod/ — registering enti
 
 | Package | Contents | Rule |
 |---|---|---|
-| `...machiavillager.core` | protocol records, validation, allowlists, rate limiting | No `net.minecraft` / `net.fabricmc` imports. JUnit-testable. |
+| `...machiavillager.domain` | rules: acts, dice, factions, Scepter, protocol records, validation | No `net.minecraft` / `net.fabricmc` imports. JUnit-testable. |
+| `...machiavillager.application` | use cases + ports (interfaces) they need | Imports `domain` only. |
+| `...machiavillager.minecraft` | events, commands, NPC entity, soldiers, building, adapters for ports | Server thread only. |
 | `...machiavillager.bridge` | WebSocket client to backend | Own thread. Never touches world state directly. |
-| `...machiavillager.game` | NPC entity, AI goals, perception, action executors | Server thread only. |
 | `...machiavillager.client` | renderers, keybinds, HUD | `src/client` source set. |
 
 ## Threading (most important rule)

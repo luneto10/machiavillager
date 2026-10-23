@@ -30,5 +30,5 @@ Minecraft **26.3**, **Fabric**, **Java 25**.
 ## Consequences
 
 - 26.4 is in snapshots. Stay on 26.3 until SVC and Fabric API both ship 26.4, then bump in one PR.
-- If friends later want a NeoForge modpack, the `core` package (no Minecraft imports) ports as is;
-  only `game`/`bridge` glue changes.
+- If friends later want a NeoForge modpack, the `domain`/`application` packages (no Minecraft imports) port as is;
+  only `minecraft`/`bridge` glue changes.

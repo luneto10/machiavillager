@@ -11,7 +11,8 @@ The owner is learning. Each checkpoint follows steps A–G and stops for confirm
 What we build, why, and where it sits in `docs/architecture.md`. Short.
 
 ## B. Plan
-- `gh issue list --milestone "Checkpoint N"` to load the scope and acceptance criteria.
+- `gh issue list --milestone "<full milestone title>"` (e.g. `"Checkpoint 1: Minimal Minecraft mod"`)
+  to load the scope and acceptance criteria. Game design lives in `docs/design/emerald-empire.md`.
 - List files to touch, new dependencies (verify current version + maintenance first), risks.
 - Create a branch: `git switch -c cpN-short-name`.
 
@@ -31,7 +32,7 @@ needless complexity. Use the review agents (`onion-reviewer`, `mod-thread-safety
 
 ## F. Commit
 Conventional commits, small and meaningful. No AI attribution lines.
-`git push -u origin cpN-short-name` then `gh pr create --fill --milestone "Checkpoint N"`,
+`git push -u origin cpN-short-name` then `gh pr create --fill --milestone "<full milestone title>"`,
 body links issues with `Closes #n`.
 
 ## G. Checkpoint summary

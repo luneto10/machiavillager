@@ -1,5 +1,7 @@
 package io.github.luneto10.machiavillager;
 
+import io.github.luneto10.machiavillager.minecraft.DevCommands;
+import io.github.luneto10.machiavillager.minecraft.ServerLifecycleLog;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,5 +14,7 @@ public class Machiavillager implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LOGGER.info("Machiavillager is plotting. Emerald prices will never recover.");
+		ServerLifecycleLog.register();
+		DevCommands.register();
 	}
 }

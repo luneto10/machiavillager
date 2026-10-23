@@ -66,7 +66,7 @@ For a dev server, set `online-mode=false` in `mod/run/server.properties` so the 
 | `fabric.mod.json`, mixins, new entities/registrations | Yes |
 | Textures/lang files | `F3+T` reloads resource packs in client |
 | Backend Python | No Minecraft restart; uvicorn reloads |
-| Personality/prompts (Checkpoint 7) | No restart at all, read from DB per conversation |
+| Personality/prompts (Checkpoint 10) | No restart at all, read from DB per conversation |
 
 ## AI coding assistants
 
