@@ -34,6 +34,34 @@ At some point he rebels and goes to take the village, **whether anyone agrees or
 Pacing (how long each act lasts) is configurable. Dice decide *when* each hint happens so it is
 never predictable.
 
+## Not a linear story
+
+Every world must play out differently: when he turns, how fast, who he recruits, what his scheme is.
+The acts are phases of a meter, not a script.
+
+- **Rolled per world/season** (seeded): ambition growth rate, patience, cruelty, preferred scheme
+  (military empire, emerald monopoly, cult, heist...), and the thresholds between phases, with jitter.
+- **Driven by players:** affinity and independence move with what players do. He can regress
+  (humiliated, he goes back to being "just a friend" for a while) or skip ahead.
+- **Dice, not timers:** events are rolled with weights from his state, never fired at fixed times.
+- **Different endings:** players crown a new ruler, he is overthrown and turns rebel, he wins.
+
+### Affinity and independence (who he still cares about)
+
+- **Affinity** (per player, 0–100): rises with time together and help, falls with refusals,
+  betrayal, being hit.
+- **Independence** (0–100): derived from ambition; rises over the season.
+- Companion behavior toward a player (follow, dog-style teleport) only while
+  `affinity(player) > independence`. Early on he chases everyone; late in the season he only
+  cares about loyalists, and finally about no one. No switch: it emerges from the numbers.
+- Fair attention: follow weight = affinity × "time since I last followed you", and cooldowns are
+  per player, so no friend monopolizes him.
+
+### He lives like a player
+
+Once he no longer follows anyone, the world must not freeze around him. He keeps the chunks around
+himself (and his base) loaded with chunk tickets, so his plans keep running when nobody is near.
+
 ## Behavior: three layers
 
 | Layer | Runs | Does | Cost |
