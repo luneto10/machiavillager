@@ -21,6 +21,16 @@ An **ambition meter** (code, not LLM) rises slowly with time and events. It move
 | 4. Regime | Dictator | Takes the village, recruits soldiers, builds, collects taxes | — |
 | 5. War / coups | Political chaos | Factions fight, power changes hands | Ongoing |
 
+### The march on the village (Act 3 → 4)
+
+At some point he rebels and goes to take the village, **whether anyone agrees or not**.
+
+- **Someone joins him:** he leads them there. He walks ahead, **waits** whenever the follower
+  falls behind, and if they stop for too long he comes back and nags ("Come on, keep walking.
+  History waits for no one."). Then he continues.
+- **Nobody joins:** he goes alone ("Fine. I'll do it myself.") and starts doing his thing in the village.
+- Who joined, who refused and who walked away halfway is recorded (Black Book, factions).
+
 Pacing (how long each act lasts) is configurable. Dice decide *when* each hint happens so it is
 never predictable.
 
