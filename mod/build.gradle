@@ -31,6 +31,7 @@ dependencies {
 	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
 	testImplementation "org.junit.jupiter:junit-jupiter"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+	testImplementation "com.tngtech.archunit:archunit-junit5:${project.archunit_version}"
 }
 
 test {

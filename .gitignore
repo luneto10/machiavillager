@@ -26,3 +26,6 @@ out/
 mod/run/
 mod/remappedSrc/
 *.log
+
+# Log4j output when running tests from mod/
+mod/logs/
