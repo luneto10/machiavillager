@@ -9,9 +9,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntitySpawnReason;
 
-public class DevCommands {
-    public DevCommands() {
-    }
+/** Developer commands under /machiavillager. Operators only. */
+public final class DevCommands {
+    private DevCommands() {}
 
     public static void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -22,20 +22,10 @@ public class DevCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> root() {
         return Commands.literal("machiavillager")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                .then(ping())
                 .then(spawn());
     }
 
-    // /machiavillager ping
-    private static LiteralArgumentBuilder<CommandSourceStack> ping() {
-        return Commands.literal("ping").executes(DevCommands::runPing);
-    }
-
-    private static int runPing(CommandContext<CommandSourceStack> context) {
-        context.getSource().sendSuccess(() -> Component.literal("pong"), false);
-        return 1;
-    }
-
+    // /machiavillager spawn
     private static LiteralArgumentBuilder<CommandSourceStack> spawn() {
         return Commands.literal("spawn").executes(DevCommands::runSpawn);
     }

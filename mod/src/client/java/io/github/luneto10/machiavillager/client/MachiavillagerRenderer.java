@@ -1,6 +1,6 @@
 package io.github.luneto10.machiavillager.client;
 
-import io.github.luneto10.machiavillager.minecraft.MachiavillagerEntity;
+import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;

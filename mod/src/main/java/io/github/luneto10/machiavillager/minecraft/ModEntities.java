@@ -1,6 +1,7 @@
 package io.github.luneto10.machiavillager.minecraft;
 
 import io.github.luneto10.machiavillager.Machiavillager;
+import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
