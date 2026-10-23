@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class RelationshipsTest {
     private static final UUID ALICE = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID BOB = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final int ABOVE_MAX = 150;
     private static final int BELOW_MIN = -5;
     private static final int SOME_AFFINITY = 70;
@@ -57,5 +58,26 @@ class RelationshipsTest {
     @Test
     void initial_independenceIsZero() {
         assertEquals(0, Relationships.initial().independence());
+    }
+
+    @Test
+    void whenHurtBy_lowersAttackerAffinity_andRaisesIndependence() {
+        Relationships original = Relationships.initial();
+
+        Relationships hurt = original.whenHurtBy(ALICE);
+
+        assertEquals(Relationships.DEFAULT_AFFINITY - Relationships.HIT_AFFINITY_LOSS, hurt.affinityOf(ALICE));
+        assertEquals(Relationships.HIT_INDEPENDENCE_GAIN, hurt.independence());
+        assertEquals(Relationships.DEFAULT_AFFINITY, original.affinityOf(ALICE));
+        assertEquals(0, original.independence());
+    }
+
+    @Test
+    void whenHurtBy_otherPlayersUnchanged() {
+        Relationships relations = Relationships.initial().withAffinity(BOB, SOME_AFFINITY);
+
+        Relationships hurt = relations.whenHurtBy(ALICE);
+
+        assertEquals(SOME_AFFINITY, hurt.affinityOf(BOB));
     }
 }

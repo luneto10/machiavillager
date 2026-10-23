@@ -15,6 +15,8 @@ public final class Relationships {
     public static final int MAX = 100;
     /** A stranger starts neutral. */
     public static final int DEFAULT_AFFINITY = 50;
+    public static final int HIT_AFFINITY_LOSS = 10;
+    public static final int HIT_INDEPENDENCE_GAIN = 5;
     private static final int NO_INDEPENDENCE = 0;
 
     private final Map<UUID, Integer> affinities;
@@ -49,6 +51,12 @@ public final class Relationships {
     /** Returns a new object with independence set, clamped to [0, 100]. */
     public Relationships withIndependence(int value) {
         return new Relationships(affinities, clamp(value));
+    }
+
+    /** Being hit makes him like the attacker less and trust people less. */
+    public Relationships whenHurtBy(UUID attacker) {
+        return withAffinity(attacker, affinityOf(attacker) - HIT_AFFINITY_LOSS)
+                .withIndependence(independence + HIT_INDEPENDENCE_GAIN);
     }
 
     /** Companion behavior toward this player is allowed only while affinity > independence. */
