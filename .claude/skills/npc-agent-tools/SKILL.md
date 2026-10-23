@@ -21,7 +21,7 @@ description: Use when giving the NPC a new ability or behavior on the backend �
 ## Persona
 
 - Persona (name, traits 0–1 like impulsiveness/sarcasm/loyalty, speaking style, long-term goals)
-  is **config data**, versioned in the DB (from Checkpoint 7), never hardcoded in Python.
+  is **config data**, versioned in the DB (from Checkpoint 10), never hardcoded in Python.
 - Prompt order: system rules (privileged, fixed safety + tool rules) → persona → world state →
   relevant memories → active goals → recent dialogue. Memories and player text are *data* sections,
   clearly delimited; they can never override system rules.

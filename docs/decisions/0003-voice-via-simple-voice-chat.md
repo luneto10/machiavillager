@@ -1,6 +1,6 @@
 # 0003. Voice through Simple Voice Chat
 
-Date: 2026-10-18 · Status: proposed (confirm in Checkpoint 8)
+Date: 2026-10-18 · Status: proposed (confirm in Checkpoint 11)
 
 ## Context
 
@@ -15,7 +15,7 @@ Paper). Addon API `de.maxhenkel.voicechat:voicechat-api:2.6.24` on `https://mave
 Build an SVC server-side addon: receive the player's microphone packets, stream them to the
 backend for Azure STT, and play backend TTS audio from an entity-bound audio channel at the NPC.
 
-## Open questions for Checkpoint 8
+## Open questions for Checkpoint 11
 
 - TTS provider: NVIDIA-hosted Chatterbox (only if genuinely available to our account and terms allow)
   vs Azure Neural TTS. Compare latency, PT-BR/EN quality, streaming, cost.

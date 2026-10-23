@@ -3,7 +3,8 @@
 A chaotic, scheming AI companion for Minecraft Java Edition. He talks with you by voice,
 remembers who betrayed him, and is absolutely going to corner the emerald market.
 
-> Status: **Checkpoint 0** — repository, toolchain, empty mod, and backend skeleton.
+> Status: **Checkpoint 1** — mod reacts to the game (lifecycle logs, join greeting, dev command).
+> Game design: [docs/design/emerald-empire.md](docs/design/emerald-empire.md).
 
 ## How it fits together
 
@@ -13,9 +14,9 @@ Minecraft 26.3 + Fabric mod (Java 25)
         ▼
 FastAPI backend (Python 3.13, PydanticAI)
         ├── LLM: NVIDIA Build (OpenAI-compatible, swappable)
-        ├── Voice: Azure Speech STT, TTS TBD (Checkpoint 8)
-        ├── Memory: PostgreSQL (Checkpoint 6)
-        └── Dashboard (Checkpoint 7)
+        ├── Voice: Azure Speech STT, TTS TBD (Checkpoint 11)
+        ├── Memory: PostgreSQL (Checkpoint 7)
+        └── Dashboard (Checkpoint 10)
 ```
 
 The LLM only *requests* actions. The mod validates and executes them on the server thread.

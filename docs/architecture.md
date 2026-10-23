@@ -38,27 +38,32 @@ Postgres for SQLite only touches `infrastructure`.
 Pragmatic limits: no interface until a second implementation or a test double needs it;
 no layer gets a file until it has real code.
 
-## Mod: same idea, Minecraft as the outer ring
+## Mod: same onion, Minecraft as the outer ring
 
-Planned packages (created when first needed):
+Same vocabulary as the backend. Packages are created when their first class exists.
 
-| Package | Rule |
-|---|---|
-| `...machiavillager.core` | Plain Java: protocol messages, validation, allowlists, rate limits. No `net.minecraft` imports, so it is unit-testable with JUnit. |
-| `...machiavillager.bridge` | WebSocket client. Runs on its own thread; hands work to the server thread via `server.execute(...)`. |
-| `...machiavillager.game` | Minecraft-facing code: entity, goals, perception, action execution. |
-| `...machiavillager.client` | Client-only (separate source set): rendering, keybinds, push-to-talk UI. |
+| Package | Ring | Rule |
+|---|---|---|
+| `...machiavillager.domain` | inner | Pure Java rules: acts, ambition meter, weighted dice, factions, Scepter rules, protocol records, validation. No `net.minecraft`/`net.fabricmc` imports, so JUnit tests run in milliseconds. |
+| `...machiavillager.application` | inner | Use cases ("plant village hint", "roll next action", "coup") and the ports (interfaces) they need, e.g. `WorldQuery`, `Speaker`. |
+| `...machiavillager.minecraft` | outer | Adapters: events, commands, NPC entity, soldiers, building, chat, titles. Implements the ports with real Minecraft code. |
+| `...machiavillager.bridge` | outer | WebSocket client to the backend. Own thread; hands work to the server thread via `server.execute(...)`. |
+| `...machiavillager.client` | outer | Client-only (separate source set): rendering, keybinds, push-to-talk UI. |
+| `Machiavillager` (root) | bootstrap | Composition root: `onInitialize()` wires adapters into use cases. |
+
+Glue with no rules (lifecycle logs, a `ping` command) lives straight in `minecraft`; no port needed.
+Once `domain` has its first class, an ArchUnit test will fail the build if it imports Minecraft.
 
 Threading rule: **never block the server tick thread**. Network I/O and waiting happen on
 the bridge thread. World reads and writes happen only on the server thread.
 
-## Protocol (Checkpoint 3)
+## Protocol (Checkpoint 4)
 
 Messages carry `request_id`, `action`/`event`, `args`. The mod replies with
 `accepted | running | succeeded | failed | rejected` plus a reason. The schema will live in
 `shared/protocol.schema.json` and be the single source both sides test against.
 
-## Memory (Checkpoint 6)
+## Memory (Checkpoint 7)
 
 Identity (versioned config) · short-term (bounded recent dialogue) · episodic (events with
 time, place, participants) · semantic (facts, with provenance: `observed` by server vs
