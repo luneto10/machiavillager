@@ -4,10 +4,14 @@ import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.application.ChooseNextAction;
 import io.github.luneto10.machiavillager.domain.Barks;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
+import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
+import io.github.luneto10.machiavillager.domain.behavior.TeleportPolicy;
 import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.level.ServerLevel;
@@ -21,6 +25,7 @@ import net.minecraft.world.entity.player.Player;
 public final class NpcBrain {
     private static final int MIN_DECISION_TICKS = 200; // 10 s
     private static final int MAX_DECISION_TICKS = 600; // 30 s
+    private static final long CATCH_UP_COOLDOWN_TICKS = 100; // 5 s between teleports to the same player
 
     private static final Barks IDLE_LINES = new Barks(
             "%s, have you noticed how much the villagers charge for bread?",
@@ -34,6 +39,9 @@ public final class NpcBrain {
     private final Countdown decisionTimer = Countdown.randomBetween(
             MIN_DECISION_TICKS, MAX_DECISION_TICKS, ThreadLocalRandom.current());
     private Mood mood = Mood.CALM;
+    private Relationships relationships = Relationships.initial();
+    // Server game time of the last catch-up teleport, per player. One entry per friend, so it stays tiny.
+    private final Map<UUID, Long> lastCatchUpTick = new HashMap<>();
 
     /** Called every server tick. Decides again when the timer runs out, then acts on the decision. */
     public void tick(PathfinderMob npc, ServerLevel level) {
@@ -41,7 +49,8 @@ public final class NpcBrain {
             decide(npc, level);
         }
         // Supplier: the text is only built when the overlay actually shows (dev, every 10 ticks).
-        BrainDebugOverlay.show(npc, level, () -> describe(current, level), mood, decisionTimer.remainingTicks());
+        BrainDebugOverlay.show(
+                npc, level, () -> describe(current, level), mood, decisionTimer.remainingTicks(), relationships);
     }
 
     private void decide(PathfinderMob npc, ServerLevel level) {
@@ -51,9 +60,38 @@ public final class NpcBrain {
         act(npc, level);
     }
 
+    /** Dev: makes the brain decide again on the next tick. */
+    public void decideNow() {
+        decisionTimer.expireNow();
+    }
+
     /** The player the NPC should walk after, or null when the current decision is not a follow. */
     public Player followTarget(ServerLevel level) {
         return current instanceof NpcAction.Follow follow ? level.getPlayerByUUID(follow.target()) : null;
+    }
+
+    /** True when the follow goal may teleport next to this player now (dog-style catch-up). Starts the cooldown when it returns true. */
+    public boolean mayCatchUpTo(Player player, PathfinderMob npc) {
+        if (!(current instanceof NpcAction.Follow follow) || !follow.target().equals(player.getUUID())) {
+            return false;
+        }
+        if (player.isSpectator() || player.isPassenger() || player.isFallFlying()) {
+            return false;
+        }
+        long now = npc.level().getGameTime();
+        Long last = lastCatchUpTick.get(player.getUUID());
+        if (last != null && now - last < CATCH_UP_COOLDOWN_TICKS) {
+            return false;
+        }
+        boolean allowed = TeleportPolicy.mayCatchUp(
+                mood,
+                npc.distanceTo(player),
+                npc.level() == player.level(),
+                relationships.caresAbout(player.getUUID()));
+        if (allowed) {
+            lastCatchUpTick.put(player.getUUID(), now);
+        }
+        return allowed;
     }
 
     private void act(PathfinderMob npc, ServerLevel level) {

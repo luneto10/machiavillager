@@ -4,7 +4,8 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 
 /** Proposes walking after each player within reach. */
 public final class FollowOption implements ActionOption {
-    static final double MAX_FOLLOW_DISTANCE = 16.0;
+    // Matches what he can see, so after a long Wander he still comes back for you.
+    static final double MAX_FOLLOW_DISTANCE = 32.0;
 
     private static final int CALM_WEIGHT = 50;
     private static final int BORED_WEIGHT = 30;

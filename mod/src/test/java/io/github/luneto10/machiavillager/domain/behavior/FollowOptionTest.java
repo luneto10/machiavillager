@@ -26,8 +26,8 @@ class FollowOptionTest {
     }
 
     @Test
-    void playerWithin16_isProposed() {
-        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, 10));
+    void playerWithin32_isProposed() {
+        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, 30));
 
         assertTrue(dice.weightOf(new NpcAction.Follow(PLAYER)) > 0);
     }

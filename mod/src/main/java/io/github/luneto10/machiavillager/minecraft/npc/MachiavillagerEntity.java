@@ -50,7 +50,7 @@ public class MachiavillagerEntity extends PathfinderMob {
         goalSelector.addGoal(0, new FloatGoal(this));
         // brain is still null while the Mob constructor calls registerGoals(). The method reference is only
         // invoked later, at tick time, when brain exists, so this is safe.
-        goalSelector.addGoal(1, new FollowPlayerGoal(this, FOLLOW_SPEED, this::brainFollowTarget));
+        goalSelector.addGoal(1, new FollowPlayerGoal(this, FOLLOW_SPEED, this::brainFollowTarget, this::brainMayCatchUp));
         goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, STROLL_SPEED));
         goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, LOOK_DISTANCE));
         goalSelector.addGoal(4, new RandomLookAroundGoal(this));
@@ -58,6 +58,15 @@ public class MachiavillagerEntity extends PathfinderMob {
 
     private Player brainFollowTarget() {
         return level() instanceof ServerLevel serverLevel ? brain.followTarget(serverLevel) : null;
+    }
+
+    private boolean brainMayCatchUp(PathfinderMob mob, Player player) {
+        return brain != null && brain.mayCatchUpTo(player, mob);
+    }
+
+    /** Dev: forces a new decision on the next tick. */
+    public void forceDecision() {
+        brain.decideNow();
     }
 
     // Server only, every tick: the brain decides every 10-30 s, the goals execute every tick.
