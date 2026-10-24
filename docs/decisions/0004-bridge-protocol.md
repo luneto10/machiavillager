@@ -1,54 +1,129 @@
 # 0004. Mod ⇄ backend bridge protocol
 
-Date: 2026-10-24 · Status: accepted (Checkpoint 4)
+| | |
+|---|---|
+| **Date** | 2026-10-24 |
+| **Status** | Accepted (Checkpoint 4) |
+| **Issues** | #7, #8, #9, #10 |
+| **Contract** | [`shared/protocol.schema.json`](../../shared/protocol.schema.json) |
 
 ## Context
 
-The AI lives in the Python backend; the game runs in the Java mod. They need to talk both ways at any
-moment (the backend asks him to speak, the mod reports that a player spoke) without ever slowing the
-server tick, and without giving the AI any power beyond an allowlist.
+The AI lives in the Python backend; the game runs in the Java mod. They must talk both ways at any
+moment (the backend asks him to speak, the mod reports that a player spoke), without ever slowing the
+server tick and without giving the AI any power beyond an allowlist.
+
+## Summary
+
+| # | Decision | In one line |
+|---|---|---|
+| 1 | Transport | One WebSocket; the mod is the client |
+| 2 | Backend role | Optional: without it the mod plays as in Checkpoint 3 |
+| 3 | Who decides | The mod's dice drives daily behavior; the backend reacts to events |
+| 4 | Contract | Hand-written JSON Schema + shared examples, tested on both sides |
+| 5 | Versioning | `"v": 1` on every message, `hello` / `welcome` handshake |
+| 6 | Message types | `hello`, `welcome`, `action`, `action_status`, `event`, `error` |
+| 7 | Speech | `speak` takes 1-8 lines; the mod paces them |
+| 8 | Interruption | Chat within 24 blocks stops him after the current line |
+| 9 | Unprompted speech | At most one per player every 3 min |
+| 10 | Conversations | Reserved now (`conversation_id`), built in Checkpoint 5 |
+| 11 | Configuration | Env vars now; no token means the bridge is off |
+| 12 | JSON in Java | Gson, already shipped with Minecraft |
 
 ## Decisions
 
-1. **Transport: one WebSocket, the mod is the client.** Both sides push whenever they need to, over a
-   single long-lived connection. The mod dials out, so the Minecraft server never opens a port. The
-   mod uses the JDK's `java.net.http.WebSocket` (no new dependency); the backend uses FastAPI.
-   Rejected: HTTP polling (latency, no push), HTTP both ways (inbound port on the game server), gRPC
-   (heavy dependency in the mod), raw TCP (we would reinvent framing), a broker (extra service).
-2. **The backend is optional.** Without it (no token, or backend down) the mod behaves exactly as in
-   Checkpoint 3: dice, barks, fixed agenda. The AI only improves him.
-3. **The mod keeps the day-to-day brain.** The dice still picks Follow/Wander/Bark/Hint/Summon. The
-   backend acts on events (conversation, meeting, plans), never per tick.
-4. **Hand-written contract in `shared/`.** `shared/protocol.schema.json` (JSON Schema 2020-12) plus
-   `shared/examples/{valid,invalid}`; Java and Python tests both load the same examples. Neutral:
-   neither side generates the other's contract.
-5. **Versioned with a handshake.** Every message carries `"v": 1`. On connect the mod sends `hello`
-   (mod version, protocol version); the backend answers `welcome` or `error: unsupported_protocol`
-   and closes.
-6. **Message types:** `hello`, `welcome`, `action`, `action_status`, `event`, `error`.
-   Unknown fields are rejected, never ignored.
-7. **Speech is multi-line.** The first and only action in Checkpoint 4 is
-   `speak {lines: 1-8 strings of 1-256 chars}`. The mod paces the lines with `ReadingTime`, so it
-   reads like typing; statuses `accepted → running → succeeded`.
-8. **Interruption.** A player who talks in normal chat within his hearing range (24 blocks) while he
-   speaks interrupts him: he finishes the current line, drops the rest, and reports
-   `interrupted` with `{spoken, of}`; the player's `player_chat` event follows. Commands never
-   interrupt.
-9. **He may talk unprompted, with a limit.** The backend may start speech from events; the mod
-   allows at most one unprompted `speak` per player every 3 minutes (configurable). Replies to a
-   player who spoke to him do not count.
-10. **Conversations come in Checkpoint 5.** The contract already reserves an optional
-    `conversation_id`; history and the 60 s silence rule are implemented with the AI.
-11. **Config through env vars for now:** `MACHIAVILLAGER_BRIDGE_URL` (default
-    `ws://localhost:8000/bridge`) and `MACHIAVILLAGER_BRIDGE_TOKEN`. No token: the bridge stays off.
-    `wss://` arrives with deployment (Checkpoint 13). The token is never logged.
-12. **JSON in Java with Gson**, which Minecraft already ships. Strict validation lives in domain
-    records; full JSON Schema validation runs in tests.
+### 1. Transport: one WebSocket, the mod is the client
+
+- **Decision:** one long-lived WebSocket. The mod dials the backend; the backend never dials the game.
+- **Why:** both sides can push at any moment over one connection. The game server never opens a port.
+  The JDK ships `java.net.http.WebSocket` (no new dependency in the mod); FastAPI supports it natively.
+- **Rejected:**
+  - HTTP polling: latency, and the backend cannot push.
+  - HTTP both ways: the game server would need an inbound port.
+  - gRPC: heavy dependency in the mod.
+  - Raw TCP: we would reinvent message framing.
+  - A message broker: one more service to run.
+
+### 2. The backend is optional
+
+- **Decision:** with no token or with the backend down, the mod behaves exactly as in Checkpoint 3
+  (dice, barks, fixed meeting agenda).
+- **Why:** the game must never depend on the network. The AI improves him; it does not run him.
+
+### 3. The mod keeps the day-to-day brain
+
+- **Decision:** the dice still picks Follow, Wander, Bark, Hint and Summon. The backend acts on events
+  (conversation, meeting, plans), never per tick.
+- **Why:** cheaper, faster, and safe when the backend is down.
+
+### 4. Hand-written contract in `shared/`
+
+- **Decision:** `shared/protocol.schema.json` (JSON Schema 2020-12) plus `shared/examples`; the Java and
+  Python tests load the same files.
+- **Why:** neutral (neither side generates the other's contract) and readable.
+- **Rejected:** generating the schema from the Python models, which would make the backend own the
+  contract.
+
+### 5. Versioning and handshake
+
+- **Decision:** every message carries `"v": 1`. On connect the mod sends `hello` (mod version, protocol
+  version); the backend answers `welcome`, or `error: unsupported_protocol` and closes.
+- **Why:** a future format change is detected at connect time instead of failing in odd ways later.
+
+### 6. Message types
+
+| Type | Direction | Purpose |
+|---|---|---|
+| `hello` | mod → backend | First message after connecting |
+| `welcome` | backend → mod | Handshake accepted |
+| `action` | backend → mod | Request an allowlisted action |
+| `action_status` | mod → backend | Progress of a request (may be sent several times) |
+| `event` | mod → backend | Something happened in the world; no reply |
+| `error` | both | A message could not be accepted |
+
+Unknown fields are rejected, never silently ignored.
+
+### 7. Speech is multi-line
+
+- **Decision:** the only action in Checkpoint 4 is `speak {lines: 1-8 strings of 1-256 chars}`. The mod
+  paces the lines with `ReadingTime`. Statuses: `accepted → running → succeeded`.
+- **Why:** he talks in bursts like a person typing, and the backend never has to manage timing.
+
+### 8. Interruption
+
+- **Decision:** a player who talks in normal chat within 24 blocks while he speaks interrupts him. He
+  finishes the current line, drops the rest, reports `interrupted {spoken, of}`, and the player's
+  `player_chat` event follows. Commands never interrupt; players out of range do not either.
+- **Why:** it is what a person does, and it gives the AI a chance to react ("as I was saying...").
+
+### 9. Unprompted speech is limited
+
+- **Decision:** the backend may start speech from events. The mod allows at most one unprompted `speak`
+  per player every 3 minutes (configurable); replies to a player who spoke to him do not count.
+- **Why:** endless monologues are tiring. The limit lives in the mod, so a misbehaving backend cannot
+  spam players.
+
+### 10. Conversations come in Checkpoint 5
+
+- **Decision:** the contract already reserves an optional `conversation_id`. Conversation history and
+  the 60-second silence rule are built together with the AI.
+
+### 11. Configuration
+
+- **Decision:** `MACHIAVILLAGER_BRIDGE_URL` (default `ws://localhost:8000/bridge`) and
+  `MACHIAVILLAGER_BRIDGE_TOKEN`. No token: the bridge stays off. `wss://` arrives with deployment
+  (Checkpoint 13). The settings screen (#56) will read the same values later.
+- **Rule:** the token is never logged.
+
+### 12. JSON in Java with Gson
+
+- **Decision:** parse with Gson, which Minecraft already ships. Strict validation lives in domain
+  records; full JSON Schema validation runs in tests.
+- **Rejected:** Jackson, one more library to bundle.
 
 ## Consequences
 
-- The game never depends on the network: the bridge has its own thread and queue and hands work to
-  the server thread with `server.execute`.
-- Adding an action means: schema, examples, Java domain record + allowlist, Python model, executor,
-  tests on both sides (see the `bridge-protocol` skill).
-- The protocol version must be bumped for breaking changes.
+- The bridge has its own thread and queue and hands work to the server thread with `server.execute`.
+- Adding an action means: schema branch, examples, Java domain record + allowlist, Python model,
+  executor, tests on both sides (see the `bridge-protocol` skill).
+- A breaking format change bumps the protocol version.
