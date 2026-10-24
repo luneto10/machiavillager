@@ -12,4 +12,14 @@ uv run ruff check . && uv run ruff format --check .         # lint + format
 Windows with Smart App Control: uv's own Python builds are blocked. Use a python.org
 install instead: `uv venv --python "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"`.
 
+## Bridge
+
+The Minecraft mod connects to `ws://localhost:8000/bridge` (Checkpoint 4, issue #8).
+
+1. Copy `../.env.example` to `backend/.env` and set `MACHIAVILLAGER_BRIDGE_TOKEN` (generate it as
+   the comment there shows).
+2. Run `uv run uvicorn machiavillager.api.app:app --reload`.
+3. The mod needs the same token (Checkpoint 4 #9). With no token set, the endpoint refuses every
+   connection.
+
 Layer rules live in [`docs/architecture.md`](../docs/architecture.md).
