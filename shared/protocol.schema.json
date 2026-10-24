@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Machiavillager bridge protocol",
+  "description": "Messages exchanged between the Minecraft mod and the Python backend over one WebSocket. Every message is one JSON object with v and type. Hand-written contract; see docs/decisions/0004-bridge-protocol.md.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/hello" },
+    { "$ref": "#/$defs/welcome" },
+    { "$ref": "#/$defs/action" },
+    { "$ref": "#/$defs/actionStatus" },
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "hello": {
+      "description": "Sent by the mod right after connecting. Carries the mod version and the protocol version it speaks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "mod_version", "protocol"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "hello" },
+        "mod_version": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "protocol": { "const": 1 }
+      }
+    },
+    "welcome": {
+      "description": "Sent by the backend in answer to hello when the protocol version is supported.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "protocol"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "welcome" },
+        "protocol": { "const": 1 }
+      }
+    },
+    "action": {
+      "description": "Backend asks the mod to perform an action. The args shape depends on the action name; each action adds one if/then branch in allOf.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "request_id", "action", "args", "timeout_ms"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "action" },
+        "request_id": { "type": "string", "pattern": "^act_[A-Za-z0-9]{8,32}$" },
+        "action": { "enum": ["speak"] },
+        "args": {
+          "description": "Action-specific arguments. Constrained by the allOf branch for the action name."
+        },
+        "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 120000 },
+        "conversation_id": { "type": "string", "pattern": "^conv_[A-Za-z0-9]{8,32}$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "speak" } }, "required": ["action"] },
+          "then": { "properties": { "args": { "$ref": "#/$defs/speakArgs" } } }
+        }
+      ]
+    },
+    "speakArgs": {
+      "description": "Arguments for speak: between 1 and 8 lines, each between 1 and 256 characters. The mod paces the lines itself.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lines"],
+      "properties": {
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+        }
+      }
+    },
+    "actionStatus": {
+      "description": "Mod reports the progress of an action request. Interrupted needs the spoken/of counts; failed and rejected need a reason.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "request_id", "status"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "action_status" },
+        "request_id": { "type": "string", "pattern": "^act_[A-Za-z0-9]{8,32}$" },
+        "status": {
+          "enum": ["accepted", "running", "succeeded", "failed", "interrupted", "rejected"]
+        },
+        "reason": { "type": "string", "maxLength": 200 },
+        "spoken": { "type": "integer", "minimum": 0 },
+        "of": { "type": "integer", "minimum": 1, "maximum": 8 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "interrupted" } }, "required": ["status"] },
+          "then": { "required": ["spoken", "of"] }
+        },
+        {
+          "if": { "properties": { "status": { "enum": ["failed", "rejected"] } }, "required": ["status"] },
+          "then": { "required": ["reason"] }
+        }
+      ]
+    },
+    "event": {
+      "description": "Mod reports something that happened in the world. No reply is expected. The data shape depends on the event name.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "event_id", "event", "occurred_at", "data"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "event" },
+        "event_id": { "type": "string", "pattern": "^evt_[A-Za-z0-9]{8,32}$" },
+        "event": { "enum": ["player_chat"] },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "data": {
+          "description": "Event-specific payload. Constrained by the allOf branch for the event name."
+        },
+        "conversation_id": { "type": "string", "pattern": "^conv_[A-Za-z0-9]{8,32}$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "event": { "const": "player_chat" } }, "required": ["event"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/playerChatData" } } }
+        }
+      ]
+    },
+    "playerChatData": {
+      "description": "Payload for player_chat: a player said something in normal chat.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player_uuid", "player_name", "text"],
+      "properties": {
+        "player_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "player_name": { "type": "string", "minLength": 1, "maxLength": 16 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "error": {
+      "description": "Either side reports a message it cannot accept. Code is a closed set so both sides can branch on it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "type", "code", "detail"],
+      "properties": {
+        "v": { "const": 1 },
+        "type": { "const": "error" },
+        "code": { "enum": ["bad_message", "unsupported_protocol", "unauthorized", "internal"] },
+        "detail": { "type": "string", "maxLength": 500 }
+      }
+    }
+  }
+}

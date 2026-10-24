@@ -32,6 +32,8 @@ dependencies {
 	testImplementation "org.junit.jupiter:junit-jupiter"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 	testImplementation "com.tngtech.archunit:archunit-junit5:${project.archunit_version}"
+	// Test-only: the bridge contract is checked against the shared JSON Schema, never at runtime.
+	testImplementation "com.networknt:json-schema-validator:${project.json_schema_validator_version}"
 }
 
 test {
