@@ -1,6 +1,7 @@
 package io.github.luneto10.machiavillager.domain.time;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
@@ -15,6 +16,11 @@ class PerPlayerCooldownTest {
     @Test
     void freshPlayer_isReady() {
         assertTrue(new PerPlayerCooldown(DURATION).isReady(ALICE, START));
+    }
+
+    @Test
+    void constructor_rejectsZeroDuration() {
+        assertThrows(IllegalArgumentException.class, () -> new PerPlayerCooldown(0L));
     }
 
     @Test

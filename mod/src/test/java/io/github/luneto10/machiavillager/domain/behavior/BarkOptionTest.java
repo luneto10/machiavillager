@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.luneto10.machiavillager.domain.WeightedDice;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,6 @@ class BarkOptionTest {
     }
 
     private static Situation situation(Mood mood, double distance) {
-        return new Situation(mood, List.of(new NearbyPlayer(LISTENER, "Alice", distance)));
+        return new Situation(mood, List.of(new NearbyPlayer(LISTENER, "Alice", distance)), Phase.PARTNER, 0);
     }
 }

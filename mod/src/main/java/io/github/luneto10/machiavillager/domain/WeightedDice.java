@@ -73,21 +73,6 @@ public final class WeightedDice<T> {
         return index < 0 ? 0 : entries.get(index).weight();
     }
 
-    /** Returns a new dice with the outcome's weight replaced, or appended if the outcome is new. */
-    public WeightedDice<T> withWeight(T outcome, int weight) {
-        Objects.requireNonNull(outcome, "outcome");
-        checkWeight(weight);
-        List<Entry<T>> updated = new ArrayList<>(entries);
-        Entry<T> replacement = new Entry<>(outcome, weight);
-        int index = indexOf(updated, outcome);
-        if (index >= 0) {
-            updated.set(index, replacement);
-        } else {
-            updated.add(replacement);
-        }
-        return new WeightedDice<>(updated);
-    }
-
     /** Outcomes in insertion order. The list is unmodifiable. */
     public List<T> outcomes() {
         return entries.stream().map(Entry::outcome).toList();

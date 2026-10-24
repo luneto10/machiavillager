@@ -9,6 +9,7 @@ import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NearbyPlayer;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,7 +40,7 @@ class ChooseNextActionTest {
     @Test
     void noPlayersNearby_alwaysWanders() {
         ChooseNextAction useCase = ChooseNextAction.withDefaultCatalog();
-        Situation alone = new Situation(Mood.CALM, List.of());
+        Situation alone = situation(Mood.CALM, List.of());
         Random random = new Random(SEED);
 
         for (int i = 0; i < 1000; i++) {
@@ -85,7 +86,7 @@ class ChooseNextActionTest {
     @Test
     void boredMood_wandersMoreThanCalm() {
         ChooseNextAction useCase = ChooseNextAction.withDefaultCatalog();
-        Situation bored = new Situation(Mood.BORED, List.of(nearbyAt(5)));
+        Situation bored = situation(Mood.BORED, List.of(nearbyAt(5)));
 
         double boredWander = fraction(rollCounts(useCase, bored, new Random(SEED), ROLLS),
                 NpcAction.Wander.class);
@@ -107,7 +108,12 @@ class ChooseNextActionTest {
         assertEquals(1.0, total, 1e-9);
     }
     private static Situation calmWithPlayerAt(double distance) {
-        return new Situation(Mood.CALM, List.of(nearbyAt(distance)));
+        return situation(Mood.CALM, List.of(nearbyAt(distance)));
+    }
+
+    // Partner phase, no hint history: the story has not started yet.
+    private static Situation situation(Mood mood, List<NearbyPlayer> nearby) {
+        return new Situation(mood, nearby, Phase.PARTNER, 0);
     }
 
     private static NearbyPlayer nearbyAt(double distance) {

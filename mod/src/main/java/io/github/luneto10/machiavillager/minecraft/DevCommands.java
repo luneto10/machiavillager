@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
@@ -105,6 +106,19 @@ public final class DevCommands {
         return found;
     }
 
+    // Runs the same dev action on every loaded Machiavillager and reports how many were affected.
+    private static int forEachNpc(
+            CommandSourceStack source, Consumer<MachiavillagerEntity> action, String doneMessage) {
+        List<MachiavillagerEntity> all = findAll(source);
+        all.forEach(action);
+
+        // With no NPC loaded, report that instead of a zero count.
+        int count = all.size();
+        String message = count == 0 ? "No Machiavillager found." : doneMessage.formatted(count);
+        source.sendSuccess(() -> Component.literal(message), false);
+        return count;
+    }
+
     // /machiavillager brain (dev only)
     private static LiteralArgumentBuilder<CommandSourceStack> brain() {
         var brain = Commands.literal("brain")
@@ -164,15 +178,8 @@ public final class DevCommands {
 
     // Forces every Machiavillager in every loaded level to decide on the next tick.
     private static int runBrainNext(CommandContext<CommandSourceStack> context) {
-        CommandSourceStack source = context.getSource();
-        List<MachiavillagerEntity> all = findAll(source);
-        all.forEach(MachiavillagerEntity::forceDecision);
-        int count = all.size();
-        String message = count == 0
-                ? "No Machiavillager found."
-                : "Forced a new decision for " + count + " Machiavillager(s).";
-        source.sendSuccess(() -> Component.literal(message), false);
-        return count;
+        return forEachNpc(context.getSource(), MachiavillagerEntity::forceDecision,
+                "Forced a new decision for %d Machiavillager(s).");
     }
 
     // Prints each Machiavillager's odds, one chat line each, so the dice can be checked by eye.
@@ -201,26 +208,13 @@ public final class DevCommands {
         NpcAction action = build.apply(playerId);
 
         // Every Machiavillager gets the same forced action.
-        List<MachiavillagerEntity> all = findAll(source);
-        all.forEach(npc -> npc.forceAction(action));
-        int count = all.size();
-        String message = count == 0
-                ? "No Machiavillager found."
-                : "Forced " + name + " on " + count + " Machiavillager(s).";
-        source.sendSuccess(() -> Component.literal(message), false);
-        return count;
+        return forEachNpc(source, npc -> npc.forceAction(action),
+                "Forced " + name + " on %d Machiavillager(s).");
     }
 
     // Sets his mood on every loaded Machiavillager. The next decision already uses it.
     private static int runSetMood(CommandContext<CommandSourceStack> context, Mood mood) {
-        CommandSourceStack source = context.getSource();
-        List<MachiavillagerEntity> all = findAll(source);
-        all.forEach(npc -> npc.setMood(mood));
-        int count = all.size();
-        String message = count == 0
-                ? "No Machiavillager found."
-                : "Mood is now " + mood + " for " + count + " Machiavillager(s).";
-        source.sendSuccess(() -> Component.literal(message), false);
-        return count;
+        return forEachNpc(context.getSource(), npc -> npc.setMood(mood),
+                "Mood is now " + mood + " for %d Machiavillager(s).");
     }
 }

@@ -23,11 +23,6 @@ public record Situation(Mood mood, List<NearbyPlayer> nearbyPlayers, Phase phase
         nearbyPlayers = List.copyOf(nearbyPlayers);
     }
 
-    /** Before the story starts: partner phase, no hint history. */
-    public Situation(Mood mood, List<NearbyPlayer> nearbyPlayers) {
-        this(mood, nearbyPlayers, Phase.PARTNER, 0);
-    }
-
     /** Players at most {@code radius} blocks away. The list is unmodifiable. */
     public List<NearbyPlayer> playersWithin(double radius) {
         return nearbyPlayers.stream()

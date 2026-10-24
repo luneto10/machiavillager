@@ -15,8 +15,10 @@ public final class PerPlayerCooldown {
 
     /** Every player gets a cooldown of {@code durationTicks}. Must be at least 1. */
     public PerPlayerCooldown(long durationTicks) {
-        // Validates the duration up front, the same way Cooldown does.
-        new Cooldown(durationTicks);
+        // Rejects a zero or negative duration here, before any player's cooldown is built.
+        if (durationTicks < 1) {
+            throw new IllegalArgumentException("durationTicks must be >= 1, was " + durationTicks);
+        }
         this.durationTicks = durationTicks;
     }
 

@@ -94,34 +94,6 @@ class WeightedDiceTest {
     }
 
     @Test
-    void withWeight_returnsNewDice_andLeavesOriginalUnchanged() {
-        WeightedDice<Action> original = standardDice();
-
-        WeightedDice<Action> changed = original.withWeight(Action.FOLLOW, 0);
-
-        assertEquals(50, original.weightOf(Action.FOLLOW));
-        assertEquals(0, changed.weightOf(Action.FOLLOW));
-        assertFalse(changed == original);
-    }
-
-    @Test
-    void withWeight_newOutcome_isAppended() {
-        WeightedDice<Action> original = WeightedDice.<Action>builder().add(Action.FOLLOW, 1).build();
-
-        WeightedDice<Action> changed = original.withWeight(Action.WANDER, 1);
-
-        assertEquals(List.of(Action.FOLLOW, Action.WANDER), changed.outcomes());
-        assertEquals(List.of(Action.FOLLOW), original.outcomes());
-    }
-
-    @Test
-    void withWeight_toZeroForAll_throws() {
-        WeightedDice<Action> dice = WeightedDice.<Action>builder().add(Action.FOLLOW, 1).build();
-
-        assertThrows(IllegalArgumentException.class, () -> dice.withWeight(Action.FOLLOW, 0));
-    }
-
-    @Test
     void outcomes_isUnmodifiable() {
         List<Action> outcomes = standardDice().outcomes();
 
