@@ -8,31 +8,47 @@ description: Use when adding, changing, or debugging a message between the Minec
 Transport: one authenticated WebSocket from the mod (client side of the socket) to the backend.
 JSON messages. Schema source of truth: `shared/protocol.schema.json` (created in Checkpoint 4).
 
-## Message shapes
+Decisions and their reasons: `docs/decisions/0004-bridge-protocol.md`. The backend is optional:
+without it the mod plays as in Checkpoint 3.
+
+## Message shapes (every message has `"v": 1`)
+
+Handshake, right after connecting:
+
+```json
+{"v": 1, "type": "hello", "mod_version": "0.1.0", "protocol": 1}
+{"v": 1, "type": "welcome", "protocol": 1}
+```
 
 Backend → mod (action request):
 
 ```json
-{"type": "action", "request_id": "act_01H...", "action": "follow_player",
- "args": {"player_uuid": "..."}, "timeout_ms": 30000}
+{"v": 1, "type": "action", "request_id": "act_01H...", "action": "speak",
+ "args": {"lines": ["Luciano...", "I've been thinking."]}, "timeout_ms": 30000}
 ```
 
 Mod → backend (action status, may be sent several times per request):
 
 ```json
-{"type": "action_status", "request_id": "act_01H...", "status": "running"}
-{"type": "action_status", "request_id": "act_01H...", "status": "failed", "reason": "player_offline"}
+{"v": 1, "type": "action_status", "request_id": "act_01H...", "status": "running"}
+{"v": 1, "type": "action_status", "request_id": "act_01H...", "status": "interrupted", "spoken": 2, "of": 5}
 ```
 
-Statuses: `accepted` → `running` → `succeeded | failed`; or `rejected` immediately (unknown action,
-bad args, not allowlisted, rate limited, not permitted).
+Statuses: `accepted` → `running` → `succeeded | failed | interrupted`; or `rejected` immediately
+(unknown action, bad args, not allowlisted, rate limited, not permitted).
 
 Mod → backend (event, no reply expected):
 
 ```json
-{"type": "event", "event_id": "evt_...", "event": "player_chat",
+{"v": 1, "type": "event", "event_id": "evt_...", "event": "player_chat",
  "occurred_at": "2026-10-18T12:00:00Z", "data": {"player_uuid": "...", "text": "hi"}}
 ```
+
+Either side, for a message it cannot accept: `{"v": 1, "type": "error", "code": "bad_message", "detail": "..."}`.
+
+Speech: `speak` takes 1-8 lines; the mod paces them with `ReadingTime`. A player chatting within 24
+blocks interrupts after the current line. At most one unprompted `speak` per player every 3 min
+(enforced by the mod); replies to a player do not count.
 
 ## Adding a new action — do all steps, in order
 
