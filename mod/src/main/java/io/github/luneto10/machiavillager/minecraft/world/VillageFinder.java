@@ -41,6 +41,11 @@ public final class VillageFinder {
         return cachedResult;
     }
 
+    /** The last village found, without searching. Empty until the first search runs. Never starts a search. */
+    public Optional<BlockPos> lastKnown() {
+        return cachedResult;
+    }
+
     private boolean isNearCachedOrigin(BlockPos from) {
         long dx = from.getX() - cachedFrom.getX();
         long dz = from.getZ() - cachedFrom.getZ();

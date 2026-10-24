@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
@@ -31,12 +32,13 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Developer commands under /machiavillager. Operators only.
+ * Commands under /machiavillager. Spawn and brain are operators only.
  * <ul>
+ *   <li>{@code summons on|off}: let him summon you, or not. Open to every player.</li>
  *   <li>{@code spawn}: summon him, or bring him to you if he already exists.</li>
  *   <li>{@code brain next}: force a new decision now (dev).</li>
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
- *   <li>{@code brain do <action>}: force follow, wander, bark or hint aimed at you (dev).</li>
+ *   <li>{@code brain do <action>}: force follow, wander, bark, hint or summon aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
  * </ul>
@@ -52,7 +54,11 @@ public final class DevCommands {
             "follow", NpcAction.Follow::new,
             "wander", player -> new NpcAction.Wander(),
             "bark", NpcAction.Bark::new,
-            "hint", NpcAction.Hint::new);
+            "hint", NpcAction.Hint::new,
+            "summon", NpcAction.Summon::new);
+
+    // Operators only: the spawn and brain subtrees check this themselves, so the root stays open to everyone.
+    private static final Predicate<CommandSourceStack> OPERATOR = Commands.hasPermission(Commands.LEVEL_GAMEMASTERS);
 
     private DevCommands() {}
 
@@ -64,7 +70,7 @@ public final class DevCommands {
     // The tree: /machiavillager <subcommand>
     private static LiteralArgumentBuilder<CommandSourceStack> root() {
         var root = Commands.literal("machiavillager")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(summons())
                 .then(spawn());
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             root.then(brain()); // dev only: debugging shortcuts
@@ -74,7 +80,25 @@ public final class DevCommands {
 
     // /machiavillager spawn
     private static LiteralArgumentBuilder<CommandSourceStack> spawn() {
-        return Commands.literal("spawn").executes(DevCommands::runSpawn);
+        return Commands.literal("spawn").requires(OPERATOR).executes(DevCommands::runSpawn);
+    }
+
+    // /machiavillager summons on|off: every player may turn his summons off or on for themselves.
+    private static LiteralArgumentBuilder<CommandSourceStack> summons() {
+        return Commands.literal("summons")
+                .then(Commands.literal("off").executes(context -> runSummons(context, true)))
+                .then(Commands.literal("on").executes(context -> runSummons(context, false)));
+    }
+
+    // Saves the choice for the player who typed it; the brain checks it before any summons.
+    private static int runSummons(CommandContext<CommandSourceStack> context, boolean optOut)
+            throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        UUID playerId = source.getPlayerOrException().getUUID();
+        StoryData.get(source.getServer()).setOptedOut(playerId, optOut);
+        String message = optOut ? "He will not summon you anymore." : "He may summon you again.";
+        source.sendSuccess(() -> Component.literal(message), false);
+        return 1;
     }
 
     // There is only one Machiavillager: if he already exists, he is brought to you instead.
@@ -122,6 +146,7 @@ public final class DevCommands {
     // /machiavillager brain (dev only)
     private static LiteralArgumentBuilder<CommandSourceStack> brain() {
         var brain = Commands.literal("brain")
+                .requires(OPERATOR)
                 .then(Commands.literal("next").executes(DevCommands::runBrainNext))
                 .then(Commands.literal("odds").executes(DevCommands::runBrainOdds));
 

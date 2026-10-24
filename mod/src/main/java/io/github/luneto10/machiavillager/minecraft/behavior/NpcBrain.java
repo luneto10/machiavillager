@@ -10,9 +10,12 @@ import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.behavior.TeleportPolicy;
+import io.github.luneto10.machiavillager.domain.meeting.MeetingRules;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.domain.time.PerPlayerCooldown;
+import io.github.luneto10.machiavillager.minecraft.meeting.Meeting;
+import io.github.luneto10.machiavillager.minecraft.meeting.SummonFacts;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import io.github.luneto10.machiavillager.minecraft.world.VillageFinder;
@@ -21,9 +24,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.player.Player;
 
@@ -65,10 +70,17 @@ public final class NpcBrain {
     private final VillageFinder villages = new VillageFinder();
     // In memory only: after a restart the first hint waits the minimum again.
     private long activeTicksSinceHint;
+    // The running summons, or null. One meeting at a time.
+    private Meeting meeting;
+    // One cooldown per player, so the same player is not pulled again right away.
+    private final PerPlayerCooldown summonCooldown = new PerPlayerCooldown(MeetingRules.SUMMON_COOLDOWN_TICKS);
 
     /** Called every server tick. Decides again when the timer runs out, then acts on the decision. */
     public void tick(PathfinderMob npc, ServerLevel level) {
-        if (decisionTimer.tick()) {
+        // A meeting owns him: decisions wait until it ends, while the story clock keeps running.
+        if (meeting != null) {
+            tickMeeting(npc, level);
+        } else if (decisionTimer.tick()) {
             decide(npc, level);
         }
         if (storyClock.tick()) {
@@ -91,6 +103,14 @@ public final class NpcBrain {
     /** Called when he is removed from the world (dead, or his chunk unloaded): his dev bars go with him. */
     public void onRemoved() {
         overlay.hideAll();
+    }
+
+    /** Removed mid-meeting: the player is sent back now, so nobody is stranded away from home. */
+    public void abortMeeting(ServerLevel level) {
+        if (meeting != null) {
+            meeting.abort(level);
+            meeting = null;
+        }
     }
 
     /** Ambition grows only while players are near him: an empty server never advances the story. */
@@ -147,8 +167,19 @@ public final class NpcBrain {
 
     /** The world as he sees it right now: the input to every decision. */
     private Situation snapshot(PathfinderMob npc, ServerLevel level) {
-        Phase phase = StoryData.get(level.getServer()).progress().phase();
-        return SituationSnapshot.take(npc, level, mood, phase, activeTicksSinceHint);
+        // One story read per snapshot; the summons check needs the opt-outs from the same story.
+        StoryData data = StoryData.get(level.getServer());
+        Phase phase = data.progress().phase();
+        long now = level.getGameTime();
+        return SituationSnapshot.take(npc, level, mood, phase, activeTicksSinceHint,
+                player -> summonable(npc, data, player, now));
+    }
+
+    // Checked here, so the odds only ever offer summons that may really happen.
+    private boolean summonable(PathfinderMob npc, StoryData data, ServerPlayer player, long now) {
+        return meeting == null
+                && SummonFacts.check(npc, player, data.isOptedOut(player.getUUID()),
+                        summonCooldown.isReady(player.getUUID(), now)).allowed();
     }
 
     /**
@@ -231,7 +262,52 @@ public final class NpcBrain {
                 }
             }
             case NpcAction.Hint hint -> giveHint(npc, level, hint.listener());
+            case NpcAction.Summon summon -> startSummon(npc, level, summon.target());
         }
+    }
+
+    /** Starts a meeting when none is running and the rules allow it. A refused summons is only logged. */
+    private void startSummon(PathfinderMob npc, ServerLevel level, UUID target) {
+        // One meeting at a time: a second summons waits for the first to end.
+        if (meeting != null) {
+            return;
+        }
+
+        // Fairness first: the opt-out and the danger rules decide; the cooldown was already rolled in the dice.
+        if (!summonAllowed(npc, level, target)) {
+            Machiavillager.LOGGER.info("Summon blocked for {}", target);
+            return;
+        }
+
+        // The cooldown starts with the summons, so the same player is not pulled again right away.
+        summonCooldown.markUsed(target, level.getGameTime());
+        meeting = Meeting.start(target);
+        Machiavillager.LOGGER.info("Machiavillager summons {}", nameOf(target, level));
+    }
+
+    /** Advances the running meeting one tick, and forgets it once it has ended. */
+    private void tickMeeting(PathfinderMob npc, ServerLevel level) {
+        UUID target = meeting.target();
+        StoryData data = StoryData.get(level.getServer());
+        // Re-checked during the warning; the cooldown is passed as ready, since this summons already spent it.
+        BooleanSupplier stillAllowed = () -> summonAllowed(npc, level, target);
+        if (!meeting.tick(npc, level, data, villages, stillAllowed)) {
+            meeting = null;
+        }
+    }
+
+    private boolean summonAllowed(PathfinderMob npc, ServerLevel level, UUID target) {
+        StoryData data = StoryData.get(level.getServer());
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
+        return player != null && SummonFacts.check(npc, player, data.isOptedOut(target), true).allowed();
+    }
+
+    /** The player he is talking to right now, or null when no meeting is talking. Read by the meeting goal. */
+    public Player meetingPartner(ServerLevel level) {
+        if (meeting == null || !meeting.inMeeting()) {
+            return null;
+        }
+        return level.getServer().getPlayerList().getPlayer(meeting.target());
     }
 
     private void giveHint(PathfinderMob npc, ServerLevel level, UUID listenerId) {
@@ -264,6 +340,7 @@ public final class NpcBrain {
             case NpcAction.Wander() -> "Wander";
             case NpcAction.Bark bark -> "Bark(" + nameOf(bark.listener(), level) + ")";
             case NpcAction.Hint hint -> "Hint(" + nameOf(hint.listener(), level) + ")";
+            case NpcAction.Summon summon -> "Summon(" + nameOf(summon.target(), level) + ")";
         };
     }
 

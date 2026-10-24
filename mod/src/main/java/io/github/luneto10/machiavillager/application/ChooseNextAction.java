@@ -7,6 +7,7 @@ import io.github.luneto10.machiavillager.domain.behavior.FollowOption;
 import io.github.luneto10.machiavillager.domain.behavior.HintOption;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
+import io.github.luneto10.machiavillager.domain.behavior.SummonOption;
 import io.github.luneto10.machiavillager.domain.behavior.WanderOption;
 import java.util.List;
 import java.util.Objects;
@@ -43,9 +44,14 @@ public final class ChooseNextAction {
         return candidates.build();
     }
 
-    /** Use case with the Follow, Wander, Bark and Hint options, in that order. */
+    /** Use case with the Follow, Wander, Bark, Hint and Summon options, in that order. */
     public static ChooseNextAction withDefaultCatalog() {
         return new ChooseNextAction(
-                List.of(new FollowOption(), new WanderOption(), new BarkOption(), new HintOption()));
+                List.of(
+                        new FollowOption(),
+                        new WanderOption(),
+                        new BarkOption(),
+                        new HintOption(),
+                        new SummonOption()));
     }
 }

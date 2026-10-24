@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +15,7 @@ class FollowOptionTest {
 
     @Test
     void noPlayers_proposesNothing() {
-        WeightedDice<NpcAction> dice = propose(new Situation(Mood.CALM, List.of(), Phase.PARTNER, 0));
+        WeightedDice<NpcAction> dice = propose(new Situation(Mood.CALM, List.of(), Phase.PARTNER, 0, Set.of()));
 
         assertEquals(0.0, dice.chanceOf(new NpcAction.Follow(PLAYER)), 1e-9);
     }
@@ -51,6 +52,6 @@ class FollowOptionTest {
     }
 
     private static Situation situation(Mood mood, double distance) {
-        return new Situation(mood, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), Phase.PARTNER, 0);
+        return new Situation(mood, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), Phase.PARTNER, 0, Set.of());
     }
 }

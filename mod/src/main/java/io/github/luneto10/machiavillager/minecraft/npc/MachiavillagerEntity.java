@@ -53,16 +53,20 @@ public class MachiavillagerEntity extends PathfinderMob {
     @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new FloatGoal(this));
-        // brain is still null while the Mob constructor calls registerGoals(). The method reference is only
+        // brain is still null while the Mob constructor calls registerGoals(). The method references are only
         // invoked later, at tick time, when brain exists, so this is safe.
-        goalSelector.addGoal(1, new FollowPlayerGoal(this, FOLLOW_SPEED, this::brainFollowTarget, this::brainMayCatchUp));
-        goalSelector.addGoal(2, new WaterAvoidingRandomStrollGoal(this, STROLL_SPEED));
-        goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, LOOK_DISTANCE));
-        goalSelector.addGoal(4, new RandomLookAroundGoal(this));
-    }
+        goalSelector.addGoal(1, new MeetingGoal(this, this::brainMeetingPartner));
+        goalSelector.addGoal(2, new FollowPlayerGoal(this, FOLLOW_SPEED, this::brainFollowTarget, this::brainMayCatchUp));
+        goalSelector.addGoal(3, new WaterAvoidingRandomStrollGoal(this, STROLL_SPEED));
+        goalSelector.addGoal(4, new LookAtPlayerGoal(this, Player.class, LOOK_DISTANCE));
+        goalSelector.addGoal(5, new RandomLookAroundGoal(this));    }
 
     private Player brainFollowTarget() {
         return level() instanceof ServerLevel serverLevel ? brain.followTarget(serverLevel) : null;
+    }
+
+    private Player brainMeetingPartner() {
+        return level() instanceof ServerLevel serverLevel && brain != null ? brain.meetingPartner(serverLevel) : null;
     }
 
     private boolean brainMayCatchUp(PathfinderMob mob, Player player) {
@@ -105,8 +109,11 @@ public class MachiavillagerEntity extends PathfinderMob {
     @Override
     public void onRemoval(Entity.RemovalReason reason) {
         super.onRemoval(reason);
-        brain.onRemoved();
-    }
+        // Server side: a running meeting sends the player back before he disappears.
+        if (level() instanceof ServerLevel serverLevel) {
+            brain.abortMeeting(serverLevel);
+        }
+        brain.onRemoved();    }
 
     // A player's hit is what makes him trust people less. Super decides whether the hit landed.
     @Override

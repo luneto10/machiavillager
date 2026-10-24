@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,7 @@ class SituationTest {
 
     // Calm mood, partner phase, no hint history: the story has not started yet.
     private static Situation calm(List<NearbyPlayer> nearby) {
-        return new Situation(Mood.CALM, nearby, Phase.PARTNER, 0);
+        return new Situation(Mood.CALM, nearby, Phase.PARTNER, 0, Set.of());
     }
 
     private static NearbyPlayer player(double distance) {

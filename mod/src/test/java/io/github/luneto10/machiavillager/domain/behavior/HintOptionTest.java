@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -65,6 +66,7 @@ class HintOptionTest {
     }
 
     private static Situation situation(Phase phase, long ticksSinceHint, double distance) {
-        return new Situation(Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, ticksSinceHint);
+        return new Situation(
+                Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, ticksSinceHint, Set.of());
     }
 }

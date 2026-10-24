@@ -113,7 +113,7 @@ class ChooseNextActionTest {
 
     // Partner phase, no hint history: the story has not started yet.
     private static Situation situation(Mood mood, List<NearbyPlayer> nearby) {
-        return new Situation(mood, nearby, Phase.PARTNER, 0);
+        return new Situation(mood, nearby, Phase.PARTNER, 0, Set.of());
     }
 
     private static NearbyPlayer nearbyAt(double distance) {
