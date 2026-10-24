@@ -1,15 +1,21 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# parents[4] is the repo root, shared with the mod; parents[3] is backend/, kept as a fallback.
+# pydantic-settings lets LATER files win, so the root file is listed last to take precedence.
+_REPO_ROOT_ENV = Path(__file__).resolve().parents[4] / ".env"
+_BACKEND_ENV = Path(__file__).resolve().parents[3] / ".env"
+
 
 class Settings(BaseSettings):
-    """Runtime configuration, read from MACHIAVILLAGER_* environment variables or backend/.env."""
+    """Runtime configuration: MACHIAVILLAGER_* environment variables or the repo-root .env."""
 
     model_config = SettingsConfigDict(
         env_prefix="MACHIAVILLAGER_",
-        env_file=".env",
+        env_file=(str(_BACKEND_ENV), str(_REPO_ROOT_ENV)),
         extra="ignore",
     )
 

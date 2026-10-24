@@ -16,10 +16,12 @@ install instead: `uv venv --python "$env:LOCALAPPDATA\Programs\Python\Python313\
 
 The Minecraft mod connects to `ws://localhost:8000/bridge` (Checkpoint 4, issue #8).
 
-1. Copy `../.env.example` to `backend/.env` and set `MACHIAVILLAGER_BRIDGE_TOKEN` (generate it as
-   the comment there shows).
+1. Copy `.env.example` to `.env` at the repo root and set `MACHIAVILLAGER_BRIDGE_TOKEN` (generate it as
+   the comment there shows). The backend and the mod both read this one file; `backend/.env` is a
+   fallback only.
 2. Run `uv run uvicorn machiavillager.api.app:app --reload`.
-3. The mod needs the same token (Checkpoint 4 #9). With no token set, the endpoint refuses every
-   connection.
+3. The mod reads the same root `.env` when `runClient` or `runServer` starts (issue #9). With no token
+   set, the endpoint refuses every connection and the mod stays off.
+4. In game, `/machiavillager bridge status` (operators) shows the link state.
 
 Layer rules live in [`docs/architecture.md`](../docs/architecture.md).

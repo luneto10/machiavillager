@@ -6,11 +6,13 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.luneto10.machiavillager.bridge.BridgeStatusText;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +36,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Commands under /machiavillager. Spawn and brain are operators only.
  * <ul>
+ *   <li>{@code bridge status}: show the backend link state (operators only).</li>
  *   <li>{@code summons on|off}: let him summon you, or not. Open to every player.</li>
  *   <li>{@code spawn}: summon him, or bring him to you if he already exists.</li>
  *   <li>{@code brain next}: force a new decision now (dev).</li>
@@ -71,7 +74,8 @@ public final class DevCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> root() {
         var root = Commands.literal("machiavillager")
                 .then(summons())
-                .then(spawn());
+                .then(spawn())
+                .then(bridge());
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             root.then(brain()); // dev only: debugging shortcuts
         }
@@ -81,6 +85,22 @@ public final class DevCommands {
     // /machiavillager spawn
     private static LiteralArgumentBuilder<CommandSourceStack> spawn() {
         return Commands.literal("spawn").requires(OPERATOR).executes(DevCommands::runSpawn);
+    }
+
+    // /machiavillager bridge status: operators only, and never shows the URL or the token.
+    private static LiteralArgumentBuilder<CommandSourceStack> bridge() {
+        return Commands.literal("bridge")
+                .requires(OPERATOR)
+                .then(Commands.literal("status").executes(DevCommands::runBridgeStatus));
+    }
+
+    private static int runBridgeStatus(CommandContext<CommandSourceStack> context) {
+        String message = BridgeLifecycle.current()
+                .map(client -> BridgeStatusText.describe(
+                        client.state(), client.connectedSince(), client.nextAttemptAt(), Instant.now()))
+                .orElse("Bridge: OFF (not started, see the log)");
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
     }
 
     // /machiavillager summons on|off: every player may turn his summons off or on for themselves.

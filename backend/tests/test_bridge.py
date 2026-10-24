@@ -170,11 +170,17 @@ def test_hello_timeout_gets_bad_message_then_close(monkeypatch: pytest.MonkeyPat
 
 def test_token_never_appears_in_logs(caplog: pytest.LogCaptureFixture):
     caplog.set_level(logging.DEBUG)
-    client = _client(TOKEN)
+    # The app logger does not propagate to root (see create_app), so caplog listens on it directly.
+    app_logger = logging.getLogger("machiavillager")
+    app_logger.addHandler(caplog.handler)
+    try:
+        client = _client(TOKEN)
 
-    _assert_refused(client, {"Authorization": f"Bearer {TOKEN}x"})
-    with _connect_and_handshake(client, AUTH_HEADERS):
-        pass
+        _assert_refused(client, {"Authorization": f"Bearer {TOKEN}x"})
+        with _connect_and_handshake(client, AUTH_HEADERS):
+            pass
+    finally:
+        app_logger.removeHandler(caplog.handler)
 
     # The refusal and the acceptance must both have logged, or the absence check proves nothing.
     assert "bridge connection refused: wrong token" in caplog.text

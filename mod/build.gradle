@@ -9,6 +9,24 @@ base {
 	archivesName = 'machiavillager'
 }
 
+// One .env at the repo root feeds the backend and the run tasks. Read through providers so the
+// configuration cache notices edits. Only MACHIAVILLAGER_* keys are passed on, and values are never printed.
+def rootEnvFile = layout.projectDirectory.file('../.env')
+def rootEnvText = providers.fileContents(rootEnvFile).asText.getOrElse('')
+def runEnvironment = [:]
+rootEnvText.eachLine { String rawLine ->
+	def line = rawLine.trim()
+	// Blank lines and comments carry no setting.
+	if (line.isEmpty() || line.startsWith('#') || !line.contains('=')) {
+		return
+	}
+	def (key, value) = line.split('=', 2).collect { it.trim() }
+	if (key.startsWith('MACHIAVILLAGER_')) {
+		// Quotes around a value are optional and stripped.
+		runEnvironment[key] = value.replaceAll('^(["\'])(.*)\\1$', '$2')
+	}
+}
+
 loom {
 	// Keeps client-only code (rendering, keybinds, HUD) out of the common source set,
 	// so the dedicated server can never load it by accident.
@@ -18,6 +36,13 @@ loom {
 		"machiavillager" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
+		}
+	}
+
+	// Every run task (runClient, runServer) gets the repo-root .env settings as environment variables.
+	runs {
+		configureEach { run ->
+			runEnvironment.each { key, value -> run.environmentVariable(key, value) }
 		}
 	}
 }
