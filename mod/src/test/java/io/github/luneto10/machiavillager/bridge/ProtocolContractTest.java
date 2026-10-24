@@ -1,6 +1,8 @@
 package io.github.luneto10.machiavillager.bridge;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
@@ -65,6 +67,40 @@ class ProtocolContractTest {
         var errors = PROTOCOL.validate(json, InputFormat.JSON, this::enableFormats);
 
         assertFalse(errors.isEmpty(), () -> label + " should be rejected");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("validExamples")
+    void validExample_decodesWithoutError(Path example) throws IOException {
+        String json = Files.readString(example);
+
+        assertDoesNotThrow(() -> MessageCodec.decode(json), example.getFileName().toString());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidExamples")
+    void invalidExample_isRejectedByDecoder(Path example) throws IOException {
+        String json = Files.readString(example);
+
+        assertThrows(MessageCodec.DecodeException.class, () -> MessageCodec.decode(json),
+                example.getFileName() + " should be rejected");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("mutants")
+    void structuralMutant_isRejectedByDecoder(String label, String json) {
+        assertThrows(MessageCodec.DecodeException.class, () -> MessageCodec.decode(json), label);
+    }
+
+    // The Java side must also write what the schema accepts: decode, encode, then validate the output.
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("validExamples")
+    void validExample_encodeRoundTripValidatesSchema(Path example) throws IOException {
+        String encoded = MessageCodec.encode(MessageCodec.decode(Files.readString(example)));
+
+        var errors = PROTOCOL.validate(encoded, InputFormat.JSON, this::enableFormats);
+
+        assertTrue(errors.isEmpty(), () -> example.getFileName() + " re-encoded invalid: " + errors);
     }
 
     static List<Path> validExamples() {

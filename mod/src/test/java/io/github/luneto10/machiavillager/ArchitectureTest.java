@@ -25,14 +25,14 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule domainDependsOnNothingOutward = noClasses()
             .that().resideInAnyPackage("..domain..")
-            .should().dependOnClassesThat().resideInAnyPackage("..application..", "..minecraft..", "..bridge..", "..client..")
+            .should().dependOnClassesThat().resideInAnyPackage("..application..", "..minecraft..", "io.github.luneto10.machiavillager.bridge..", "..client..")
             .allowEmptyShould(true)
             .because("domain is the innermost layer and must not know about use cases or adapters");
 
     @ArchTest
     static final ArchRule applicationDoesNotUseAdapters = noClasses()
             .that().resideInAnyPackage("..application..")
-            .should().dependOnClassesThat().resideInAnyPackage("..minecraft..", "..bridge..", "..client..")
+            .should().dependOnClassesThat().resideInAnyPackage("..minecraft..", "io.github.luneto10.machiavillager.bridge..", "..client..")
             .allowEmptyShould(true)
             .because("use cases must depend only on domain and ports, never on concrete adapters");
 }
