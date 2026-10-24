@@ -1,57 +1,70 @@
 ---
 name: onion-architecture
-description: Use when adding or moving backend Python code in backend/src/machiavillager — deciding which layer (domain, application, infrastructure, api) a class belongs in, adding a port/adapter, wiring dependencies, or when tests/test_architecture.py fails.
+description: Use when adding or moving code in the mod (mod/src) or the backend (backend/src) — deciding which layer a class belongs in (domain, application, minecraft/infrastructure, api), adding a port or adapter, wiring dependencies, or when ArchitectureTest (Java) or test_architecture.py (Python) fails.
 ---
 
-# Onion architecture (backend)
+# Onion architecture (mod and backend)
 
-Dependencies point **inward only**:
+Dependencies point **inward only**. Inner rings never know outer rings exist.
 
 ```
-api  ─▶  infrastructure  ─▶  application  ─▶  domain
-(outer)                                       (inner)
+Mod (Java)                                   Backend (Python)
+bootstrap: Machiavillager.onInitialize()     api            (FastAPI routes, composition root)
+minecraft / bridge / client  (adapters)      infrastructure (Postgres, PydanticAI, Azure)
+application  (use cases + ports)             application    (use cases + ports)
+domain       (pure rules)                    domain         (pure rules)
 ```
 
-`backend/tests/test_architecture.py` fails if a layer imports an outer layer, or if
-`domain`/`application` import a framework (fastapi, starlette, sqlalchemy, pydantic_ai, httpx, uvicorn).
+Enforced by tests, so a violation fails the build:
+- Mod: `mod/src/test/java/.../ArchitectureTest.java` (ArchUnit). `domain`/`application` may not use
+  `net.minecraft`, `net.fabricmc`, `com.mojang`; `domain` may not use outer packages; `application`
+  may not use adapters.
+- Backend: `backend/tests/test_architecture.py` (stdlib `ast`).
 
-## Where does it go?
+## Where does it go? Ask in order, stop at the first yes
 
-Ask in order, stop at the first yes:
+1. **A rule or concept with no I/O?** (acts, ambition, moods, dice, Scepter rules, memory provenance,
+   allowlists, `NpcAction` decisions) → `domain`. Pure Java / Python. Inputs come in as arguments
+   (a `Situation` snapshot, a `RandomGenerator`), never read from the world directly.
+2. **A workflow that coordinates domain objects and needs the outside world?** ("choose next action",
+   "plant a village hint", "handle player chat") → `application`. Declare what it needs as a **port**
+   (Java interface / Python `Protocol`) only when an adapter or a test fake needs it.
+3. **Talks to a real technology?**
+   - Mod: Minecraft/Fabric (entities, goals, commands, chat, world queries) → `minecraft`;
+     backend WebSocket → `bridge`; rendering/keybinds → `client` (client source set).
+   - Backend: Postgres, LLM, speech, env settings → `infrastructure`.
+   Adapters translate vendor types to domain types at the boundary (e.g. `ServerPlayer` →
+   `NearbyPlayer(uuid, name, distance)` in `SituationSnapshot`).
+4. **Wiring?** Mod: `Machiavillager.onInitialize()` (only `register()` calls and object assembly).
+   Backend: `api` composition root.
 
-1. **Is it a game/NPC concept or rule with no I/O?** (Memory, Goal, Relationship, Personality,
-   GameAction, provenance rules, "is this action allowed for this personality")
-   → `domain/`. Pydantic models and plain functions. No async I/O, no clocks you can't inject.
-2. **Is it a workflow that coordinates domain objects and needs outside services?**
-   ("handle player chat", "run one agent turn", "extract memories from conversation")
-   → `application/`. Write the use case as a function or small class. Declare what it needs as a
-   `typing.Protocol` port in `application/ports.py` **only when** a test double or second adapter needs it.
-3. **Does it talk to a real technology?** (Postgres, PydanticAI/NVIDIA, Azure Speech, env settings)
-   → `infrastructure/`. Implements a port. Keeps vendor types inside; returns domain objects.
-4. **Is it HTTP/WebSocket/dashboard or object wiring?** → `api/`. Routes stay thin: parse, call
-   use case, serialize. `api/` is the composition root: it builds adapters and injects them.
+## Worked example (mod): the NPC's decisions
+
+```
+minecraft  SituationSnapshot.take()   reads real players → Situation        (adapter: world → domain)
+application ChooseNextAction.choose() options propose → WeightedDice → roll (use case)
+domain     FollowOption, NpcAction.Follow(uuid), WeightedDice, Countdown    (rules, pure)
+minecraft  NpcBrain.act() + FollowPlayerGoal                                (adapter: decision → body)
+```
 
 ## Rules of thumb
 
-- Domain objects never hold a DB session, HTTP client, or agent.
-- Use cases receive dependencies as arguments (constructor or function params). No global singletons.
-- Translate vendor errors to domain/application errors at the infrastructure boundary.
-- A PydanticAI `Agent` is infrastructure. The *tool semantics* (what `follow_player` means, validation)
-  are domain/application; the tool decorator glue is infrastructure.
-- Don't create a layer file until it has real code. Don't add a Protocol with one implementation
-  and no test double.
+- The domain receives **snapshots and IDs** (UUIDs), never live game objects.
+- Decisions are **data** (`NpcAction` records); execution lives in the outer ring.
+- Randomness and time are passed in (`RandomGenerator`, `Countdown`) so tests are deterministic.
+- No port until a second implementation or a fake needs it. No empty layer files.
+- Vendor errors are translated at the boundary; inner rings never catch Minecraft/HTTP exceptions.
 
-## Testing per layer
+## Testing per ring
 
-| Layer | Test style |
+| Ring | Test |
 |---|---|
-| domain | plain pytest, no fixtures needed |
-| application | pytest with tiny in-memory fakes implementing the ports |
-| infrastructure | integration tests (real Postgres via docker, or recorded HTTP) — mark slow |
-| api | `fastapi.testclient.TestClient(create_app(...))` with fake adapters injected |
+| domain | JUnit / pytest, no fixtures, milliseconds; seeded `Random(42)` for anything random |
+| application | same, with tiny fakes implementing the ports |
+| minecraft / infrastructure | in game (`runClient`) or integration tests; keep this ring thin |
 
-## Checklist before finishing
+## Checklist
 
-- [ ] `uv run pytest` passes (includes the layer test)
-- [ ] `uv run ruff check . && uv run ruff format --check .`
-- [ ] New module sits in the layer the decision list above gives
+- [ ] `cd mod && ./gradlew build` (includes ArchitectureTest) and/or `cd backend && uv run pytest`
+- [ ] New class sits in the ring the decision list gives
+- [ ] Inner code got a unit test; outer code got a manual in-game check described in the PR

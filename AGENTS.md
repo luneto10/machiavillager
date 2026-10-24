@@ -46,7 +46,8 @@ say what was not verified.
 Project skills live in `.agents/skills/` (source of truth) and are mirrored to `.claude/skills/`
 by `python scripts/sync_skills.py`. Use them:
 
-- `onion-architecture` — where backend code goes.
+- `onion-architecture` — which layer code goes in, for the mod and the backend.
+- `modular-design` — patterns and recipes so new behavior plugs in without rewriting engines.
 - `fabric-mod-dev` — mod code, threading, client/server split, run/restart rules.
 - `bridge-protocol` — adding a game action or event across Java and Python.
 - `npc-agent-tools` — adding a PydanticAI tool / persona / memory behavior.

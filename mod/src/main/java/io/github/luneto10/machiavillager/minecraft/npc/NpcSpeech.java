@@ -1,13 +1,13 @@
 package io.github.luneto10.machiavillager.minecraft.npc;
 
+import io.github.luneto10.machiavillager.domain.behavior.Hearing;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 
 /** Makes an NPC "talk": a chat line formatted like a player's, heard by players nearby. */
 public final class NpcSpeech {
-    private static final double HEARING_RADIUS = 24.0;
-    private static final double HEARING_RADIUS_SQR = HEARING_RADIUS * HEARING_RADIUS;
+    private static final double HEARING_RADIUS_SQR = Hearing.DISTANCE * Hearing.DISTANCE;
 
     private NpcSpeech() {}
 
