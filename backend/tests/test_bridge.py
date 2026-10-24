@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from starlette.websockets import WebSocketDisconnect
 
-from machiavillager.api import bridge
 from machiavillager.api.app import create_app
+from machiavillager.api.bridge import connections, session
 from machiavillager.domain.protocol import Error, Welcome, parse_message
 from machiavillager.infrastructure.settings import Settings, get_settings
 
@@ -153,11 +153,11 @@ def test_second_connection_replaces_the_first():
             # The first socket was closed by the server with the replaced code.
             with pytest.raises(WebSocketDisconnect) as replaced:
                 first.receive_text()
-            assert replaced.value.code == bridge.NORMAL_CLOSE_CODE
+            assert replaced.value.code == connections.NORMAL_CLOSE_CODE
 
 
 def test_hello_timeout_gets_bad_message_then_close(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(bridge, "HELLO_TIMEOUT_SECONDS", 0.1)
+    monkeypatch.setattr(session, "HELLO_TIMEOUT_SECONDS", 0.1)
     with _client(TOKEN).websocket_connect("/bridge", headers=AUTH_HEADERS) as ws:
         # Send nothing. The server should give up and say why before closing.
         reply = parse_message(ws.receive_text())
