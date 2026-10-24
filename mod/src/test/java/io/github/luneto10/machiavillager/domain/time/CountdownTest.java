@@ -59,6 +59,21 @@ class CountdownTest {
     }
 
     @Test
+    void restart_startsFreshIntervalNow() {
+        Countdown countdown = Countdown.every(5);
+        assertTrue(countdown.tick());
+        assertFalse(countdown.tick());
+        List<Boolean> fired = new ArrayList<>();
+
+        countdown.restart();
+        for (int i = 0; i < 5; i++) {
+            fired.add(countdown.tick());
+        }
+
+        assertEquals(List.of(false, false, false, false, true), fired);
+    }
+
+    @Test
     void randomBetween_intervalsStayWithinRange() {
         Countdown countdown = Countdown.randomBetween(MIN_TICKS, MAX_TICKS, new Random(SEED));
         assertTrue(countdown.tick());

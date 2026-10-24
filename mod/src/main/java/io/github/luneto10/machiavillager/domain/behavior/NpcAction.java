@@ -7,7 +7,7 @@ import java.util.UUID;
  * A decision about what the NPC should do next. This is a command object: it describes the action,
  * and the Minecraft layer executes it later.
  */
-public sealed interface NpcAction permits NpcAction.Follow, NpcAction.Wander, NpcAction.Bark {
+public sealed interface NpcAction permits NpcAction.Follow, NpcAction.Wander, NpcAction.Bark, NpcAction.Hint {
 
     /** Walk after this player. */
     record Follow(UUID target) implements NpcAction {
@@ -23,6 +23,13 @@ public sealed interface NpcAction permits NpcAction.Follow, NpcAction.Wander, Np
     /** Say a line to this player. */
     record Bark(UUID listener) implements NpcAction {
         public Bark {
+            Objects.requireNonNull(listener, "listener");
+        }
+    }
+
+    /** Tell this player about a real village. */
+    record Hint(UUID listener) implements NpcAction {
+        public Hint {
             Objects.requireNonNull(listener, "listener");
         }
     }

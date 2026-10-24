@@ -49,6 +49,11 @@ public final class Countdown {
         remainingTicks = 0;
     }
 
+    /** Starts a fresh interval now, as if it had just fired. */
+    public void restart() {
+        remainingTicks = nextInterval.getAsInt();
+    }
+
     /** Ticks left before it fires (never negative). */
     public int remainingTicks() {
         return remainingTicks;

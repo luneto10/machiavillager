@@ -4,8 +4,6 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 
 /** Proposes saying a line to each player close enough to hear it. */
 public final class BarkOption implements ActionOption {
-    static final double HEARING_DISTANCE = 24.0;
-
     private static final int CALM_WEIGHT = 20;
     private static final int BORED_WEIGHT = 20;
     private static final int IRRITATED_WEIGHT = 35;
@@ -13,7 +11,7 @@ public final class BarkOption implements ActionOption {
     @Override
     public void propose(Situation now, WeightedDice.Builder<NpcAction> candidates) {
         int weight = weightFor(now.mood());
-        for (NearbyPlayer player : now.playersWithin(HEARING_DISTANCE)) {
+        for (NearbyPlayer player : now.playersWithin(Hearing.DISTANCE)) {
             candidates.add(new NpcAction.Bark(player.id()), weight);
         }
     }

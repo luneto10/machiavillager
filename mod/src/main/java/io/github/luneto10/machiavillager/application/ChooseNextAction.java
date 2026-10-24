@@ -4,6 +4,7 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.ActionOption;
 import io.github.luneto10.machiavillager.domain.behavior.BarkOption;
 import io.github.luneto10.machiavillager.domain.behavior.FollowOption;
+import io.github.luneto10.machiavillager.domain.behavior.HintOption;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.behavior.WanderOption;
@@ -29,19 +30,22 @@ public final class ChooseNextAction {
 
     /** Picks the next action for the situation, weighted by mood and what is nearby. */
     public NpcAction choose(Situation now, RandomGenerator random) {
-        // 1. Each option proposes its candidates; impossible options propose nothing.
+        return odds(now).roll(random);
+    }
+
+    /** The weighted odds of every action the situation allows right now. Used by choose and by dev tools. */
+    public WeightedDice<NpcAction> odds(Situation now) {
+        // Each option proposes its candidates; impossible options propose nothing.
         WeightedDice.Builder<NpcAction> candidates = WeightedDice.builder();
         for (ActionOption option : catalog) {
             option.propose(now, candidates);
         }
-        // 2. Build the dice from the survivors.
-        WeightedDice<NpcAction> dice = candidates.build();
-        // 3. Roll.
-        return dice.roll(random);
+        return candidates.build();
     }
 
-    /** Use case with the Follow, Wander and Bark options, in that order. */
+    /** Use case with the Follow, Wander, Bark and Hint options, in that order. */
     public static ChooseNextAction withDefaultCatalog() {
-        return new ChooseNextAction(List.of(new FollowOption(), new WanderOption(), new BarkOption()));
+        return new ChooseNextAction(
+                List.of(new FollowOption(), new WanderOption(), new BarkOption(), new HintOption()));
     }
 }

@@ -1,12 +1,16 @@
 package io.github.luneto10.machiavillager.minecraft.npc;
 
 import io.github.luneto10.machiavillager.domain.Barks;
+import io.github.luneto10.machiavillager.domain.behavior.Mood;
+import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+
 import io.github.luneto10.machiavillager.minecraft.behavior.NpcBrain;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -70,11 +74,38 @@ public class MachiavillagerEntity extends PathfinderMob {
         brain.decideNow();
     }
 
+    /** Dev: makes him act on this action now, skipping his dice. */
+    public void forceAction(NpcAction action) {
+        if (level() instanceof ServerLevel serverLevel) {
+            brain.forceAction(this, serverLevel, action);
+        }
+    }
+
+    /** Dev: changes his mood now. */
+    public void setMood(Mood mood) {
+        brain.setMood(mood);
+    }
+
+    /** Dev: the odds of his next decision, as text. Empty when not on the server. */
+    public String describeOdds() {
+        if (level() instanceof ServerLevel serverLevel) {
+            return brain.describeOdds(this, serverLevel);
+        }
+        return "";
+    }
+
     // Server only, every tick: the brain decides every 10-30 s, the goals execute every tick.
     @Override
     protected void customServerAiStep(ServerLevel level) {
         super.customServerAiStep(level);
         brain.tick(this, level);
+    }
+
+    // Dead or unloaded: his boss bars must go with him, so they never linger on screen.
+    @Override
+    public void onRemoval(Entity.RemovalReason reason) {
+        super.onRemoval(reason);
+        brain.onRemoved();
     }
 
     // A player's hit is what makes him trust people less. Super decides whether the hit landed.

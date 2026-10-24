@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NearbyPlayer;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
@@ -94,6 +95,17 @@ class ChooseNextActionTest {
         assertTrue(boredWander > calmWander, "bored=" + boredWander + " calm=" + calmWander);
     }
 
+    @Test
+    void odds_chancesSumToOne() {
+        WeightedDice<NpcAction> odds = ChooseNextAction.withDefaultCatalog().odds(calmWithPlayerAt(5));
+
+        double total = 0;
+        for (NpcAction action : odds.outcomes()) {
+            total += odds.chanceOf(action);
+        }
+
+        assertEquals(1.0, total, 1e-9);
+    }
     private static Situation calmWithPlayerAt(double distance) {
         return new Situation(Mood.CALM, List.of(nearbyAt(distance)));
     }

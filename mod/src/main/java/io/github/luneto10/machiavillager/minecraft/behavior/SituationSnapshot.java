@@ -3,6 +3,7 @@ package io.github.luneto10.machiavillager.minecraft.behavior;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NearbyPlayer;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
@@ -16,7 +17,8 @@ public final class SituationSnapshot {
     private SituationSnapshot() {}
 
     /** The living, non-spectator players within the snapshot radius of the NPC. Server side only. */
-    public static Situation take(PathfinderMob npc, ServerLevel level, Mood mood) {
+    public static Situation take(
+            PathfinderMob npc, ServerLevel level, Mood mood, Phase phase, long ticksSinceHint) {
         List<NearbyPlayer> nearby = new ArrayList<>();
         for (ServerPlayer player : level.players()) {
             if (player.isSpectator() || !player.isAlive()) {
@@ -27,6 +29,6 @@ public final class SituationSnapshot {
                 nearby.add(new NearbyPlayer(player.getUUID(), player.getPlainTextName(), distance));
             }
         }
-        return new Situation(mood, nearby);
+        return new Situation(mood, nearby, phase, ticksSinceHint);
     }
 }

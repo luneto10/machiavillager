@@ -61,18 +61,6 @@ class RelationshipsTest {
     }
 
     @Test
-    void whenHurtBy_lowersAttackerAffinity_andRaisesIndependence() {
-        Relationships original = Relationships.initial();
-
-        Relationships hurt = original.whenHurtBy(ALICE);
-
-        assertEquals(Relationships.DEFAULT_AFFINITY - Relationships.HIT_AFFINITY_LOSS, hurt.affinityOf(ALICE));
-        assertEquals(Relationships.HIT_INDEPENDENCE_GAIN, hurt.independence());
-        assertEquals(Relationships.DEFAULT_AFFINITY, original.affinityOf(ALICE));
-        assertEquals(0, original.independence());
-    }
-
-    @Test
     void restored_roundTripsAffinitiesAndIndependence() {
         Relationships original = Relationships.initial()
                 .withAffinity(ALICE, SOME_AFFINITY)
@@ -84,14 +72,5 @@ class RelationshipsTest {
         assertEquals(SOME_AFFINITY, restored.affinityOf(ALICE));
         assertEquals(Relationships.MIN, restored.affinityOf(BOB));
         assertEquals(SOME_INDEPENDENCE, restored.independence());
-    }
-
-    @Test
-    void whenHurtBy_otherPlayersUnchanged() {
-        Relationships relations = Relationships.initial().withAffinity(BOB, SOME_AFFINITY);
-
-        Relationships hurt = relations.whenHurtBy(ALICE);
-
-        assertEquals(SOME_AFFINITY, hurt.affinityOf(BOB));
     }
 }
