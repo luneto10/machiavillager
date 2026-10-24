@@ -9,11 +9,11 @@ public final class SummonOption implements ActionOption {
     static final double MIN_DISTANCE = 10.0;
 
     // Rare at first, a habit once he rules.
-    private static final int PARTNER_WEIGHT = 2;
-    private static final int SEEDS_WEIGHT = 4;
-    private static final int PROPOSAL_WEIGHT = 8;
-    private static final int REGIME_WEIGHT = 12;
-    private static final int WAR_WEIGHT = 12;
+    private static final int PARTNER_WEIGHT = 6;
+    private static final int SEEDS_WEIGHT = 8;
+    private static final int PROPOSAL_WEIGHT = 12;
+    private static final int REGIME_WEIGHT = 16;
+    private static final int WAR_WEIGHT = 16;
 
     @Override
     public void propose(Situation now, WeightedDice.Builder<NpcAction> candidates) {

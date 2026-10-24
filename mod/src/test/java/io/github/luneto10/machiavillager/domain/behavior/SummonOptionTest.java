@@ -14,8 +14,8 @@ class SummonOptionTest {
     private static final UUID PLAYER = new UUID(0L, 1L);
     private static final double FAR = 40.0;
     private static final double TOO_CLOSE = 9.0;
-    private static final int PARTNER_WEIGHT = 2;
-    private static final int REGIME_WEIGHT = 12;
+    private static final int PARTNER_WEIGHT = 6;
+    private static final int REGIME_WEIGHT = 16;
 
     @Test
     void notSummonable_proposesNothing() {

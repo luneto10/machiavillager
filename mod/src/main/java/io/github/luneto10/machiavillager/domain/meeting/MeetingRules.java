@@ -14,8 +14,11 @@ public final class MeetingRules {
     /** The warning before the meeting ends: 3 seconds. */
     public static final int WARNING_TICKS = 60;
 
-    /** Minimum wait before he can summon the same player again: 20 minutes. */
-    public static final int SUMMON_COOLDOWN_TICKS = 24_000;
+    /** Minimum wait before he can summon the same player again after a real meeting: 10 minutes. */
+    public static final int SUMMON_COOLDOWN_TICKS = 12_000;
+
+    /** Delay before a blocked or cancelled summons is retried: 5 minutes. */
+    public static final int SUMMON_RETRY_TICKS = 6_000;
 
     private MeetingRules() {}
 }

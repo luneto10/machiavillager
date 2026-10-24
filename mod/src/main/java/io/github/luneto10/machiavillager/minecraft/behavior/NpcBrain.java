@@ -9,8 +9,10 @@ import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
+import io.github.luneto10.machiavillager.domain.behavior.SummonBlocker;
 import io.github.luneto10.machiavillager.domain.behavior.TeleportPolicy;
 import io.github.luneto10.machiavillager.domain.meeting.MeetingRules;
+import io.github.luneto10.machiavillager.domain.meeting.RetrySchedule;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.domain.time.PerPlayerCooldown;
@@ -24,7 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -72,8 +74,10 @@ public final class NpcBrain {
     private long activeTicksSinceHint;
     // The running summons, or null. One meeting at a time.
     private Meeting meeting;
-    // One cooldown per player, so the same player is not pulled again right away.
+    // Long cooldown, marked only when a meeting really pulled the player: the same player is not pulled again soon.
     private final PerPlayerCooldown summonCooldown = new PerPlayerCooldown(MeetingRules.SUMMON_COOLDOWN_TICKS);
+    // Blocked or cancelled summons: each player is retried by timer, not by the dice.
+    private final RetrySchedule summonRetries = new RetrySchedule();
 
     /** Called every server tick. Decides again when the timer runs out, then acts on the decision. */
     public void tick(PathfinderMob npc, ServerLevel level) {
@@ -84,6 +88,8 @@ public final class NpcBrain {
             decide(npc, level);
         }
         if (storyClock.tick()) {
+            // Before the presence check: a retry is due whether or not anyone is near.
+            retryDueSummons(npc, level);
             growStory(npc, level);
         }
 
@@ -97,7 +103,8 @@ public final class NpcBrain {
                 decisionTimer.remainingTicks(),
                 MAX_DECISION_TICKS,
                 data.progress(),
-                data.relationships());
+                data.relationships(),
+                meeting == null ? null : nameOf(meeting.target(), level));
     }
 
     /** Called when he is removed from the world (dead, or his chunk unloaded): his dev bars go with him. */
@@ -179,7 +186,12 @@ public final class NpcBrain {
     private boolean summonable(PathfinderMob npc, StoryData data, ServerPlayer player, long now) {
         return meeting == null
                 && SummonFacts.check(npc, player, data.isOptedOut(player.getUUID()),
-                        summonCooldown.isReady(player.getUUID(), now)).allowed();
+                        summonReady(player.getUUID(), now)).allowed();
+    }
+
+    /** A summons may happen only when the long cooldown is over and no retry is pending for the player. */
+    private boolean summonReady(UUID player, long now) {
+        return summonCooldown.isReady(player, now) && !summonRetries.isPending(player);
     }
 
     /**
@@ -266,21 +278,29 @@ public final class NpcBrain {
         }
     }
 
-    /** Starts a meeting when none is running and the rules allow it. A refused summons is only logged. */
+    /** Starts a meeting when none is running and the rules allow it. A refused summons is logged and retried soon. */
     private void startSummon(PathfinderMob npc, ServerLevel level, UUID target) {
         // One meeting at a time: a second summons waits for the first to end.
         if (meeting != null) {
             return;
         }
 
-        // Fairness first: the opt-out and the danger rules decide; the cooldown was already rolled in the dice.
-        if (!summonAllowed(npc, level, target)) {
-            Machiavillager.LOGGER.info("Summon blocked for {}", target);
+        // Offline players cannot be told anything, so the refusal is only logged.
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
+        if (player == null) {
+            Machiavillager.LOGGER.info("Summon blocked for {}: player offline", target);
             return;
         }
 
-        // The cooldown starts with the summons, so the same player is not pulled again right away.
-        summonCooldown.markUsed(target, level.getGameTime());
+        // Fairness first: the opt-out and danger rules decide (the cooldown was already rolled in the dice).
+        // A refused summons names its rule in the log and tells the player why, even from far away.
+        Optional<SummonBlocker> blocker = summonBlocker(npc, level, target);
+        if (blocker.isPresent()) {
+            refuseSummon(target, blocker.get(), level.getGameTime());
+            return;
+        }
+
+        // The cooldown is marked when the meeting ends, depending on whether he really pulled the player.
         meeting = Meeting.start(target);
         Machiavillager.LOGGER.info("Machiavillager summons {}", nameOf(target, level));
     }
@@ -290,16 +310,67 @@ public final class NpcBrain {
         UUID target = meeting.target();
         StoryData data = StoryData.get(level.getServer());
         // Re-checked during the warning; the cooldown is passed as ready, since this summons already spent it.
-        BooleanSupplier stillAllowed = () -> summonAllowed(npc, level, target);
-        if (!meeting.tick(npc, level, data, villages, stillAllowed)) {
+        Supplier<Optional<SummonBlocker>> blocker = () -> summonBlocker(npc, level, target);
+        if (!meeting.tick(npc, level, data, villages, blocker)) {
+            markSummonEnded(data, target, meeting.pulled(), level.getGameTime());
             meeting = null;
         }
     }
 
-    private boolean summonAllowed(PathfinderMob npc, ServerLevel level, UUID target) {
+    /** A meeting that pulled the player waits the long cooldown; one called off before the pull is retried by timer. */
+    private void markSummonEnded(StoryData data, UUID target, boolean pulled, long now) {
+        // A real meeting is rare, so it gets the long cooldown and any retry is done with.
+        if (pulled) {
+            summonCooldown.markUsed(target, now);
+            summonRetries.clear(target);
+            return;
+        }
+        // Called off before the pull: retried later, unless he was told no.
+        if (data.isOptedOut(target)) {
+            summonRetries.clear(target);
+            return;
+        }
+        summonRetries.schedule(target, now);
+    }
+
+    /** Logs a refused summons and arranges its retry. Silent toward the player: the reason stays in the log. */
+    private void refuseSummon(UUID target, SummonBlocker blocker, long now) {
+        // Never chase a player who said no: opted out means no retry at all.
+        if (blocker == SummonBlocker.OPTED_OUT) {
+            Machiavillager.LOGGER.info("Summon blocked for {}: {}", target, blocker);
+            summonRetries.clear(target);
+            return;
+        }
+        Machiavillager.LOGGER.info("Summon blocked for {}: {} (retry scheduled)", target, blocker);
+        summonRetries.schedule(target, now);
+    }
+
+    /**
+     * Runs the summons whose retry timer has come due. A retry waits while a meeting runs or the player is
+     * offline, and is armed for another full interval.
+     */
+    private void retryDueSummons(PathfinderMob npc, ServerLevel level) {
+        long now = level.getGameTime();
+        for (UUID player : summonRetries.takeDue(now)) {
+            // One meeting at a time, and an offline player cannot be pulled: wait one more interval.
+            if (meeting != null || level.getServer().getPlayerList().getPlayer(player) == null) {
+                summonRetries.schedule(player, now);
+                continue;
+            }
+            Machiavillager.LOGGER.info("Retrying summon of {}", nameOf(player, level));
+            startSummon(npc, level, player);
+        }
+    }
+
+    /** The first rule that refuses a summons to this player, or empty when it may happen. */
+    private Optional<SummonBlocker> summonBlocker(PathfinderMob npc, ServerLevel level, UUID target) {
         StoryData data = StoryData.get(level.getServer());
         ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
-        return player != null && SummonFacts.check(npc, player, data.isOptedOut(target), true).allowed();
+        // Offline: nothing to refuse here, since the meeting ends on its own once the player is gone.
+        if (player == null) {
+            return Optional.empty();
+        }
+        return SummonFacts.check(npc, player, data.isOptedOut(target), true).blocker();
     }
 
     /** The player he is talking to right now, or null when no meeting is talking. Read by the meeting goal. */

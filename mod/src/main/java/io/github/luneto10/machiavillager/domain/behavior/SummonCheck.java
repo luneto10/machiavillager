@@ -1,5 +1,7 @@
 package io.github.luneto10.machiavillager.domain.behavior;
 
+import java.util.Optional;
+
 /**
  * Fairness rules for pulling a player to a meeting. Every rule must hold, so a summons never catches
  * someone mid-fight, mid-flight, in a vehicle, in another dimension, after opting out, too soon after the
@@ -24,7 +26,33 @@ public record SummonCheck(
 
     /** True only when every fairness rule holds. */
     public boolean allowed() {
-        // Each rule is a separate reason to refuse, so all of them must pass together.
-        return sameDimension && !inCombat && !flying && !inVehicle && !optedOut && cooldownReady && !npcInDanger;
+        return blocker().isEmpty();
+    }
+
+    /** The first rule that refuses the summons, in the order the rules are checked; empty when allowed. */
+    public Optional<SummonBlocker> blocker() {
+        // Checked in a fixed order so the reason shown to the player is always the same for the same facts.
+        if (!sameDimension) {
+            return Optional.of(SummonBlocker.OTHER_DIMENSION);
+        }
+        if (inCombat) {
+            return Optional.of(SummonBlocker.IN_COMBAT);
+        }
+        if (flying) {
+            return Optional.of(SummonBlocker.FLYING);
+        }
+        if (inVehicle) {
+            return Optional.of(SummonBlocker.IN_VEHICLE);
+        }
+        if (optedOut) {
+            return Optional.of(SummonBlocker.OPTED_OUT);
+        }
+        if (!cooldownReady) {
+            return Optional.of(SummonBlocker.COOLDOWN);
+        }
+        if (npcInDanger) {
+            return Optional.of(SummonBlocker.NPC_IN_DANGER);
+        }
+        return Optional.empty();
     }
 }

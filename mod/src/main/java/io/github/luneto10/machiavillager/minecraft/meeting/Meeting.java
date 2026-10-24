@@ -1,12 +1,17 @@
 package io.github.luneto10.machiavillager.minecraft.meeting;
 
+import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
+import io.github.luneto10.machiavillager.domain.behavior.SummonBlocker;
 import io.github.luneto10.machiavillager.domain.meeting.Briefing;
 import io.github.luneto10.machiavillager.domain.meeting.MeetingRules;
 import io.github.luneto10.machiavillager.domain.meeting.ReadingTime;
 import io.github.luneto10.machiavillager.domain.meeting.SummonAgenda;
 import io.github.luneto10.machiavillager.domain.meeting.Topic;
 import io.github.luneto10.machiavillager.domain.story.Phase;
+import io.github.luneto10.machiavillager.minecraft.notice.NoticePayload;
+import io.github.luneto10.machiavillager.minecraft.notice.NoticeStyle;
+import io.github.luneto10.machiavillager.minecraft.notice.Notices;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import io.github.luneto10.machiavillager.minecraft.npc.SafeTeleport;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
@@ -18,11 +23,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * One summoned meeting with ONE player. He warns them, pulls them to a safe spot next to him, talks through
@@ -30,9 +36,12 @@ import net.minecraft.world.entity.PathfinderMob;
  */
 public final class Meeting {
     private static final int TICKS_PER_SECOND = 20;
-    private static final double BLOCK_CENTER = 0.5;
-    private static final String NEVER_MIND_LINE = "Never mind. Later.";
+    // Only his own tile is skipped, so the player may land right next to him.
+    private static final int SUMMON_MIN_RING = 1;
     private static final String RUDE_LINE = "How rude.";
+    private static final String SUMMON_TITLE = "Machiavillager";
+    private static final String SUMMON_BODY = "is summoning you";
+    private static final int FIRST_TICK = 0;
 
     /** Warning first, then talking. */
     private enum State { WARNING, MEETING }
@@ -67,6 +76,11 @@ public final class Meeting {
         return state == State.MEETING;
     }
 
+    /** True once he has pulled the player. A meeting called off before the pull never does. */
+    public boolean pulled() {
+        return returnPoint != null;
+    }
+
     /**
      * Advances the meeting by one tick. Returns true while it is still active. A player who logged out or
      * died ends it silently, since there is nobody left to talk to.
@@ -76,7 +90,7 @@ public final class Meeting {
             ServerLevel level,
             StoryData data,
             VillageFinder villages,
-            BooleanSupplier stillAllowed) {
+            Supplier<Optional<SummonBlocker>> blocker) {
         // Looked up every tick: he may have logged out or died since the last one.
         ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
         if (player == null || !player.isAlive()) {
@@ -85,7 +99,7 @@ public final class Meeting {
 
         totalTicks++;
         return switch (state) {
-            case WARNING -> tickWarning(npc, level, player, data, villages, stillAllowed);
+            case WARNING -> tickWarning(npc, level, player, data, villages, blocker);
             case MEETING -> tickMeeting(npc, player, data);
         };
     }
@@ -95,14 +109,25 @@ public final class Meeting {
      * cut short by the NPC being removed does not strand them away from home.
      */
     public void abort(ServerLevel level) {
-        // Still warning: the player never moved, so there is nothing to undo.
-        if (returnPoint == null) {
+        // Logged out: nobody to send back and no card to hide.
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
+        if (player == null) {
             return;
         }
-        ServerPlayer player = level.getServer().getPlayerList().getPlayer(target);
-        if (player != null) {
-            returnPoint.sendBack(player);
+
+        // Still warning: the player never moved, so only the card has to go.
+        if (returnPoint == null) {
+            Notices.show(player, NoticePayload.hide());
+            return;
         }
+        returnPoint.sendBack(player);
+    }
+
+    /** Calls the summons off before the pull. Silent toward the player: the card just goes away. */
+    private void cancelWarning(ServerPlayer player, SummonBlocker blocker) {
+        // The reason goes to the server log only, so a refused summons can be traced without telling the player.
+        Machiavillager.LOGGER.info("Summon of {} cancelled: {}", player.getPlainTextName(), blocker);
+        Notices.show(player, NoticePayload.hide());
     }
 
     private boolean tickWarning(
@@ -111,15 +136,20 @@ public final class Meeting {
             ServerPlayer player,
             StoryData data,
             VillageFinder villages,
-            BooleanSupplier stillAllowed) {
-        // Once a second, so the countdown on screen and the re-check move together.
+            Supplier<Optional<SummonBlocker>> blocker) {
+        // The card is sent once, on the first tick; the client counts the seconds down by itself.
+        if (ticksInState == FIRST_TICK) {
+            Notices.show(player, new NoticePayload(
+                    NoticeStyle.SUMMON, SUMMON_TITLE, SUMMON_BODY, MeetingRules.WARNING_TICKS));
+        }
+
+        // Once a second: a fight or a flight that starts during the warning cancels the summons.
         if (ticksInState % TICKS_PER_SECOND == 0) {
-            // A fight or a flight that starts during the warning cancels the summons.
-            if (!stillAllowed.getAsBoolean()) {
-                NpcSpeech.say(npc, NEVER_MIND_LINE);
+            Optional<SummonBlocker> refusal = blocker.get();
+            if (refusal.isPresent()) {
+                cancelWarning(player, refusal.get());
                 return false;
             }
-            MeetingTitles.countdown(player, (MeetingRules.WARNING_TICKS - ticksInState) / TICKS_PER_SECOND);
         }
 
         // Still counting down: nothing moves yet.
@@ -132,18 +162,20 @@ public final class Meeting {
 
     private boolean pull(
             PathfinderMob npc, ServerLevel level, ServerPlayer player, StoryData data, VillageFinder villages) {
-        // No free spot next to him: the summons is called off and nobody is moved.
-        Optional<BlockPos> spot = SafeTeleport.findSpotNear(npc, npc.blockPosition());
-        if (spot.isEmpty()) {
-            NpcSpeech.say(npc, NEVER_MIND_LINE);
+        // Same landing rule as his dog teleport: a safe block next to him, or his exact spot while he is grounded.
+        Optional<Vec3> landing = SafeTeleport.landingNear(npc, npc, SUMMON_MIN_RING);
+        if (landing.isEmpty()) {
+            cancelWarning(player, SummonBlocker.NO_ROOM);
             return false;
         }
 
         // Remember exactly where he stands before moving him, so the way back is exact.
         returnPoint = ReturnPoint.of(player);
-        BlockPos at = spot.get();
-        player.teleportTo(level, at.getX() + BLOCK_CENTER, at.getY(), at.getZ() + BLOCK_CENTER,
-                Set.of(), player.getYRot(), player.getXRot(), true);
+        Vec3 at = landing.get();
+        player.teleportTo(level, at.x, at.y, at.z, Set.of(), player.getYRot(), player.getXRot(), true);
+
+        // The warning ends the moment he pulls, so the card goes now rather than when its timer runs out.
+        Notices.show(player, NoticePayload.hide());
 
         // The agenda is built once, from the facts at the moment the player arrives.
         startAgenda(player, data, villages);

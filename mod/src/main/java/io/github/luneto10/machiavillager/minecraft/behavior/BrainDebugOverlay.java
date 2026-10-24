@@ -48,14 +48,20 @@ final class BrainDebugOverlay {
             int ticksUntilNextDecision,
             int maxDecisionTicks,
             StoryProgress progress,
-            Relationships relationships) {
+            Relationships relationships,
+            String meetingWith) {
         // Dev only, and only on the refresh tick.
         if (!ENABLED || npc.tickCount % REFRESH_INTERVAL_TICKS != 0) {
             return;
         }
 
         // The shared bars come first: the decision countdown and the story.
-        updateDecisionBar(actionText.get(), mood, ticksUntilNextDecision, maxDecisionTicks);
+        // The dice is paused during a meeting, so the decision bar shows the meeting instead of a frozen countdown.
+        if (meetingWith != null) {
+            updateMeetingBar(meetingWith, mood);
+        } else {
+            updateDecisionBar(actionText.get(), mood, ticksUntilNextDecision, maxDecisionTicks);
+        }
         updateStoryBar(progress);
 
         // Sync who sees the shared bars: new players join, players who left are removed.
@@ -81,6 +87,13 @@ final class BrainDebugOverlay {
         decisionBar.setName(Component.literal(
                 action + SEPARATOR + mood + SEPARATOR + "next " + String.format("%02d", seconds) + "s"));
         decisionBar.setProgress(Math.clamp((float) ticksUntilNextDecision / maxDecisionTicks, 0.0f, 1.0f));
+    }
+
+    private void updateMeetingBar(String playerName, Mood mood) {
+        decisionBar.setName(Component.literal(
+                "Meeting(" + playerName + ")" + SEPARATOR + mood + SEPARATOR + "dice paused"));
+        // Full bar: the countdown is paused, so a shrinking bar would look broken.
+        decisionBar.setProgress(1.0f);
     }
 
     private void updateStoryBar(StoryProgress progress) {
