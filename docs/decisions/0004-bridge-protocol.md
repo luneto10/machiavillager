@@ -20,7 +20,7 @@ server tick and without giving the AI any power beyond an allowlist.
 | 1 | Transport | One WebSocket; the mod is the client |
 | 2 | Backend role | Optional: without it the mod plays as in Checkpoint 3 |
 | 3 | Who decides | The mod's dice drives daily behavior; the backend reacts to events |
-| 4 | Contract | Hand-written JSON Schema + shared examples, tested on both sides |
+| 4 | Contract | Pydantic models generate the JSON Schema; shared examples + mutations on both sides |
 | 5 | Versioning | `"v": 1` on every message, `hello` / `welcome` handshake |
 | 6 | Message types | `hello`, `welcome`, `action`, `action_status`, `event`, `error` |
 | 7 | Speech | `speak` takes 1-8 lines; the mod paces them |
@@ -56,13 +56,19 @@ server tick and without giving the AI any power beyond an allowlist.
   (conversation, meeting, plans), never per tick.
 - **Why:** cheaper, faster, and safe when the backend is down.
 
-### 4. Hand-written contract in `shared/`
+### 4. Contract generated from the Python models
 
-- **Decision:** `shared/protocol.schema.json` (JSON Schema 2020-12) plus `shared/examples`; the Java and
-  Python tests load the same files.
-- **Why:** neutral (neither side generates the other's contract) and readable.
-- **Rejected:** generating the schema from the Python models, which would make the backend own the
-  contract.
+- **Decision:** the Pydantic models in `backend/src/machiavillager/domain/protocol.py` are the source of
+  truth. `backend/scripts/export_protocol_schema.py` writes `shared/protocol.schema.json` (JSON Schema
+  2020-12), which is committed and never edited by hand. A backend test fails when the committed file
+  is stale. Java and Python tests validate the same `shared/examples`.
+- **Why:** the backend needs these models anyway, so a hand-written schema would be a second copy that
+  can drift. One source, checked in CI.
+- **Testing:** `examples/valid` has one file per message shape; `examples/invalid` keeps only business
+  rules (too many lines, interrupted without counts...). Structural rules (missing or wrong `v`, unknown
+  `type`, extra fields) are covered by automatic mutations of the valid examples, on both sides.
+- **Changed:** first accepted as a hand-written schema; switched the same day, before any runtime code
+  depended on it. Trade-off accepted: the backend owns the contract; the Java tests still enforce it.
 
 ### 5. Versioning and handshake
 
