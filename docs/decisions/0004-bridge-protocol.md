@@ -20,13 +20,13 @@ server tick and without giving the AI any power beyond an allowlist.
 | 1 | Transport | One WebSocket; the mod is the client |
 | 2 | Backend role | Optional: without it the mod plays as in Checkpoint 3 |
 | 3 | Who decides | The mod's dice drives daily behavior; the backend reacts to events |
-| 4 | Contract | Pydantic models generate the JSON Schema; shared examples + mutations on both sides |
+| 4 | Contract | Pydantic models generate the JSON Schema, PROTOCOL.md and the invalid examples; humans write valid examples only |
 | 5 | Versioning | `"v": 1` on every message, `hello` / `welcome` handshake |
 | 6 | Message types | `hello`, `welcome`, `action`, `action_status`, `event`, `error` |
-| 7 | Speech | `speak` takes 1-8 lines; the mod paces them |
+| 7 | Speech | `speak` takes 1-8 lines and an optional private recipient `to`; the mod paces them |
 | 8 | Interruption | Chat within 24 blocks stops him after the current line |
 | 9 | Unprompted speech | At most one per player every 3 min |
-| 10 | Conversations | Reserved now (`conversation_id`), built in Checkpoint 5 |
+| 10 | Conversations | Reserved now (`conversation_id`, and `addressed` on chat), built in Checkpoint 5 |
 | 11 | Configuration | Env vars now; no token means the bridge is off |
 | 12 | JSON in Java | Gson, already shipped with Minecraft |
 
@@ -58,15 +58,17 @@ server tick and without giving the AI any power beyond an allowlist.
 
 ### 4. Contract generated from the Python models
 
-- **Decision:** the Pydantic models in `backend/src/machiavillager/domain/protocol.py` are the source of
+- **Decision:** the Pydantic models in `backend/src/machiavillager/domain/protocol/` are the source of
   truth. `backend/scripts/export_protocol_schema.py` writes `shared/protocol.schema.json` (JSON Schema
   2020-12), which is committed and never edited by hand. A backend test fails when the committed file
   is stale. Java and Python tests validate the same `shared/examples`.
 - **Why:** the backend needs these models anyway, so a hand-written schema would be a second copy that
   can drift. One source, checked in CI.
-- **Testing:** `examples/valid` has one file per message shape; `examples/invalid` keeps only business
-  rules (too many lines, interrupted without counts...). Structural rules (missing or wrong `v`, unknown
-  `type`, extra fields) are covered by automatic mutations of the valid examples, on both sides.
+- **Testing:** humans write only the valid examples, one file per message shape. The invalid cases live
+  in one generated `shared/examples/invalid.jsonl`, one per (message type, field, rule): a missing field,
+  an unknown field, a wrong `v`, a value out of range, a broken pattern... A case is written only when
+  both the parser and the schema reject it. Java and Python test the same file. The mod validates each
+  incoming message against the bundled schema, so the rules live only in the schema, not in Java code.
 - **Changed:** first accepted as a hand-written schema; switched the same day, before any runtime code
   depended on it. Trade-off accepted: the backend owns the contract; the Java tests still enforce it.
 
@@ -94,6 +96,9 @@ Unknown fields are rejected, never silently ignored.
 - **Decision:** the only action in Checkpoint 4 is `speak {lines: 1-8 strings of 1-256 chars}`. The mod
   paces the lines with `ReadingTime`. Statuses: `accepted → running → succeeded`.
 - **Why:** he talks in bursts like a person typing, and the backend never has to manage timing.
+- **Private speech:** `args.to` (a player UUID) makes the lines private text for that one player, at any
+  distance, never voice. Without `to`, the lines are normal speech for players nearby. Explicit null is
+  refused, as with `conversation_id`. One optional field, so the action set does not change.
 
 ### 8. Interruption
 
@@ -106,6 +111,9 @@ Unknown fields are rejected, never silently ignored.
 
 - **Decision:** the backend may start speech from events. The mod allows at most one unprompted `speak`
   per player every 3 minutes (configurable); replies to a player who spoke to him do not count.
+  A reply is recognised by `in_reply_to`: the `speak` names the `player_chat` event it answers. The mod
+  skips the limit for it and does not start the cooldown. Speech without `in_reply_to` counts as
+  unprompted. The busy rule still applies: one speech at a time.
 - **Why:** endless monologues are tiring. The limit lives in the mod, so a misbehaving backend cannot
   spam players.
 
@@ -113,6 +121,8 @@ Unknown fields are rejected, never silently ignored.
 
 - **Decision:** the contract already reserves an optional `conversation_id`. Conversation history and
   the 60-second silence rule are built together with the AI.
+- **Addressed chat:** `player_chat` carries `addressed`, which says why the mod forwarded the line:
+  `name`, `conversation`, `near`, `butt_in` (the player talked over him) or `private` (the @m channel).
 
 ### 11. Configuration
 
@@ -130,6 +140,10 @@ Unknown fields are rejected, never silently ignored.
 ## Consequences
 
 - The bridge has its own thread and queue and hands work to the server thread with `server.execute`.
-- Adding an action means: schema branch, examples, Java domain record + allowlist, Python model,
-  executor, tests on both sides (see the `bridge-protocol` skill).
+- Adding an action means: Python model, regenerated shared files, one valid example, Java domain
+  record + allowlist, executor, tests on both sides (see the `bridge-protocol` skill).
 - A breaking format change bumps the protocol version.
+- Dev only: `POST /dev/chat` builds a `player_chat` event and sends it through the same handler as a real
+  one (`api/bridge/events.py`). With `MACHIAVILLAGER_DEV_ECHO` on, the echo responder answers every chat
+  line with a `speak` of `(echo) <text>`, as a background task so the socket keeps reading the statuses.
+  It tests the bridge without the LLM. It is not game behavior.

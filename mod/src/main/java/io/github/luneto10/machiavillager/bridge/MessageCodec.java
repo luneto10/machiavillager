@@ -8,6 +8,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
 import io.github.luneto10.machiavillager.domain.bridge.Hello;
@@ -17,23 +18,19 @@ import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
- * JSON adapter for the bridge protocol. Gson parses and writes; the domain records enforce the limits.
- * Decoding refuses what the contract refuses: unknown or missing fields, a boolean or fraction where a
- * number belongs, explicit nulls, and unknown type, action, status, event or code values.
+ * JSON adapter for the bridge protocol. The schema decides whether a message is valid; Gson then maps a valid
+ * message onto the domain records. Encoding writes the shapes the schema accepts.
  */
 public final class MessageCodec {
 
-    /** Thrown when a wire message breaks a structural or business rule. */
+    /** Thrown when a wire message breaks a rule. The message names the first broken rule. */
     public static final class DecodeException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
@@ -48,39 +45,25 @@ public final class MessageCodec {
     private static final String PROTOCOL = "protocol";
     private static final String REQUEST_ID = "request_id";
     private static final String STATUS = "status";
+    private static final String REASON = "reason";
+    private static final String EVENT_ID = "event_id";
     private static final String CONVERSATION_ID = "conversation_id";
+    private static final String IN_REPLY_TO = "in_reply_to";
 
-    // The exact key set per message. Any key outside it is a rule violation (additionalProperties false).
-    private static final Set<String> HELLO_KEYS = Set.of(VERSION, TYPE, "mod_version", PROTOCOL);
-    private static final Set<String> WELCOME_KEYS = Set.of(VERSION, TYPE, PROTOCOL);
-    private static final Set<String> SPEAK_KEYS =
-            Set.of(VERSION, TYPE, REQUEST_ID, "action", "args", "timeout_ms", CONVERSATION_ID);
-    private static final Set<String> SPEAK_ARGS_KEYS = Set.of("lines");
-    private static final Set<String> STATUS_KEYS = Set.of(VERSION, TYPE, REQUEST_ID, STATUS);
-    private static final Set<String> REASON_KEYS = Set.of(VERSION, TYPE, REQUEST_ID, STATUS, "reason");
-    private static final Set<String> INTERRUPTED_KEYS =
-            Set.of(VERSION, TYPE, REQUEST_ID, STATUS, "spoken", "of");
-    private static final Set<String> EVENT_KEYS =
-            Set.of(VERSION, TYPE, "event_id", "event", "occurred_at", "data", CONVERSATION_ID);
-    private static final Set<String> PLAYER_CHAT_DATA_KEYS = Set.of("player_uuid", "player_name", "text");
-    private static final Set<String> ERROR_KEYS = Set.of(VERSION, TYPE, "code", "detail");
-
-    // Integers are written as plain digits. A fraction or an exponent is refused, as pydantic refuses it.
-    private static final Pattern INTEGER_LITERAL = Pattern.compile("-?\\d{1,10}");
+    // Loaded once: the schema is the same for every message. Failing here stops a broken build at startup.
+    private static final SchemaValidator SCHEMA = new SchemaValidator();
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
     private MessageCodec() {}
 
-    /** Parses and validates one wire message. Throws {@link DecodeException} when a rule breaks. */
+    /** Validates one wire message against the schema, then maps it. Throws {@link DecodeException} on a broken rule. */
     public static BridgeMessage decode(String json) {
-        JsonObject object = parseObject(json);
-        // Records throw IllegalArgumentException for business rules; surface them as one error type.
-        try {
-            return decodeObject(object);
-        } catch (IllegalArgumentException e) {
-            throw new DecodeException(e.getMessage());
+        List<String> errors = SCHEMA.errors(json);
+        if (!errors.isEmpty()) {
+            throw new DecodeException(errors.get(0));
         }
+        return decodeObject(JsonParser.parseString(json).getAsJsonObject());
     }
 
     /**
@@ -97,6 +80,12 @@ public final class MessageCodec {
         }
     }
 
+    /** Writes one message as JSON. Always writes v and type; omits optional fields that are absent. */
+    public static String encode(BridgeMessage message) {
+        Objects.requireNonNull(message, "message");
+        return GSON.toJson(toJson(message));
+    }
+
     private static Optional<String> actionRequestId(JsonObject object) {
         JsonElement type = object.get(TYPE);
         JsonElement requestId = object.get(REQUEST_ID);
@@ -111,32 +100,11 @@ public final class MessageCodec {
         return ProtocolRules.ACTION_ID.matcher(candidate).matches() ? Optional.of(candidate) : Optional.empty();
     }
 
-    /** Writes one message as JSON. Always writes v and type; omits optional fields that are absent. */
-    public static String encode(BridgeMessage message) {
-        Objects.requireNonNull(message, "message");
-        return GSON.toJson(toJson(message));
-    }
-
-    private static JsonObject parseObject(String json) {
-        JsonElement root;
-        try {
-            root = JsonParser.parseString(json);
-        } catch (JsonParseException e) {
-            throw new DecodeException("message is not valid JSON");
-        }
-        if (!root.isJsonObject()) {
-            throw new DecodeException("message must be a JSON object");
-        }
-        return root.getAsJsonObject();
-    }
-
+    // Only validated messages reach this point, so every required field is present and well typed.
     private static BridgeMessage decodeObject(JsonObject object) {
-        // Checked before the type: a message from another protocol version is refused whatever its type.
-        wireVersion(object, VERSION);
-        String type = string(object, TYPE);
-        return switch (type) {
-            case "hello" -> hello(object);
-            case "welcome" -> welcome(object);
+        return switch (string(object, TYPE)) {
+            case "hello" -> new Hello(string(object, "mod_version"));
+            case "welcome" -> new Welcome();
             case "action" -> speakAction(object);
             case "action_status" -> actionStatus(object);
             case "event" -> playerChat(object);
@@ -145,94 +113,44 @@ public final class MessageCodec {
         };
     }
 
-    private static Hello hello(JsonObject object) {
-        requireKeys(object, HELLO_KEYS);
-        wireVersion(object, PROTOCOL);
-        return new Hello(string(object, "mod_version"));
-    }
-
-    private static Welcome welcome(JsonObject object) {
-        requireKeys(object, WELCOME_KEYS);
-        wireVersion(object, PROTOCOL);
-        return new Welcome();
-    }
-
     private static SpeakAction speakAction(JsonObject object) {
-        requireKeys(object, SPEAK_KEYS);
-        // speak is the only action in this checkpoint; any other name is refused before its args are read.
-        if (!"speak".equals(string(object, "action"))) {
-            throw new DecodeException("unknown action");
-        }
-        JsonObject args = object(object, "args");
-        requireKeys(args, SPEAK_ARGS_KEYS);
+        JsonObject args = object.getAsJsonObject("args");
         return new SpeakAction(
                 string(object, REQUEST_ID),
-                lines(array(args, "lines")),
-                integer(object, "timeout_ms"),
-                optionalString(object, CONVERSATION_ID));
+                lines(args.getAsJsonArray("lines")),
+                object.get("timeout_ms").getAsInt(),
+                optionalString(object, CONVERSATION_ID),
+                optionalUuid(args, "to"),
+                optionalString(object, IN_REPLY_TO));
     }
 
     private static ActionStatus actionStatus(JsonObject object) {
+        String requestId = string(object, REQUEST_ID);
         return switch (string(object, STATUS)) {
-            case "accepted" -> accepted(object);
-            case "running" -> running(object);
-            case "succeeded" -> succeeded(object);
-            case "failed" -> failed(object);
-            case "rejected" -> rejected(object);
-            case "interrupted" -> interrupted(object);
+            case "accepted" -> new ActionStatus.Accepted(requestId);
+            case "running" -> new ActionStatus.Running(requestId);
+            case "succeeded" -> new ActionStatus.Succeeded(requestId);
+            case "failed" -> new ActionStatus.Failed(requestId, string(object, REASON));
+            case "rejected" -> new ActionStatus.Rejected(requestId, string(object, REASON));
+            case "interrupted" -> new ActionStatus.Interrupted(
+                    requestId, object.get("spoken").getAsInt(), object.get("of").getAsInt());
             default -> throw new DecodeException("unknown action status");
         };
     }
 
-    private static ActionStatus.Accepted accepted(JsonObject object) {
-        requireKeys(object, STATUS_KEYS);
-        return new ActionStatus.Accepted(string(object, REQUEST_ID));
-    }
-
-    private static ActionStatus.Running running(JsonObject object) {
-        requireKeys(object, STATUS_KEYS);
-        return new ActionStatus.Running(string(object, REQUEST_ID));
-    }
-
-    private static ActionStatus.Succeeded succeeded(JsonObject object) {
-        requireKeys(object, STATUS_KEYS);
-        return new ActionStatus.Succeeded(string(object, REQUEST_ID));
-    }
-
-    private static ActionStatus.Failed failed(JsonObject object) {
-        requireKeys(object, REASON_KEYS);
-        return new ActionStatus.Failed(string(object, REQUEST_ID), string(object, "reason"));
-    }
-
-    private static ActionStatus.Rejected rejected(JsonObject object) {
-        requireKeys(object, REASON_KEYS);
-        return new ActionStatus.Rejected(string(object, REQUEST_ID), string(object, "reason"));
-    }
-
-    private static ActionStatus.Interrupted interrupted(JsonObject object) {
-        requireKeys(object, INTERRUPTED_KEYS);
-        return new ActionStatus.Interrupted(
-                string(object, REQUEST_ID), integer(object, "spoken"), integer(object, "of"));
-    }
-
     private static PlayerChatEvent playerChat(JsonObject object) {
-        requireKeys(object, EVENT_KEYS);
-        if (!"player_chat".equals(string(object, "event"))) {
-            throw new DecodeException("unknown event");
-        }
-        JsonObject data = object(object, "data");
-        requireKeys(data, PLAYER_CHAT_DATA_KEYS);
+        JsonObject data = object.getAsJsonObject("data");
         return new PlayerChatEvent(
-                string(object, "event_id"),
-                instant(object, "occurred_at"),
+                string(object, EVENT_ID),
+                OffsetDateTime.parse(string(object, "occurred_at")).toInstant(),
                 uuid(data, "player_uuid"),
                 string(data, "player_name"),
                 string(data, "text"),
+                Addressed.fromWire(string(data, "addressed")),
                 optionalString(object, CONVERSATION_ID));
     }
 
     private static BridgeError error(JsonObject object) {
-        requireKeys(object, ERROR_KEYS);
         return new BridgeError(errorCode(string(object, "code")), string(object, "detail"));
     }
 
@@ -279,9 +197,13 @@ public final class MessageCodec {
         }
         JsonObject args = new JsonObject();
         args.add("lines", lines);
+        // Private speech carries its recipient; normal speech omits the key entirely, never writes null.
+        speak.to().ifPresent(player -> args.addProperty("to", player.toString()));
         json.add("args", args);
         json.addProperty("timeout_ms", speak.timeoutMs());
         speak.conversationId().ifPresent(id -> json.addProperty(CONVERSATION_ID, id));
+        // Only a reply names the event it answers; an unprompted speech omits the key.
+        speak.inReplyTo().ifPresent(id -> json.addProperty(IN_REPLY_TO, id));
         return json;
     }
 
@@ -310,13 +232,13 @@ public final class MessageCodec {
 
     private static JsonObject withReason(String status, String requestId, String reason) {
         JsonObject json = statusEnvelope(status, requestId);
-        json.addProperty("reason", reason);
+        json.addProperty(REASON, reason);
         return json;
     }
 
     private static JsonObject playerChatJson(PlayerChatEvent event) {
         JsonObject json = envelope("event");
-        json.addProperty("event_id", event.eventId());
+        json.addProperty(EVENT_ID, event.eventId());
         json.addProperty("event", "player_chat");
         // Instant.toString is ISO-8601 in UTC, which is the date-time format the contract requires.
         json.addProperty("occurred_at", event.occurredAt().toString());
@@ -324,6 +246,7 @@ public final class MessageCodec {
         data.addProperty("player_uuid", event.playerUuid().toString());
         data.addProperty("player_name", event.playerName());
         data.addProperty("text", event.text());
+        data.addProperty("addressed", event.addressed().wireName());
         json.add("data", data);
         event.conversationId().ifPresent(id -> json.addProperty(CONVERSATION_ID, id));
         return json;
@@ -343,107 +266,29 @@ public final class MessageCodec {
         return json;
     }
 
-    private static void requireKeys(JsonObject object, Set<String> allowed) {
-        // Anything the message type does not define is refused, never silently ignored.
-        for (String key : object.keySet()) {
-            if (!allowed.contains(key)) {
-                throw new DecodeException("unexpected field: " + key);
-            }
-        }
-    }
-
-    private static void wireVersion(JsonObject object, String key) {
-        if (integer(object, key) != ProtocolRules.PROTOCOL_VERSION) {
-            throw new DecodeException(key + " must be " + ProtocolRules.PROTOCOL_VERSION);
-        }
-    }
-
-    private static JsonElement required(JsonObject object, String key) {
-        JsonElement element = object.get(key);
-        if (element == null) {
-            throw new DecodeException("missing field: " + key);
-        }
-        return element;
-    }
-
     private static String string(JsonObject object, String key) {
-        JsonElement element = required(object, key);
-        // An explicit null is a JsonNull, not a string, so it is refused here too.
-        if (!isString(element)) {
-            throw new DecodeException(key + " must be a non-null string");
-        }
-        return element.getAsString();
+        return object.get(key).getAsString();
     }
 
+    // Absent means empty. The schema already refuses an explicit null, so presence is the only check.
     private static Optional<String> optionalString(JsonObject object, String key) {
-        if (!object.has(key)) {
-            return Optional.empty();
-        }
-        return Optional.of(string(object, key));
+        return object.has(key) ? Optional.of(string(object, key)) : Optional.empty();
     }
 
-    private static int integer(JsonObject object, String key) {
-        JsonElement element = required(object, key);
-        // A boolean is a JSON primitive but not a number, so isNumber() refuses true and false.
-        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
-            throw new DecodeException(key + " must be an integer");
-        }
-        String literal = element.getAsString();
-        if (!INTEGER_LITERAL.matcher(literal).matches()) {
-            throw new DecodeException(key + " must be a whole number");
-        }
-        // At most ten digits, so parseLong cannot overflow; the int range is checked on top.
-        long value = Long.parseLong(literal);
-        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
-            throw new DecodeException(key + " is out of range");
-        }
-        return (int) value;
+    private static Optional<UUID> optionalUuid(JsonObject object, String key) {
+        return object.has(key) ? Optional.of(UUID.fromString(string(object, key))) : Optional.empty();
     }
 
-    private static JsonObject object(JsonObject object, String key) {
-        JsonElement element = required(object, key);
-        if (!element.isJsonObject()) {
-            throw new DecodeException(key + " must be an object");
-        }
-        return element.getAsJsonObject();
-    }
-
-    private static JsonArray array(JsonObject object, String key) {
-        JsonElement element = required(object, key);
-        if (!element.isJsonArray()) {
-            throw new DecodeException(key + " must be an array");
-        }
-        return element.getAsJsonArray();
+    private static UUID uuid(JsonObject object, String key) {
+        return UUID.fromString(string(object, key));
     }
 
     private static List<String> lines(JsonArray array) {
         List<String> lines = new ArrayList<>();
         for (JsonElement element : array) {
-            if (!isString(element)) {
-                throw new DecodeException("lines must be strings");
-            }
             lines.add(element.getAsString());
         }
         return lines;
-    }
-
-    private static Instant instant(JsonObject object, String key) {
-        String text = string(object, key);
-        try {
-            // ISO-8601 with an explicit offset, which is the date-time form the contract requires.
-            return OffsetDateTime.parse(text).toInstant();
-        } catch (DateTimeParseException e) {
-            throw new DecodeException(key + " must be an ISO-8601 date-time with an offset");
-        }
-    }
-
-    private static UUID uuid(JsonObject object, String key) {
-        String text = string(object, key);
-        // Checked before UUID.fromString, which would also accept shorter forms the wire forbids.
-        if (!ProtocolRules.CANONICAL_UUID.matcher(text).matches()) {
-            throw new DecodeException(key + " must be a canonical UUID");
-        }
-        return UUID.fromString(text);
     }
 
     private static boolean isString(JsonElement element) {

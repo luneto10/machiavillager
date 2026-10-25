@@ -1,0 +1,151 @@
+{"name":"Accepted.request_id.drop_required","message":{"v":1,"type":"action_status","status":"accepted"}}
+{"name":"Accepted.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"accepted"}}
+{"name":"Accepted.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted","unexpected_field":true}}
+{"name":"Accepted.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9"}}
+{"name":"Accepted.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value"}}
+{"name":"Accepted.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"Accepted.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"Accepted.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"Accepted.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"Accepted.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"Error.code.drop_required","message":{"v":1,"type":"error","detail":"action args do not match the speak schema"}}
+{"name":"Error.code.unknown_value","message":{"v":1,"type":"error","code":"not_a_known_value","detail":"action args do not match the speak schema"}}
+{"name":"Error.detail.drop_required","message":{"v":1,"type":"error","code":"bad_message"}}
+{"name":"Error.detail.too_long","message":{"v":1,"type":"error","code":"bad_message","detail":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+{"name":"Error.root.unknown_field","message":{"v":1,"type":"error","code":"bad_message","detail":"action args do not match the speak schema","unexpected_field":true}}
+{"name":"Error.type.drop_required","message":{"v":1,"code":"bad_message","detail":"action args do not match the speak schema"}}
+{"name":"Error.type.type_not_a_type","message":{"v":1,"type":"not_a_type","code":"bad_message","detail":"action args do not match the speak schema"}}
+{"name":"Error.v.drop_required","message":{"type":"error","code":"bad_message","detail":"action args do not match the speak schema"}}
+{"name":"Error.v.v_is_2","message":{"v":2,"type":"error","code":"bad_message","detail":"action args do not match the speak schema"}}
+{"name":"Error.v.v_is_true","message":{"v":true,"type":"error","code":"bad_message","detail":"action args do not match the speak schema"}}
+{"name":"Failed.reason.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed"}}
+{"name":"Failed.reason.too_long","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed","reason":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+{"name":"Failed.request_id.drop_required","message":{"v":1,"type":"action_status","status":"failed","reason":"disconnected"}}
+{"name":"Failed.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"failed","reason":"disconnected"}}
+{"name":"Failed.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected","unexpected_field":true}}
+{"name":"Failed.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","reason":"disconnected"}}
+{"name":"Failed.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value","reason":"disconnected"}}
+{"name":"Failed.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected"}}
+{"name":"Failed.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected"}}
+{"name":"Failed.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected"}}
+{"name":"Failed.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected"}}
+{"name":"Failed.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"failed","reason":"disconnected"}}
+{"name":"Hello.mod_version.drop_required","message":{"v":1,"type":"hello","protocol":1}}
+{"name":"Hello.mod_version.too_long","message":{"v":1,"type":"hello","mod_version":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","protocol":1}}
+{"name":"Hello.mod_version.too_short","message":{"v":1,"type":"hello","mod_version":"","protocol":1}}
+{"name":"Hello.protocol.drop_required","message":{"v":1,"type":"hello","mod_version":"0.1.0"}}
+{"name":"Hello.protocol.protocol_is_2","message":{"v":1,"type":"hello","mod_version":"0.1.0","protocol":2}}
+{"name":"Hello.protocol.protocol_is_true","message":{"v":1,"type":"hello","mod_version":"0.1.0","protocol":true}}
+{"name":"Hello.root.unknown_field","message":{"v":1,"type":"hello","mod_version":"0.1.0","protocol":1,"unexpected_field":true}}
+{"name":"Hello.type.drop_required","message":{"v":1,"mod_version":"0.1.0","protocol":1}}
+{"name":"Hello.type.type_not_a_type","message":{"v":1,"type":"not_a_type","mod_version":"0.1.0","protocol":1}}
+{"name":"Hello.v.drop_required","message":{"type":"hello","mod_version":"0.1.0","protocol":1}}
+{"name":"Hello.v.v_is_2","message":{"v":2,"type":"hello","mod_version":"0.1.0","protocol":1}}
+{"name":"Hello.v.v_is_true","message":{"v":true,"type":"hello","mod_version":"0.1.0","protocol":1}}
+{"name":"Interrupted.of.above_maximum","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":9}}
+{"name":"Interrupted.of.below_minimum","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":0}}
+{"name":"Interrupted.of.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2}}
+{"name":"Interrupted.request_id.drop_required","message":{"v":1,"type":"action_status","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5,"unexpected_field":true}}
+{"name":"Interrupted.spoken.below_minimum","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":-1,"of":5}}
+{"name":"Interrupted.spoken.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","of":5}}
+{"name":"Interrupted.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","spoken":2,"of":5}}
+{"name":"Interrupted.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value","spoken":2,"of":5}}
+{"name":"Interrupted.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5}}
+{"name":"Interrupted.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"interrupted","spoken":2,"of":5}}
+{"name":"PlayerChatEvent.conversation_id.null_optional","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"},"conversation_id":null}}
+{"name":"PlayerChatEvent.conversation_id.pattern","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:05Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"I am back.","addressed":"conversation"},"conversation_id":"!!"}}
+{"name":"PlayerChatEvent.data.addressed.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi"}}}
+{"name":"PlayerChatEvent.data.addressed.unknown_value","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"not_a_known_value"}}}
+{"name":"PlayerChatEvent.data.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z"}}
+{"name":"PlayerChatEvent.data.player_name.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.player_name.too_long","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"aaaaaaaaaaaaaaaaa","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.player_name.too_short","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.player_uuid.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.player_uuid.pattern","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"!!","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.text.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.text.too_long","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.text.too_short","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"","addressed":"near"}}}
+{"name":"PlayerChatEvent.data.unknown_field","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near","unexpected_field":true}}}
+{"name":"PlayerChatEvent.event.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.event.unknown_value","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"not_a_known_value","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.event_id.drop_required","message":{"v":1,"type":"event","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.event_id.pattern","message":{"v":1,"type":"event","event_id":"!!","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.occurred_at.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.root.unknown_field","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"},"unexpected_field":true}}
+{"name":"PlayerChatEvent.type.drop_required","message":{"v":1,"event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.type.type_not_a_type","message":{"v":1,"type":"not_a_type","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.v.drop_required","message":{"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.v.v_is_2","message":{"v":2,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"PlayerChatEvent.v.v_is_true","message":{"v":true,"type":"event","event_id":"evt_01HZX8K2M9","event":"player_chat","occurred_at":"2026-10-18T12:00:00Z","data":{"player_uuid":"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69","player_name":"Luciano","text":"hi","addressed":"near"}}}
+{"name":"Rejected.reason.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected"}}
+{"name":"Rejected.reason.too_long","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected","reason":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+{"name":"Rejected.request_id.drop_required","message":{"v":1,"type":"action_status","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command","unexpected_field":true}}
+{"name":"Rejected.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","reason":"unknown action: run_command"}}
+{"name":"Rejected.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value","reason":"unknown action: run_command"}}
+{"name":"Rejected.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Rejected.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"rejected","reason":"unknown action: run_command"}}
+{"name":"Running.request_id.drop_required","message":{"v":1,"type":"action_status","status":"running"}}
+{"name":"Running.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"running"}}
+{"name":"Running.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"running","unexpected_field":true}}
+{"name":"Running.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9"}}
+{"name":"Running.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value"}}
+{"name":"Running.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"running"}}
+{"name":"Running.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"running"}}
+{"name":"Running.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"running"}}
+{"name":"Running.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"running"}}
+{"name":"Running.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"running"}}
+{"name":"SpeakAction.action.drop_required","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.action.unknown_value","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"not_a_known_value","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.args.drop_required","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","timeout_ms":30000}}
+{"name":"SpeakAction.args.lines.*.too_long","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]},"timeout_ms":30000}}
+{"name":"SpeakAction.args.lines.*.too_short","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":[""]},"timeout_ms":30000}}
+{"name":"SpeakAction.args.lines.drop_required","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{},"timeout_ms":30000}}
+{"name":"SpeakAction.args.lines.too_few_items","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":[]},"timeout_ms":30000}}
+{"name":"SpeakAction.args.lines.too_many_items","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller.","Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.args.to.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."],"to":null},"timeout_ms":30000}}
+{"name":"SpeakAction.args.to.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Between us, the harvest is short."],"to":"!!"},"timeout_ms":30000}}
+{"name":"SpeakAction.args.unknown_field","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."],"unexpected_field":true},"timeout_ms":30000}}
+{"name":"SpeakAction.conversation_id.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"conversation_id":null}}
+{"name":"SpeakAction.conversation_id.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Luciano, a word.","I have been thinking about the harvest.","Come find me at the well."]},"timeout_ms":30000,"conversation_id":"!!"}}
+{"name":"SpeakAction.in_reply_to.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"in_reply_to":null}}
+{"name":"SpeakAction.in_reply_to.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"!!"}}
+{"name":"SpeakAction.request_id.drop_required","message":{"v":1,"type":"action","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.request_id.pattern","message":{"v":1,"type":"action","request_id":"!!","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.root.unknown_field","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"unexpected_field":true}}
+{"name":"SpeakAction.timeout_ms.above_maximum","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":120001}}
+{"name":"SpeakAction.timeout_ms.below_minimum","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":99}}
+{"name":"SpeakAction.timeout_ms.drop_required","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]}}}
+{"name":"SpeakAction.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.v.drop_required","message":{"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.v.v_is_2","message":{"v":2,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"SpeakAction.v.v_is_true","message":{"v":true,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
+{"name":"Succeeded.request_id.drop_required","message":{"v":1,"type":"action_status","status":"succeeded"}}
+{"name":"Succeeded.request_id.pattern","message":{"v":1,"type":"action_status","request_id":"!!","status":"succeeded"}}
+{"name":"Succeeded.root.unknown_field","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded","unexpected_field":true}}
+{"name":"Succeeded.status.drop_required","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9"}}
+{"name":"Succeeded.status.unknown_value","message":{"v":1,"type":"action_status","request_id":"act_01HZX8K2M9","status":"not_a_known_value"}}
+{"name":"Succeeded.type.drop_required","message":{"v":1,"request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Succeeded.type.type_not_a_type","message":{"v":1,"type":"not_a_type","request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Succeeded.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Succeeded.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Succeeded.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Welcome.protocol.drop_required","message":{"v":1,"type":"welcome"}}
+{"name":"Welcome.protocol.protocol_is_2","message":{"v":1,"type":"welcome","protocol":2}}
+{"name":"Welcome.protocol.protocol_is_true","message":{"v":1,"type":"welcome","protocol":true}}
+{"name":"Welcome.root.unknown_field","message":{"v":1,"type":"welcome","protocol":1,"unexpected_field":true}}
+{"name":"Welcome.type.drop_required","message":{"v":1,"protocol":1}}
+{"name":"Welcome.type.type_not_a_type","message":{"v":1,"type":"not_a_type","protocol":1}}
+{"name":"Welcome.v.drop_required","message":{"type":"welcome","protocol":1}}
+{"name":"Welcome.v.v_is_2","message":{"v":2,"type":"welcome","protocol":1}}
+{"name":"Welcome.v.v_is_true","message":{"v":true,"type":"welcome","protocol":1}}

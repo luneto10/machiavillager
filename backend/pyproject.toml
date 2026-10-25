@@ -19,6 +19,7 @@ dev = [
     "jsonschema>=4.23",
     # Optional jsonschema dependency: without it "format": "date-time" is silently never checked.
     "rfc3339-validator>=0.1.4",
+    "json-schema-for-humans>=1.5.1",
 ]
 
 [build-system]
@@ -27,6 +28,8 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The contract tests import the generators from scripts/, which is not a package.
+pythonpath = ["scripts"]
 filterwarnings = ["error"]
 
 [tool.ruff]

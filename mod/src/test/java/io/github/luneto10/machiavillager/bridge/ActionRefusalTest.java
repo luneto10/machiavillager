@@ -43,13 +43,8 @@ class ActionRefusalTest {
     }
 
     @Test
-    void reason_unknownAction_isKeptAsIs() {
-        assertEquals("unknown action", BridgeListener.actionReason("unknown action"));
-    }
-
-    @Test
-    void reason_otherBreaks_areLabelledAsInvalidArgs() {
-        assertEquals("invalid args: missing field: args", BridgeListener.actionReason("missing field: args"));
+    void reason_isLabelledAsInvalidAction() {
+        assertEquals("invalid action: missing field: args", BridgeListener.actionReason("missing field: args"));
     }
 
     @Test

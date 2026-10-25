@@ -100,9 +100,9 @@ final class BridgeListener implements WebSocket.Listener {
         client.runOnBridge(() -> client.refuse(webSocket, detail));
     }
 
-    // Shows the decode reason as the refusal reason, cut to the protocol limit; the reason names the field, never the value.
+    // Shows the schema's first error as the refusal reason, cut to the protocol limit. It names the rule, never the value.
     static String actionReason(String detail) {
-        String reason = "unknown action".equals(detail) ? detail : "invalid args: " + detail;
+        String reason = "invalid action: " + detail;
         int limit = ProtocolRules.MAX_REASON_LENGTH;
         // Cut by code points, so a surrogate pair is never split and the length matches the contract's count.
         int units = reason.offsetByCodePoints(0, Math.min(reason.codePointCount(0, reason.length()), limit));

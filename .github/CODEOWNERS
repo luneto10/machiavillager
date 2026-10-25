@@ -5,5 +5,5 @@
 /mod/                                             @PuliNFPS @luneto10
 
 /shared/                                          @luneto10 @PuliNFPS
-/backend/src/machiavillager/domain/protocol.py    @luneto10 @PuliNFPS
+/backend/src/machiavillager/domain/protocol/      @luneto10 @PuliNFPS
 /docs/decisions/0004-bridge-protocol.md           @luneto10 @PuliNFPS

@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import secrets
 from typing import Final
 
 from fastapi import WebSocketDisconnect
@@ -21,9 +20,6 @@ from machiavillager.domain.protocol import (
 
 logger = logging.getLogger(__name__)
 
-REQUEST_ID_PREFIX: Final = "act_"
-# 8 random bytes give 16 hex characters, inside the 8-32 the protocol pattern allows.
-REQUEST_ID_BYTES: Final = 8
 # Slack past the mod's own deadline, so the mod's timeout report can still arrive first.
 TIMEOUT_MARGIN_SECONDS: float = 2.0
 MS_PER_SECOND: Final = 1000
@@ -32,11 +28,6 @@ REASON_DISCONNECTED: Final = "disconnected"
 NO_MOD_MESSAGE: Final = "no mod is connected to the bridge"
 # Errors that mean the socket went away while we were sending to it.
 SEND_FAILURES: Final = (RuntimeError, OSError, WebSocketDisconnect)
-
-
-def new_request_id() -> str:
-    # token_hex gives a short id made of safe characters, matching the protocol pattern.
-    return REQUEST_ID_PREFIX + secrets.token_hex(REQUEST_ID_BYTES)
 
 
 def _failed(request_id: str, reason: str) -> Failed:
