@@ -43,6 +43,6 @@ class BarkOptionTest {
     }
 
     private static Situation situation(Mood mood, double distance) {
-        return new Situation(mood, List.of(new NearbyPlayer(LISTENER, "Alice", distance)), Phase.PARTNER, 0, Set.of());
+        return new Situation(mood, List.of(new NearbyPlayer(LISTENER, "Alice", distance)), Phase.PARTNER, 0, Set.of(), Set.of());
     }
 }

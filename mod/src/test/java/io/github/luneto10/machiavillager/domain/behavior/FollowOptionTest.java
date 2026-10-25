@@ -12,32 +12,47 @@ import org.junit.jupiter.api.Test;
 
 class FollowOptionTest {
     private static final UUID PLAYER = new UUID(0L, 1L);
+    private static final double FAR = 300.0;
 
     @Test
     void noPlayers_proposesNothing() {
-        WeightedDice<NpcAction> dice = propose(new Situation(Mood.CALM, List.of(), Phase.PARTNER, 0, Set.of()));
+        WeightedDice<NpcAction> dice = propose(new Situation(Mood.CALM, List.of(), Phase.PARTNER, 0, Set.of(), Set.of()));
 
         assertEquals(0.0, dice.chanceOf(new NpcAction.Follow(PLAYER)), 1e-9);
     }
 
     @Test
-    void playerAt300Blocks_proposesNothing() {
-        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, 300));
+    void playerAt300Blocks_notCared_proposesNothing() {
+        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, FAR, Set.of()));
 
         assertEquals(0, dice.weightOf(new NpcAction.Follow(PLAYER)));
     }
 
     @Test
+    void playerAt300Blocks_cared_isProposedWithFarWeight() {
+        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, FAR, Set.of(PLAYER)));
+
+        assertEquals(20, dice.weightOf(new NpcAction.Follow(PLAYER)));
+    }
+
+    @Test
     void playerWithin32_isProposed() {
-        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, 30));
+        WeightedDice<NpcAction> dice = propose(situation(Mood.CALM, 30, Set.of()));
 
         assertTrue(dice.weightOf(new NpcAction.Follow(PLAYER)) > 0);
     }
 
     @Test
+    void nearPlayer_notCared_isStillProposed() {
+        WeightedDice<NpcAction> dice = propose(situation(Mood.IRRITATED, 5, Set.of()));
+
+        assertEquals(20, dice.weightOf(new NpcAction.Follow(PLAYER)));
+    }
+
+    @Test
     void weightDependsOnMood() {
-        WeightedDice<NpcAction> calm = propose(situation(Mood.CALM, 5));
-        WeightedDice<NpcAction> irritated = propose(situation(Mood.IRRITATED, 5));
+        WeightedDice<NpcAction> calm = propose(situation(Mood.CALM, 5, Set.of()));
+        WeightedDice<NpcAction> irritated = propose(situation(Mood.IRRITATED, 5, Set.of()));
 
         assertEquals(50, calm.weightOf(new NpcAction.Follow(PLAYER)));
         assertEquals(20, irritated.weightOf(new NpcAction.Follow(PLAYER)));
@@ -51,7 +66,13 @@ class FollowOptionTest {
         return candidates.build();
     }
 
-    private static Situation situation(Mood mood, double distance) {
-        return new Situation(mood, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), Phase.PARTNER, 0, Set.of());
+    private static Situation situation(Mood mood, double distance, Set<UUID> caredFor) {
+        return new Situation(
+                mood,
+                List.of(new NearbyPlayer(PLAYER, "Alice", distance)),
+                Phase.PARTNER,
+                0,
+                Set.of(),
+                caredFor);
     }
 }

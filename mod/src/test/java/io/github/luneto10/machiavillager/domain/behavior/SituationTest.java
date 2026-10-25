@@ -41,7 +41,7 @@ class SituationTest {
 
     // Calm mood, partner phase, no hint history: the story has not started yet.
     private static Situation calm(List<NearbyPlayer> nearby) {
-        return new Situation(Mood.CALM, nearby, Phase.PARTNER, 0, Set.of());
+        return new Situation(Mood.CALM, nearby, Phase.PARTNER, 0, Set.of(), Set.of());
     }
 
     private static NearbyPlayer player(double distance) {

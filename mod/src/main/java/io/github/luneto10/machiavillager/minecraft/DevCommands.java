@@ -41,7 +41,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code spawn}: summon him, or bring him to you if he already exists.</li>
  *   <li>{@code brain next}: force a new decision now (dev).</li>
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
- *   <li>{@code brain do <action>}: force follow, wander, bark, hint or summon aimed at you (dev).</li>
+ *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
  * </ul>
@@ -58,7 +58,8 @@ public final class DevCommands {
             "wander", player -> new NpcAction.Wander(),
             "bark", NpcAction.Bark::new,
             "hint", NpcAction.Hint::new,
-            "summon", NpcAction.Summon::new);
+            "summon", NpcAction.Summon::new,
+            "mutter", player -> new NpcAction.Mutter());
 
     // Operators only: the spawn and brain subtrees check this themselves, so the root stays open to everyone.
     private static final Predicate<CommandSourceStack> OPERATOR = Commands.hasPermission(Commands.LEVEL_GAMEMASTERS);

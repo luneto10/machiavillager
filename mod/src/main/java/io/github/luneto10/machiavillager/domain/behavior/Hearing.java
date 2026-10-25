@@ -7,5 +7,8 @@ package io.github.luneto10.machiavillager.domain.behavior;
 public final class Hearing {
     public static final double DISTANCE = 24.0;
 
+    /** How close a player must be to overhear him muttering to himself. */
+    public static final double WHISPER_DISTANCE = 8.0;
+
     private Hearing() {}
 }

@@ -4,6 +4,7 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.ActionOption;
 import io.github.luneto10.machiavillager.domain.behavior.BarkOption;
 import io.github.luneto10.machiavillager.domain.behavior.FollowOption;
+import io.github.luneto10.machiavillager.domain.behavior.MutterOption;
 import io.github.luneto10.machiavillager.domain.behavior.HintOption;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
@@ -44,7 +45,7 @@ public final class ChooseNextAction {
         return candidates.build();
     }
 
-    /** Use case with the Follow, Wander, Bark, Hint and Summon options, in that order. */
+    /** Use case with the Follow, Wander, Bark, Hint, Summon and Mutter options, in that order. */
     public static ChooseNextAction withDefaultCatalog() {
         return new ChooseNextAction(
                 List.of(
@@ -52,6 +53,7 @@ public final class ChooseNextAction {
                         new WanderOption(),
                         new BarkOption(),
                         new HintOption(),
-                        new SummonOption()));
+                        new SummonOption(),
+                        new MutterOption()));
     }
 }

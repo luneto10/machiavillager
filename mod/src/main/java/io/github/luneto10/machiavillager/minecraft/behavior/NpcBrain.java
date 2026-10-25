@@ -5,6 +5,7 @@ import io.github.luneto10.machiavillager.application.ChooseNextAction;
 import io.github.luneto10.machiavillager.domain.Barks;
 import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.HitReaction;
+import io.github.luneto10.machiavillager.domain.behavior.IndependenceDrift;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
@@ -68,6 +69,8 @@ public final class NpcBrain {
     private final PerPlayerCooldown catchUpCooldown = new PerPlayerCooldown(CATCH_UP_COOLDOWN_TICKS);
     // Rate limits hits, so punching him cannot farm independence.
     private final HitReaction hitReaction = new HitReaction();
+    // Independence also drifts with time: alone it rises, in company it falls.
+    private final IndependenceDrift drift = new IndependenceDrift();
     private final BrainDebugOverlay overlay = new BrainDebugOverlay();
     private final VillageFinder villages = new VillageFinder();
     // In memory only: after a restart the first hint waits the minimum again.
@@ -120,10 +123,17 @@ public final class NpcBrain {
         }
     }
 
-    /** Ambition grows only while players are near him: an empty server never advances the story. */
+    /**
+     * Independence drifts on every clock step, with or without company. Ambition grows only while players are near
+     * him: an empty server never advances the story.
+     */
     private void growStory(PathfinderMob npc, ServerLevel level) {
+        // Time alone only counts while his chunk is loaded: he does not tick otherwise, see #57.
+        boolean playersNear = level.getNearestPlayer(npc, PRESENCE_RADIUS) != null;
+        driftIndependence(level, playersNear);
+
         // Nobody close enough to watch him: the story waits.
-        if (level.getNearestPlayer(npc, PRESENCE_RADIUS) == null) {
+        if (!playersNear) {
             return;
         }
 
@@ -140,6 +150,21 @@ public final class NpcBrain {
         if (before != after) {
             Machiavillager.LOGGER.info("Machiavillager phase: {} -> {}", before, after);
         }
+    }
+
+    /** Moves independence by the drift's whole points, if any. Saved only when the value really changes. */
+    private void driftIndependence(ServerLevel level, boolean playersNear) {
+        int delta = drift.tick(STORY_CLOCK_TICKS, playersNear);
+        // Most clock steps earn no full point, so the log stays quiet.
+        if (delta == 0) {
+            return;
+        }
+        StoryData data = StoryData.get(level.getServer());
+        int before = data.relationships().independence();
+        data.setRelationships(data.relationships().withIndependence(before + delta));
+        int after = data.relationships().independence();
+        Machiavillager.LOGGER.info(
+                "Machiavillager independence {} -> {} ({})", before, after, playersNear ? "company" : "alone");
     }
 
     /** Being hit lowers his affinity for the attacker and raises his independence, within rate limits. */
@@ -178,7 +203,7 @@ public final class NpcBrain {
         StoryData data = StoryData.get(level.getServer());
         Phase phase = data.progress().phase();
         long now = level.getGameTime();
-        return SituationSnapshot.take(npc, level, mood, phase, activeTicksSinceHint,
+        return SituationSnapshot.take(npc, level, mood, phase, activeTicksSinceHint, data.relationships(),
                 player -> summonable(npc, data, player, now));
     }
 
@@ -275,6 +300,7 @@ public final class NpcBrain {
             }
             case NpcAction.Hint hint -> giveHint(npc, level, hint.listener());
             case NpcAction.Summon summon -> startSummon(npc, level, summon.target());
+            case NpcAction.Mutter() -> mutter(npc, level);
         }
     }
 
@@ -405,6 +431,33 @@ public final class NpcBrain {
         NpcSpeech.say(npc, line);
     }
 
+    /** Mutters one line for the current story phase. Only players within whisper range overhear it. */
+    private void mutter(PathfinderMob npc, ServerLevel level) {
+        Phase phase = StoryData.get(level.getServer()).progress().phase();
+        NpcSpeech.whisper(npc, mutterLines(phase).pick(ThreadLocalRandom.current()));
+    }
+
+    /** What he mutters to himself in each story phase. The switch is exhaustive, so a new phase needs lines. */
+    private static Barks mutterLines(Phase phase) {
+        return switch (phase) {
+            case PARTNER -> new Barks(
+                    "Friendship... such a useful word.",
+                    "Count the emeralds. Count them again.");
+            case SEEDS -> new Barks(
+                    "A crown would suit me. Emerald, not gold.",
+                    "Leaders are just people who decided first.");
+            case PROPOSAL -> new Barks(
+                    "They'll say yes. They always say yes.",
+                    "A title for each of them. A leash for each title.");
+            case REGIME -> new Barks(
+                    "Loyalty is a habit. Habits can be trained.",
+                    "The bell rings when I say it rings.");
+            case WAR -> new Barks(
+                    "Traitors whisper too. Louder.",
+                    "If the walls fall, I'll build taller walls.");
+        };
+    }
+
     private static String describe(NpcAction action, ServerLevel level) {
         return switch (action) {
             case NpcAction.Follow follow -> "Follow(" + nameOf(follow.target(), level) + ")";
@@ -412,6 +465,7 @@ public final class NpcBrain {
             case NpcAction.Bark bark -> "Bark(" + nameOf(bark.listener(), level) + ")";
             case NpcAction.Hint hint -> "Hint(" + nameOf(hint.listener(), level) + ")";
             case NpcAction.Summon summon -> "Summon(" + nameOf(summon.target(), level) + ")";
+            case NpcAction.Mutter() -> "Mutter";
         };
     }
 
