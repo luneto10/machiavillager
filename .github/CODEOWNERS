@@ -1,0 +1,9 @@
+# Who is asked to review what. GitHub requests these reviewers automatically on every PR.
+# The bridge contract is shared: both developers review any change to it.
+
+/backend/                                         @luneto10
+/mod/                                             @PuliNFPS @luneto10
+
+/shared/                                          @luneto10 @PuliNFPS
+/backend/src/machiavillager/domain/protocol.py    @luneto10 @PuliNFPS
+/docs/decisions/0004-bridge-protocol.md           @luneto10 @PuliNFPS
