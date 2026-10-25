@@ -58,7 +58,7 @@ server tick and without giving the AI any power beyond an allowlist.
 
 ### 4. Contract generated from the Python models
 
-- **Decision:** the Pydantic models in `backend/src/machiavillager/domain/protocol.py` are the source of
+- **Decision:** the Pydantic models in `backend/src/machiavillager/domain/protocol/` are the source of
   truth. `backend/scripts/export_protocol_schema.py` writes `shared/protocol.schema.json` (JSON Schema
   2020-12), which is committed and never edited by hand. A backend test fails when the committed file
   is stale. Java and Python tests validate the same `shared/examples`.

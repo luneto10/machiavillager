@@ -4,7 +4,7 @@ import java.util.regex.Pattern;
 
 /**
  * Wire constants the mod needs at runtime. The rules themselves live in shared/protocol.schema.json, generated
- * from backend/src/machiavillager/domain/protocol.py, and the mod checks every incoming message against that file.
+ * from backend/src/machiavillager/domain/protocol/, and the mod checks every incoming message against that file.
  * Pure Java: no Minecraft imports.
  */
 public final class ProtocolRules {

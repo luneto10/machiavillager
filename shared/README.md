@@ -4,7 +4,7 @@ The contract between the Minecraft mod and the Python backend.
 
 ## Generated files: never edit by hand
 
-The Pydantic models in `backend/src/machiavillager/domain/protocol.py` are the source of truth. These
+The Pydantic models in `backend/src/machiavillager/domain/protocol/` are the source of truth. These
 files are generated from them:
 
 - `protocol.schema.json`: JSON Schema (draft 2020-12) for every message. The mod reads it too.

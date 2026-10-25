@@ -6,7 +6,7 @@ description: Use when adding, changing, or debugging a message between the Minec
 # Mod ⇄ backend bridge protocol
 
 Transport: one authenticated WebSocket from the mod (client side of the socket) to the backend.
-JSON messages. Source of truth: the Pydantic models in `backend/src/machiavillager/domain/protocol.py`.
+JSON messages. Source of truth: the Pydantic models in `backend/src/machiavillager/domain/protocol/`.
 `shared/protocol.schema.json` is generated from them (`cd backend; uv run python scripts/export_protocol_schema.py`)
 and must never be edited by hand; a backend test fails when it is stale.
 
@@ -54,8 +54,8 @@ blocks interrupts after the current line. At most one unprompted `speak` per pla
 
 ## Adding a new action — do all steps, in order
 
-1. **Python model**: add the action model (and its args model) to `backend/.../domain/protocol.py` and
-   to the `Message` union.
+1. **Python model**: add the action model (and its args model) to `backend/.../domain/protocol/` and
+   to the `Message` union. New actions go in actions.py, new events in events.py, then add them to the Message union in __init__.py.
 2. **Export**: `cd backend; uv run python scripts/export_protocol_schema.py` regenerates
    `shared/protocol.schema.json`. Never edit that file by hand.
 3. **Examples**: write one valid file in `shared/examples/valid`. `shared/examples/invalid.jsonl` is
