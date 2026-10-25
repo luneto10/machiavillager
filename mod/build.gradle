@@ -44,6 +44,12 @@ loom {
 		configureEach { run ->
 			runEnvironment.each { key, value -> run.environmentVariable(key, value) }
 		}
+
+		// A fixed dev name, so the offline UUID (derived from the name) stays the same every launch.
+		// Each developer sets MACHIAVILLAGER_DEV_USERNAME in their own .env.
+		client {
+			programArgs "--username", runEnvironment.get("MACHIAVILLAGER_DEV_USERNAME", "Dev")
+		}
 	}
 }
 
