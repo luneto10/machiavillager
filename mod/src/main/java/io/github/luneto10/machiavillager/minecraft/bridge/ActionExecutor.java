@@ -113,7 +113,7 @@ public final class ActionExecutor {
     // Private lines go only to the recipient; normal lines are heard by everyone nearby.
     private static void speakLine(ActiveSpeech current, String line) {
         current.recipient().ifPresentOrElse(
-                player -> NpcSpeech.tellPrivately(player, line),
+                player -> NpcSpeech.tellPrivately(current.npc(), player, line),
                 () -> NpcSpeech.say(current.npc(), line));
     }
 
