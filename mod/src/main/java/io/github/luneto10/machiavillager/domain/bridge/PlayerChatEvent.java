@@ -6,13 +6,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The mod reports that a player spoke in normal chat. No reply is expected from the mod's side.
+ * The mod reports that a player spoke. No reply is expected from the mod's side.
  *
  * @param eventId the event id, prefixed evt_
  * @param occurredAt when the chat happened, in UTC
  * @param playerUuid the speaker's UUID
- * @param playerName the speaker's name, 1 to 16 characters
- * @param text what was said, 1 to 256 characters
+ * @param playerName the speaker's name
+ * @param text what was said
+ * @param addressed why the mod forwarded the line
  * @param conversationId optional conversation this message belongs to
  */
 public record PlayerChatEvent(
@@ -21,16 +22,17 @@ public record PlayerChatEvent(
         UUID playerUuid,
         String playerName,
         String text,
+        Addressed addressed,
         Optional<String> conversationId) implements BridgeMessage {
 
-    /** Validates every field against the contract limits. */
+    /** Null checks only; the limits are enforced by the schema. */
     public PlayerChatEvent {
-        eventId = ProtocolRules.requireEventId(eventId);
+        Objects.requireNonNull(eventId, "event_id");
         Objects.requireNonNull(occurredAt, "occurred_at");
         Objects.requireNonNull(playerUuid, "player_uuid");
-        playerName = ProtocolRules.requireText(
-                playerName, 1, ProtocolRules.MAX_PLAYER_NAME_LENGTH, "player_name");
-        text = ProtocolRules.requireText(text, 1, ProtocolRules.MAX_CHAT_TEXT_LENGTH, "text");
-        conversationId = ProtocolRules.requireConversationId(conversationId);
+        Objects.requireNonNull(playerName, "player_name");
+        Objects.requireNonNull(text, "text");
+        Objects.requireNonNull(addressed, "addressed");
+        Objects.requireNonNull(conversationId, "conversation_id");
     }
 }

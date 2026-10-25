@@ -7,14 +7,14 @@ import java.util.Objects;
  * Either side reports a message it cannot accept. Branch on the code, never on the detail text.
  *
  * @param code the closed set of error codes
- * @param detail a human-readable note, up to 500 characters
+ * @param detail a human-readable note
  */
 public record BridgeError(Code code, String detail) implements BridgeMessage {
 
-    /** Validates the code is present and the detail length is within the limit. */
+    /** Null checks only; the detail length is enforced by the schema. */
     public BridgeError {
         Objects.requireNonNull(code, "code");
-        detail = ProtocolRules.requireText(detail, 0, ProtocolRules.MAX_DETAIL_LENGTH, "detail");
+        Objects.requireNonNull(detail, "detail");
     }
 
     /** The closed set of error codes allowed on the wire. */

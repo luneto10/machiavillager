@@ -52,13 +52,29 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
+	// The bridge checks every incoming message against the bundled schema, so the validator ships in the jar.
+	// Loom nests it and its runtime libraries (Jar-in-Jar). slf4j comes from Minecraft, so it stays out.
+	def jsonSchemaValidator = "com.networknt:json-schema-validator:${project.json_schema_validator_version}"
+	implementation(jsonSchemaValidator) {
+		exclude group: "org.slf4j"
+	}
+	// Include does not follow transitive dependencies, so the validator's runtime libraries are listed here.
+	// Versions are the ones networknt 3.0.8 resolves to (see the runtimeClasspath tree); optional libraries stay out.
+	[
+		"com.ethlo.time:itu:1.14.0",
+		"tools.jackson.core:jackson-core:3.2.1",
+		"tools.jackson.core:jackson-databind:3.2.1",
+		"com.fasterxml.jackson.core:jackson-annotations:2.22",
+		"tools.jackson.dataformat:jackson-dataformat-yaml:3.2.1",
+		"org.snakeyaml:snakeyaml-engine:3.0.1",
+		jsonSchemaValidator,
+	].each { include(it) }
+
 	// Unit tests for the pure-Java layers (domain, application). They never start Minecraft.
 	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
 	testImplementation "org.junit.jupiter:junit-jupiter"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 	testImplementation "com.tngtech.archunit:archunit-junit5:${project.archunit_version}"
-	// Test-only: the bridge contract is checked against the shared JSON Schema, never at runtime.
-	testImplementation "com.networknt:json-schema-validator:${project.json_schema_validator_version}"
 }
 
 test {
@@ -68,6 +84,11 @@ test {
 processResources {
 	def version = project.version
 	inputs.property "version", version
+
+	// The generated schema is copied from shared/ at build time, so the jar always carries the backend's file.
+	from("../shared/protocol.schema.json") {
+		into "machiavillager"
+	}
 
 	filesMatching("fabric.mod.json") {
 		expand "version": version

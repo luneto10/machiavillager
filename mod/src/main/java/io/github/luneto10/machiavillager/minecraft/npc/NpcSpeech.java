@@ -4,12 +4,16 @@ import io.github.luneto10.machiavillager.domain.behavior.Hearing;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 /** Makes an NPC "talk" or "mutter": chat lines heard by players within a range. */
 public final class NpcSpeech {
     private static final double HEARING_RADIUS_SQR = Hearing.DISTANCE * Hearing.DISTANCE;
     private static final double WHISPER_RADIUS_SQR = Hearing.WHISPER_DISTANCE * Hearing.WHISPER_DISTANCE;
+
+    // Prefix of private speech; the arrow is written as an escape so the source stays plain ASCII.
+    private static final String PRIVATE_PREFIX = "[Machiavillager → you] ";
 
     private NpcSpeech() {}
 
@@ -25,6 +29,12 @@ public final class NpcSpeech {
         Component line = Component.literal(speaker.getDisplayName().getString() + " mutters: " + text)
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
         sendWithin(speaker, WHISPER_RADIUS_SQR, line);
+    }
+
+    /** Server side only. Shows a gray italic private line to one player, at any distance. Never voice. */
+    public static void tellPrivately(ServerPlayer player, String text) {
+        Component line = Component.literal(PRIVATE_PREFIX + text).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
+        player.sendSystemMessage(line);
     }
 
     // One loop for every kind of speech: only the range and the formatting differ.

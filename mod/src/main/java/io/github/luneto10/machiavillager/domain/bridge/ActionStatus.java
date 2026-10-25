@@ -1,8 +1,10 @@
 package io.github.luneto10.machiavillager.domain.bridge;
 
+import java.util.Objects;
+
 /**
- * Progress of one action request. Each status is its own record, so a failed status cannot exist
- * without a reason and an interrupted one cannot exist without its counts.
+ * Progress of one action request. Each status is its own record, so the shape of each one is fixed by its type.
+ * The schema enforces the limits on ids and reasons; the records only check for null.
  */
 public sealed interface ActionStatus extends BridgeMessage
         permits ActionStatus.Accepted, ActionStatus.Running, ActionStatus.Succeeded,
@@ -13,53 +15,51 @@ public sealed interface ActionStatus extends BridgeMessage
 
     /** The mod took the request and will try to run it. */
     record Accepted(String requestId) implements ActionStatus {
-        /** Validates the request id. */
+        /** Null check only. */
         public Accepted {
-            requestId = ProtocolRules.requireActionId(requestId);
+            Objects.requireNonNull(requestId, "request_id");
         }
     }
 
     /** The mod has started performing the action. */
     record Running(String requestId) implements ActionStatus {
-        /** Validates the request id. */
+        /** Null check only. */
         public Running {
-            requestId = ProtocolRules.requireActionId(requestId);
+            Objects.requireNonNull(requestId, "request_id");
         }
     }
 
     /** The action finished. Nothing else to report. */
     record Succeeded(String requestId) implements ActionStatus {
-        /** Validates the request id. */
+        /** Null check only. */
         public Succeeded {
-            requestId = ProtocolRules.requireActionId(requestId);
+            Objects.requireNonNull(requestId, "request_id");
         }
     }
 
-    /** The action could not be completed. The reason says why, up to 200 characters. */
+    /** The action could not be completed. The reason says why. */
     record Failed(String requestId, String reason) implements ActionStatus {
-        /** Validates the request id and the reason length. */
+        /** Null checks only. */
         public Failed {
-            requestId = ProtocolRules.requireActionId(requestId);
-            reason = ProtocolRules.requireText(reason, 0, ProtocolRules.MAX_REASON_LENGTH, "reason");
+            Objects.requireNonNull(requestId, "request_id");
+            Objects.requireNonNull(reason, "reason");
         }
     }
 
-    /** The mod refused the request before starting it. The reason says why, up to 200 characters. */
+    /** The mod refused the request before starting it. The reason says why. */
     record Rejected(String requestId, String reason) implements ActionStatus {
-        /** Validates the request id and the reason length. */
+        /** Null checks only. */
         public Rejected {
-            requestId = ProtocolRules.requireActionId(requestId);
-            reason = ProtocolRules.requireText(reason, 0, ProtocolRules.MAX_REASON_LENGTH, "reason");
+            Objects.requireNonNull(requestId, "request_id");
+            Objects.requireNonNull(reason, "reason");
         }
     }
 
     /** The action started but stopped early. Reports how many of the lines were spoken. */
     record Interrupted(String requestId, int spoken, int of) implements ActionStatus {
-        /** Validates the request id and both counts. */
+        /** Null check only; the counts are bounded by the schema. */
         public Interrupted {
-            requestId = ProtocolRules.requireActionId(requestId);
-            spoken = ProtocolRules.requireRange(spoken, 0, Integer.MAX_VALUE, "spoken");
-            of = ProtocolRules.requireRange(of, 1, ProtocolRules.MAX_SPEAK_LINES, "of");
+            Objects.requireNonNull(requestId, "request_id");
         }
     }
 }
