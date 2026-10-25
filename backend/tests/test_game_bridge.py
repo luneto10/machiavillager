@@ -7,7 +7,8 @@ import pytest
 
 from machiavillager.api.bridge import requests
 from machiavillager.api.bridge.connections import ModConnections
-from machiavillager.api.bridge.requests import ModGameBridge, PendingRequests, new_request_id
+from machiavillager.api.bridge.ids import new_request_id
+from machiavillager.api.bridge.requests import ModGameBridge, PendingRequests
 from machiavillager.application.ports import BridgeUnavailable
 from machiavillager.domain.protocol import (
     ACTION_ID_PATTERN,

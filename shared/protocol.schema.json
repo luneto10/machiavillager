@@ -9,21 +9,25 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "accepted",
+          "description": "Progress. \"accepted\": the mod took the action and will try to run it.",
           "title": "Status",
           "type": "string"
         }
@@ -43,15 +47,18 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "error",
+          "description": "Message kind. Always \"error\".",
           "title": "Type",
           "type": "string"
         },
         "code": {
+          "description": "Why the message was refused, from a closed set the other side can branch on. bad_message: could not be parsed or broke a rule. unsupported_protocol: the protocol version is not supported. unauthorized: the token was wrong or missing. internal: the sender failed unexpectedly.",
           "enum": [
             "bad_message",
             "unsupported_protocol",
@@ -62,6 +69,7 @@
           "type": "string"
         },
         "detail": {
+          "description": "Short human-readable explanation, up to 500 characters. It never repeats the rejected payload. Example: \"action args do not match the speak schema\".",
           "maxLength": 500,
           "title": "Detail",
           "type": "string"
@@ -82,25 +90,30 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "failed",
+          "description": "Terminal. \"failed\": the action could not be completed.",
           "title": "Status",
           "type": "string"
         },
         "reason": {
+          "description": "Why the action failed, in up to 200 characters. Set by the mod, or by the backend when the mod disconnects (\"disconnected\") or does not answer in time (\"timeout\"). Example: \"disconnected\".",
           "maxLength": 200,
           "title": "Reason",
           "type": "string"
@@ -122,15 +135,18 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "hello",
+          "description": "Message kind. Always \"hello\".",
           "title": "Type",
           "type": "string"
         },
         "mod_version": {
+          "description": "Version of the mod, read from its own metadata by the mod. Example: \"0.1.0\".",
           "maxLength": 32,
           "minLength": 1,
           "title": "Mod Version",
@@ -138,6 +154,7 @@
         },
         "protocol": {
           "const": 1,
+          "description": "Protocol version the mod speaks. Only 1 is accepted today.",
           "title": "Protocol",
           "type": "integer"
         }
@@ -157,30 +174,36 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "interrupted",
+          "description": "Terminal. \"interrupted\": the action started and stopped early, because a player talked over him.",
           "title": "Status",
           "type": "string"
         },
         "spoken": {
+          "description": "How many lines were spoken before the interruption. 0 or more. Example: 2.",
           "minimum": 0,
           "title": "Spoken",
           "type": "integer"
         },
         "of": {
+          "description": "How many lines the action asked for, between 1 and 8. Example: 5.",
           "maximum": 8,
           "minimum": 1,
           "title": "Of",
@@ -200,68 +223,91 @@
     },
     "PlayerChatData": {
       "additionalProperties": false,
-      "description": "Payload for player_chat: a player said something in normal chat.",
+      "description": "Payload for player_chat: a player said something the mod chose to forward.",
       "properties": {
         "player_uuid": {
+          "description": "Minecraft UUID of the player who spoke, in canonical 8-4-4-4-12 form. Set by the mod. Example: \"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69\".",
           "format": "uuid",
           "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
           "title": "Player Uuid",
           "type": "string"
         },
         "player_name": {
+          "description": "The player's in-game name, 1 to 16 characters. Example: \"Luciano\".",
           "maxLength": 16,
           "minLength": 1,
           "title": "Player Name",
           "type": "string"
         },
         "text": {
+          "description": "What the player typed, 1 to 256 characters. Set by the mod. Chat text is never logged at INFO. Example: \"hi\".",
           "maxLength": 256,
           "minLength": 1,
           "title": "Text",
+          "type": "string"
+        },
+        "addressed": {
+          "description": "Why the mod forwarded this line. Set by the mod. \"name\": the player used his name. \"conversation\": the line continues a conversation the mod is tracking. \"near\": nearby speech without his name. \"butt_in\": the player talked over him while he was speaking. \"private\": the @m channel. The text is private and is never voice.",
+          "enum": [
+            "name",
+            "conversation",
+            "near",
+            "butt_in",
+            "private"
+          ],
+          "title": "Addressed",
           "type": "string"
         }
       },
       "required": [
         "player_uuid",
         "player_name",
-        "text"
+        "text",
+        "addressed"
       ],
       "title": "PlayerChatData",
       "type": "object"
     },
     "PlayerChatEvent": {
       "additionalProperties": false,
-      "description": "Mod reports that a player spoke in chat. No reply is expected.",
+      "description": "Mod reports that a player spoke. No reply is expected; the backend decides whether to act.",
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "event",
+          "description": "Message kind. Always \"event\".",
           "title": "Type",
           "type": "string"
         },
         "event_id": {
+          "description": "Generated by the mod: evt_ followed by 8 to 32 letters or digits. Unique per event. Example: evt_01HZX8K2M9.",
           "pattern": "^evt_[A-Za-z0-9]{8,32}$",
           "title": "Event Id",
           "type": "string"
         },
         "event": {
           "const": "player_chat",
+          "description": "Name of the event. Only \"player_chat\" exists today.",
           "title": "Event",
           "type": "string"
         },
         "occurred_at": {
+          "description": "When the mod saw the chat, from the mod's clock, in UTC with the Z suffix. Example: 2026-10-18T12:00:00Z.",
           "format": "date-time",
           "title": "Occurred At",
           "type": "string"
         },
         "data": {
-          "$ref": "#/$defs/PlayerChatData"
+          "$ref": "#/$defs/PlayerChatData",
+          "description": "Who said what. See PlayerChatData."
         },
         "conversation_id": {
+          "description": "Generated by the mod: one id per conversation, new after 60 seconds of silence. Omit it when the chat is not part of a conversation. Explicit null is rejected. Example: conv_01HZX8K2M9.",
           "pattern": "^conv_[A-Za-z0-9]{8,32}$",
           "title": "Conversation Id",
           "type": "string"
@@ -284,25 +330,30 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "rejected",
+          "description": "Terminal. \"rejected\": the mod refused the action before starting it.",
           "title": "Status",
           "type": "string"
         },
         "reason": {
+          "description": "Why the mod refused the action, in up to 200 characters. Example: \"unknown action: run_command\".",
           "maxLength": 200,
           "title": "Reason",
           "type": "string"
@@ -324,21 +375,25 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "running",
+          "description": "Progress. \"running\": the mod has started the action.",
           "title": "Status",
           "type": "string"
         }
@@ -358,34 +413,41 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action",
+          "description": "Message kind. Always \"action\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "Generated by the backend: act_ followed by 16 random hex characters. Unique per action; every action_status for this action echoes it. Example: act_3fa9c01b7e2d4f60.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "action": {
           "const": "speak",
+          "description": "Name of the allowlisted action. Only \"speak\" exists today.",
           "title": "Action",
           "type": "string"
         },
         "args": {
-          "$ref": "#/$defs/SpeakArgs"
+          "$ref": "#/$defs/SpeakArgs",
+          "description": "Arguments for speak. See SpeakArgs."
         },
         "timeout_ms": {
+          "description": "How long the mod may take before the action is reported as failed with reason timeout, in milliseconds. Between 100 and 120000. Example: 30000.",
           "maximum": 120000,
           "minimum": 100,
           "title": "Timeout Ms",
           "type": "integer"
         },
         "conversation_id": {
+          "description": "Groups this speech with a conversation that the mod is tracking. Generated by the mod, see PlayerChatEvent. Omit it when the speech is not part of one. Explicit null is rejected.",
           "pattern": "^conv_[A-Za-z0-9]{8,32}$",
           "title": "Conversation Id",
           "type": "string"
@@ -404,9 +466,10 @@
     },
     "SpeakArgs": {
       "additionalProperties": false,
-      "description": "Arguments for speak: between 1 and 8 lines, each between 1 and 256 characters.\n\nThe mod paces the lines itself.",
+      "description": "Arguments for speak: between 1 and 8 lines, each between 1 and 256 characters.\n\nWithout \"to\", the lines are normal proximity speech. With \"to\", the lines are private text\nfor one player. The mod paces the lines itself.",
       "properties": {
         "lines": {
+          "description": "What he says, in order. The mod paces the lines itself. Between 1 and 8 lines, each between 1 and 256 characters. Example: [\"Hello, traveller.\"].",
           "items": {
             "maxLength": 256,
             "minLength": 1,
@@ -416,6 +479,13 @@
           "minItems": 1,
           "title": "Lines",
           "type": "array"
+        },
+        "to": {
+          "description": "Private recipient. Set only for speech meant for one player: the lines reach that player alone, at any distance, and are never spoken aloud. Omit it for normal speech nearby. Explicit null is rejected. Example: \"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69\".",
+          "format": "uuid",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "To",
+          "type": "string"
         }
       },
       "required": [
@@ -430,21 +500,25 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "action_status",
+          "description": "Message kind. Always \"action_status\".",
           "title": "Type",
           "type": "string"
         },
         "request_id": {
+          "description": "The request_id of the action this status is about. Echoed from the action.",
           "pattern": "^act_[A-Za-z0-9]{8,32}$",
           "title": "Request Id",
           "type": "string"
         },
         "status": {
           "const": "succeeded",
+          "description": "Terminal. \"succeeded\": the action finished. No other fields.",
           "title": "Status",
           "type": "string"
         }
@@ -464,16 +538,19 @@
       "properties": {
         "v": {
           "const": 1,
+          "description": "Wire version of the message. Always 1. A breaking change bumps it.",
           "title": "V",
           "type": "integer"
         },
         "type": {
           "const": "welcome",
+          "description": "Message kind. Always \"welcome\".",
           "title": "Type",
           "type": "string"
         },
         "protocol": {
           "const": 1,
+          "description": "Protocol version the backend agreed to speak. Always 1 today.",
           "title": "Protocol",
           "type": "integer"
         }
@@ -498,6 +575,7 @@
       "$ref": "#/$defs/SpeakAction"
     },
     {
+      "description": "Mod reports how an action request is going. The status selects the shape.",
       "oneOf": [
         {
           "$ref": "#/$defs/Accepted"
@@ -517,7 +595,8 @@
         {
           "$ref": "#/$defs/Interrupted"
         }
-      ]
+      ],
+      "title": "ActionStatus"
     },
     {
       "$ref": "#/$defs/PlayerChatEvent"

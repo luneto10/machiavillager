@@ -40,6 +40,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.mod_connections = connections
     app.state.pending_requests = pending
     app.state.game_bridge = ModGameBridge(connections, pending)
+    # Read by handle_event: when on, he repeats each player chat line back.
+    app.state.dev_echo = effective.dev_echo
     app.include_router(router)
 
     if effective.dev_endpoints:

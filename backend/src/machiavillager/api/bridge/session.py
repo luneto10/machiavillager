@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Final
 from fastapi import WebSocket, status
 from pydantic import ValidationError
 
+from machiavillager.api.bridge.events import handle_event
 from machiavillager.domain.protocol import (
     MAX_DETAIL_LENGTH,
     PROTOCOL_VERSION,
@@ -15,6 +16,7 @@ from machiavillager.domain.protocol import (
     ErrorCode,
     Hello,
     Message,
+    PlayerChatEvent,
     Welcome,
     parse_message,
 )
@@ -115,6 +117,9 @@ async def serve(websocket: WebSocket, pending: "PendingRequests") -> None:
             continue
         log_message("in", message)
 
-        # Only action_status answers a request we sent; every other kind has no waiter here.
+        # Only action_status answers a request we sent. A chat event goes to the event handler,
+        # which never waits, so this loop keeps reading the statuses that follow.
         if message.type == "action_status":
             pending.resolve(message)
+        elif isinstance(message, PlayerChatEvent):
+            await handle_event(message, websocket.app.state)

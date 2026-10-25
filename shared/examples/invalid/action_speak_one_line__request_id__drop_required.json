@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "type": "action",
+  "action": "speak",
+  "args": {
+    "lines": [
+      "Hello there, traveller."
+    ]
+  },
+  "timeout_ms": 30000
+}

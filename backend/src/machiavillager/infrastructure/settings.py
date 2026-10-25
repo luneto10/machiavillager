@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Dev only: mounts POST /dev/speak. Off by default, so a normal run exposes no test endpoints.
     dev_endpoints: bool = False
 
+    # Dev only: he repeats each player chat line back, prefixed "(echo) ". Off by default.
+    dev_echo: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

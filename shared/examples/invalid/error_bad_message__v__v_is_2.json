@@ -1,0 +1,6 @@
+{
+  "v": 2,
+  "type": "error",
+  "code": "bad_message",
+  "detail": "action args do not match the speak schema"
+}

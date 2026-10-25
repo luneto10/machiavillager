@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "type": "action",
+  "request_id": "act_01HZX8K2M9",
+  "action": "speak",
+  "args": {
+    "lines": [
+      "Luciano, a word.",
+      "",
+      "Come find me at the well."
+    ]
+  },
+  "timeout_ms": 30000,
+  "conversation_id": "conv_01HZX8K2M9"
+}
