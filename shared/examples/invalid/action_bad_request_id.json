@@ -1,0 +1,1 @@
+{"v": 1, "type": "action", "request_id": "act_x", "action": "speak", "args": {"lines": ["Hello."]}, "timeout_ms": 30000}

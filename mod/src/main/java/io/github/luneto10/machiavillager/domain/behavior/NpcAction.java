@@ -8,7 +8,8 @@ import java.util.UUID;
  * and the Minecraft layer executes it later.
  */
 public sealed interface NpcAction
-        permits NpcAction.Follow, NpcAction.Wander, NpcAction.Bark, NpcAction.Hint, NpcAction.Summon {
+        permits NpcAction.Follow, NpcAction.Wander, NpcAction.Bark, NpcAction.Hint, NpcAction.Summon,
+                NpcAction.Mutter {
 
     /** Walk after this player. */
     record Follow(UUID target) implements NpcAction {
@@ -40,5 +41,9 @@ public sealed interface NpcAction
         public Summon {
             Objects.requireNonNull(target, "target");
         }
+    }
+
+    /** Mutter a line to himself, overheard only by players very close. */
+    record Mutter() implements NpcAction {
     }
 }

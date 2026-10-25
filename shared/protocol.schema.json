@@ -1,0 +1,529 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Machiavillager bridge protocol",
+  "description": "Messages exchanged between the Minecraft mod and the Python backend over one WebSocket. Every message is one JSON object with v and type. Design and wire rules: docs/decisions/0004-bridge-protocol.md.",
+  "$defs": {
+    "Accepted": {
+      "additionalProperties": false,
+      "description": "The mod took the request and will try to run it.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "accepted",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status"
+      ],
+      "title": "Accepted",
+      "type": "object"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "description": "Either side reports a message it cannot accept. The code set is closed for branching.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "error",
+          "title": "Type",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "bad_message",
+            "unsupported_protocol",
+            "unauthorized",
+            "internal"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "code",
+        "detail"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "Failed": {
+      "additionalProperties": false,
+      "description": "The action could not be completed. The reason says why.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "failed",
+          "title": "Status",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 200,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status",
+        "reason"
+      ],
+      "title": "Failed",
+      "type": "object"
+    },
+    "Hello": {
+      "additionalProperties": false,
+      "description": "Sent by the mod after connecting. Carries its mod version and the protocol it speaks.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "hello",
+          "title": "Type",
+          "type": "string"
+        },
+        "mod_version": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Mod Version",
+          "type": "string"
+        },
+        "protocol": {
+          "const": 1,
+          "title": "Protocol",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "mod_version",
+        "protocol"
+      ],
+      "title": "Hello",
+      "type": "object"
+    },
+    "Interrupted": {
+      "additionalProperties": false,
+      "description": "The action started but stopped early. Reports how many lines were spoken.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "interrupted",
+          "title": "Status",
+          "type": "string"
+        },
+        "spoken": {
+          "minimum": 0,
+          "title": "Spoken",
+          "type": "integer"
+        },
+        "of": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Of",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status",
+        "spoken",
+        "of"
+      ],
+      "title": "Interrupted",
+      "type": "object"
+    },
+    "PlayerChatData": {
+      "additionalProperties": false,
+      "description": "Payload for player_chat: a player said something in normal chat.",
+      "properties": {
+        "player_uuid": {
+          "format": "uuid",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "Player Uuid",
+          "type": "string"
+        },
+        "player_name": {
+          "maxLength": 16,
+          "minLength": 1,
+          "title": "Player Name",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "player_uuid",
+        "player_name",
+        "text"
+      ],
+      "title": "PlayerChatData",
+      "type": "object"
+    },
+    "PlayerChatEvent": {
+      "additionalProperties": false,
+      "description": "Mod reports that a player spoke in chat. No reply is expected.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "event",
+          "title": "Type",
+          "type": "string"
+        },
+        "event_id": {
+          "pattern": "^evt_[A-Za-z0-9]{8,32}$",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event": {
+          "const": "player_chat",
+          "title": "Event",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/$defs/PlayerChatData"
+        },
+        "conversation_id": {
+          "pattern": "^conv_[A-Za-z0-9]{8,32}$",
+          "title": "Conversation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "event_id",
+        "event",
+        "occurred_at",
+        "data"
+      ],
+      "title": "PlayerChatEvent",
+      "type": "object"
+    },
+    "Rejected": {
+      "additionalProperties": false,
+      "description": "The mod refused the request before starting it. The reason says why.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "rejected",
+          "title": "Status",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 200,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status",
+        "reason"
+      ],
+      "title": "Rejected",
+      "type": "object"
+    },
+    "Running": {
+      "additionalProperties": false,
+      "description": "The mod has started performing the action.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "running",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status"
+      ],
+      "title": "Running",
+      "type": "object"
+    },
+    "SpeakAction": {
+      "additionalProperties": false,
+      "description": "Backend asks the mod to speak a short sequence of lines as one action.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "action": {
+          "const": "speak",
+          "title": "Action",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SpeakArgs"
+        },
+        "timeout_ms": {
+          "maximum": 120000,
+          "minimum": 100,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "conversation_id": {
+          "pattern": "^conv_[A-Za-z0-9]{8,32}$",
+          "title": "Conversation Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "action",
+        "args",
+        "timeout_ms"
+      ],
+      "title": "SpeakAction",
+      "type": "object"
+    },
+    "SpeakArgs": {
+      "additionalProperties": false,
+      "description": "Arguments for speak: between 1 and 8 lines, each between 1 and 256 characters.\n\nThe mod paces the lines itself.",
+      "properties": {
+        "lines": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "lines"
+      ],
+      "title": "SpeakArgs",
+      "type": "object"
+    },
+    "Succeeded": {
+      "additionalProperties": false,
+      "description": "The action finished. Nothing else to report.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "action_status",
+          "title": "Type",
+          "type": "string"
+        },
+        "request_id": {
+          "pattern": "^act_[A-Za-z0-9]{8,32}$",
+          "title": "Request Id",
+          "type": "string"
+        },
+        "status": {
+          "const": "succeeded",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "request_id",
+        "status"
+      ],
+      "title": "Succeeded",
+      "type": "object"
+    },
+    "Welcome": {
+      "additionalProperties": false,
+      "description": "Sent by the backend in answer to hello when the protocol version is supported.",
+      "properties": {
+        "v": {
+          "const": 1,
+          "title": "V",
+          "type": "integer"
+        },
+        "type": {
+          "const": "welcome",
+          "title": "Type",
+          "type": "string"
+        },
+        "protocol": {
+          "const": 1,
+          "title": "Protocol",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "v",
+        "type",
+        "protocol"
+      ],
+      "title": "Welcome",
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Hello"
+    },
+    {
+      "$ref": "#/$defs/Welcome"
+    },
+    {
+      "$ref": "#/$defs/SpeakAction"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Accepted"
+        },
+        {
+          "$ref": "#/$defs/Running"
+        },
+        {
+          "$ref": "#/$defs/Succeeded"
+        },
+        {
+          "$ref": "#/$defs/Failed"
+        },
+        {
+          "$ref": "#/$defs/Rejected"
+        },
+        {
+          "$ref": "#/$defs/Interrupted"
+        }
+      ]
+    },
+    {
+      "$ref": "#/$defs/PlayerChatEvent"
+    },
+    {
+      "$ref": "#/$defs/Error"
+    }
+  ]
+}

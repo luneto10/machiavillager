@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.16.1",
     "uvicorn[standard]>=0.32",
 ]
 
@@ -14,6 +16,9 @@ dev = [
     "httpx2>=2.14",
     "pytest>=8.3",
     "ruff>=0.8",
+    "jsonschema>=4.23",
+    # Optional jsonschema dependency: without it "format": "date-time" is silently never checked.
+    "rfc3339-validator>=0.1.4",
 ]
 
 [build-system]

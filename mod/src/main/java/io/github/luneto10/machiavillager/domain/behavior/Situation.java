@@ -14,19 +14,27 @@ import java.util.UUID;
  * @param phase the story phase, which gates some options (such as hints)
  * @param ticksSinceHint active-play ticks since the last hint
  * @param summonable players who may be summoned right now, copied into an unmodifiable set
+ * @param caredFor players he cares about (affinity above independence), copied into an unmodifiable set
  */
 public record Situation(
-        Mood mood, List<NearbyPlayer> nearbyPlayers, Phase phase, long ticksSinceHint, Set<UUID> summonable) {
+        Mood mood,
+        List<NearbyPlayer> nearbyPlayers,
+        Phase phase,
+        long ticksSinceHint,
+        Set<UUID> summonable,
+        Set<UUID> caredFor) {
     public Situation {
         Objects.requireNonNull(mood, "mood");
         Objects.requireNonNull(nearbyPlayers, "nearbyPlayers");
         Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(summonable, "summonable");
+        Objects.requireNonNull(caredFor, "caredFor");
         if (ticksSinceHint < 0) {
             throw new IllegalArgumentException("ticksSinceHint must not be negative: " + ticksSinceHint);
         }
         nearbyPlayers = List.copyOf(nearbyPlayers);
         summonable = Set.copyOf(summonable);
+        caredFor = Set.copyOf(caredFor);
     }
 
     /** Players at most {@code radius} blocks away. The list is unmodifiable. */
@@ -40,5 +48,10 @@ public record Situation(
     public boolean isSummonable(UUID player) {
         // The set is immutable, so a plain lookup is enough.
         return summonable.contains(player);
+    }
+
+    /** Whether he cares about this player, which lets him go looking for them from far away. */
+    public boolean caresFor(UUID player) {
+        return caredFor.contains(player);
     }
 }

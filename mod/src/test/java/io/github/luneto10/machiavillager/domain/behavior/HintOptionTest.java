@@ -67,6 +67,6 @@ class HintOptionTest {
 
     private static Situation situation(Phase phase, long ticksSinceHint, double distance) {
         return new Situation(
-                Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, ticksSinceHint, Set.of());
+                Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, ticksSinceHint, Set.of(), Set.of());
     }
 }

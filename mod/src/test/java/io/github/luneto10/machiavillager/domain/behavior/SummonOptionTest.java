@@ -59,6 +59,6 @@ class SummonOptionTest {
     private static Situation situation(Phase phase, double distance, boolean summonable) {
         Set<UUID> allowed = summonable ? Set.of(PLAYER) : Set.of();
         return new Situation(
-                Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, 0, allowed);
+                Mood.CALM, List.of(new NearbyPlayer(PLAYER, "Alice", distance)), phase, 0, allowed, Set.of());
     }
 }

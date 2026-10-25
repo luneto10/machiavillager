@@ -26,11 +26,12 @@ class ChooseNextActionTest {
     private static final double TOLERANCE = 0.01;
     private static final UUID PLAYER = new UUID(0L, 1L);
 
-    // Weights for one player at 5 blocks: Follow + Wander + Bark.
+    // Weights for one player at 5 blocks: Follow + Wander + Bark + Mutter (he can overhear at 5 blocks).
     private static final int CALM_FOLLOW = 50;
     private static final int CALM_WANDER = 25;
     private static final int CALM_BARK = 20;
-    private static final int CALM_TOTAL = CALM_FOLLOW + CALM_WANDER + CALM_BARK;
+    private static final int CALM_MUTTER = 3;
+    private static final int CALM_TOTAL = CALM_FOLLOW + CALM_WANDER + CALM_BARK + CALM_MUTTER;
 
     @Test
     void emptyCatalog_throws() {
@@ -59,7 +60,9 @@ class ChooseNextActionTest {
             seen.add(useCase.choose(withPlayer, random).getClass());
         }
 
-        assertEquals(Set.of(NpcAction.Follow.class, NpcAction.Wander.class, NpcAction.Bark.class), seen);
+        assertEquals(
+                Set.of(NpcAction.Follow.class, NpcAction.Wander.class, NpcAction.Bark.class, NpcAction.Mutter.class),
+                seen);
     }
 
     @Test
@@ -70,6 +73,7 @@ class ChooseNextActionTest {
         assertEquals((double) CALM_FOLLOW / CALM_TOTAL, fraction(counts, NpcAction.Follow.class), TOLERANCE);
         assertEquals((double) CALM_WANDER / CALM_TOTAL, fraction(counts, NpcAction.Wander.class), TOLERANCE);
         assertEquals((double) CALM_BARK / CALM_TOTAL, fraction(counts, NpcAction.Bark.class), TOLERANCE);
+        assertEquals((double) CALM_MUTTER / CALM_TOTAL, fraction(counts, NpcAction.Mutter.class), TOLERANCE);
     }
 
     @Test
@@ -113,7 +117,7 @@ class ChooseNextActionTest {
 
     // Partner phase, no hint history: the story has not started yet.
     private static Situation situation(Mood mood, List<NearbyPlayer> nearby) {
-        return new Situation(mood, nearby, Phase.PARTNER, 0, Set.of());
+        return new Situation(mood, nearby, Phase.PARTNER, 0, Set.of(), Set.of());
     }
 
     private static NearbyPlayer nearbyAt(double distance) {

@@ -1,5 +1,6 @@
 package io.github.luneto10.machiavillager;
 
+import io.github.luneto10.machiavillager.minecraft.BridgeLifecycle;
 import io.github.luneto10.machiavillager.minecraft.DevCommands;
 import io.github.luneto10.machiavillager.minecraft.ModEntities;
 import io.github.luneto10.machiavillager.minecraft.ServerLifecycleLog;
@@ -17,7 +18,8 @@ public class Machiavillager implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("Machiavillager is plotting. Emerald prices will never recover.");
 		ModEntities.register(); // first: commands below use the entity type
-		        ServerLifecycleLog.register();
+		        		ServerLifecycleLog.register();
+        BridgeLifecycle.register(); // starts the backend link with the server; off without a token
         Notices.register(); // payload types must exist on both ends before any player joins
 		DevCommands.register();
 	}

@@ -5,9 +5,9 @@ import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.SummonBlocker;
 import io.github.luneto10.machiavillager.domain.meeting.Briefing;
 import io.github.luneto10.machiavillager.domain.meeting.MeetingRules;
-import io.github.luneto10.machiavillager.domain.meeting.ReadingTime;
 import io.github.luneto10.machiavillager.domain.meeting.SummonAgenda;
 import io.github.luneto10.machiavillager.domain.meeting.Topic;
+import io.github.luneto10.machiavillager.domain.speech.SpeechQueue;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.minecraft.notice.NoticePayload;
 import io.github.luneto10.machiavillager.minecraft.notice.NoticeStyle;
@@ -16,8 +16,6 @@ import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import io.github.luneto10.machiavillager.minecraft.npc.SafeTeleport;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import io.github.luneto10.machiavillager.minecraft.world.VillageFinder;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,8 +50,8 @@ public final class Meeting {
     private int ticksInState;
     // Ticks since the summons started, across both states: the safety cap counts this one.
     private int totalTicks;
-    private int ticksUntilNextLine;
-    private Deque<String> lines = new ArrayDeque<>();
+    // Paces the agenda lines; empty until the agenda is built when the player arrives.
+    private SpeechQueue queue = new SpeechQueue(List.of());
     // Set when he pulls the player; null during the warning, while the player has not moved yet.
     private ReturnPoint returnPoint;
 
@@ -194,7 +192,7 @@ public final class Meeting {
         // The domain decides which topics come up; the text layer only words them.
         List<Topic> topics = SummonAgenda.build(
                 new Briefing(phase, village.isPresent(), affinity, independence));
-        lines = new ArrayDeque<>(AgendaLines.render(
+        queue = new SpeechQueue(AgendaLines.render(
                 topics, player.getPlainTextName(), phase, village, affinity));
     }
 
@@ -225,22 +223,14 @@ public final class Meeting {
     }
 
     private boolean speakNext(PathfinderMob npc, ServerPlayer player) {
-        // The last line is still on screen: wait for the reader before going on.
-        if (ticksUntilNextLine > 0) {
-            ticksUntilNextLine--;
-            return true;
-        }
-
         // Agenda spoken and the closing line read: the player goes home.
-        if (lines.isEmpty()) {
+        if (queue.finished()) {
             returnPoint.sendBack(player);
             return false;
         }
 
         // Each line gets as long as it takes to read, so nothing scrolls past unread.
-        String line = lines.poll();
-        NpcSpeech.say(npc, line);
-        ticksUntilNextLine = ReadingTime.ticksFor(line);
+        queue.tick().ifPresent(line -> NpcSpeech.say(npc, line));
         return true;
     }
 

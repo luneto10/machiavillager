@@ -6,12 +6,14 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.luneto10.machiavillager.bridge.BridgeStatusText;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
+import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,18 +29,18 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Commands under /machiavillager. Spawn and brain are operators only.
  * <ul>
+ *   <li>{@code bridge status}: show the backend link state (operators only).</li>
  *   <li>{@code summons on|off}: let him summon you, or not. Open to every player.</li>
  *   <li>{@code spawn}: summon him, or bring him to you if he already exists.</li>
  *   <li>{@code brain next}: force a new decision now (dev).</li>
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
- *   <li>{@code brain do <action>}: force follow, wander, bark, hint or summon aimed at you (dev).</li>
+ *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
  * </ul>
@@ -55,7 +57,8 @@ public final class DevCommands {
             "wander", player -> new NpcAction.Wander(),
             "bark", NpcAction.Bark::new,
             "hint", NpcAction.Hint::new,
-            "summon", NpcAction.Summon::new);
+            "summon", NpcAction.Summon::new,
+            "mutter", player -> new NpcAction.Mutter());
 
     // Operators only: the spawn and brain subtrees check this themselves, so the root stays open to everyone.
     private static final Predicate<CommandSourceStack> OPERATOR = Commands.hasPermission(Commands.LEVEL_GAMEMASTERS);
@@ -71,7 +74,8 @@ public final class DevCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> root() {
         var root = Commands.literal("machiavillager")
                 .then(summons())
-                .then(spawn());
+                .then(spawn())
+                .then(bridge());
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             root.then(brain()); // dev only: debugging shortcuts
         }
@@ -81,6 +85,22 @@ public final class DevCommands {
     // /machiavillager spawn
     private static LiteralArgumentBuilder<CommandSourceStack> spawn() {
         return Commands.literal("spawn").requires(OPERATOR).executes(DevCommands::runSpawn);
+    }
+
+    // /machiavillager bridge status: operators only, and never shows the URL or the token.
+    private static LiteralArgumentBuilder<CommandSourceStack> bridge() {
+        return Commands.literal("bridge")
+                .requires(OPERATOR)
+                .then(Commands.literal("status").executes(DevCommands::runBridgeStatus));
+    }
+
+    private static int runBridgeStatus(CommandContext<CommandSourceStack> context) {
+        String message = BridgeLifecycle.current()
+                .map(client -> BridgeStatusText.describe(
+                        client.state(), client.connectedSince(), client.nextAttemptAt(), Instant.now()))
+                .orElse("Bridge: OFF (not started, see the log)");
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
     }
 
     // /machiavillager summons on|off: every player may turn his summons off or on for themselves.
@@ -107,7 +127,7 @@ public final class DevCommands {
         Vec3 pos = source.getPosition();
 
         // Bring the existing one instead of creating a second.
-        List<MachiavillagerEntity> existing = findAll(source);
+        List<MachiavillagerEntity> existing = MachiavillagerLookup.findAll(source.getServer());
         if (!existing.isEmpty()) {
             MachiavillagerEntity npc = existing.getFirst();
             npc.teleportTo(source.getLevel(), pos.x, pos.y, pos.z, Set.of(), npc.getYRot(), npc.getXRot(), true);
@@ -121,19 +141,10 @@ public final class DevCommands {
         return 1;
     }
 
-    // Only finds him in loaded chunks.
-    private static List<MachiavillagerEntity> findAll(CommandSourceStack source) {
-        List<MachiavillagerEntity> found = new ArrayList<>();
-        for (ServerLevel level : source.getServer().getAllLevels()) {
-            found.addAll(level.getEntities(ModEntities.MACHIAVILLAGER, entity -> true));
-        }
-        return found;
-    }
-
     // Runs the same dev action on every loaded Machiavillager and reports how many were affected.
     private static int forEachNpc(
             CommandSourceStack source, Consumer<MachiavillagerEntity> action, String doneMessage) {
-        List<MachiavillagerEntity> all = findAll(source);
+        List<MachiavillagerEntity> all = MachiavillagerLookup.findAll(source.getServer());
         all.forEach(action);
 
         // With no NPC loaded, report that instead of a zero count.
@@ -210,7 +221,7 @@ public final class DevCommands {
     // Prints each Machiavillager's odds, one chat line each, so the dice can be checked by eye.
     private static int runBrainOdds(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        List<MachiavillagerEntity> all = findAll(source);
+        List<MachiavillagerEntity> all = MachiavillagerLookup.findAll(source.getServer());
         if (all.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No Machiavillager found."), false);
             return 0;
