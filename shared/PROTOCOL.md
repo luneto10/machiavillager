@@ -20,6 +20,7 @@
     - [3.5.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args > to`](#oneOf_i2_args_to)
   - [3.6. Property `Machiavillager bridge protocol > oneOf > SpeakAction > timeout_ms`](#oneOf_i2_timeout_ms)
   - [3.7. Property `Machiavillager bridge protocol > oneOf > SpeakAction > conversation_id`](#oneOf_i2_conversation_id)
+  - [3.8. Property `Machiavillager bridge protocol > oneOf > SpeakAction > in_reply_to`](#oneOf_i2_in_reply_to)
 - [4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`](#oneOf_i3)
   - [4.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted`](#oneOf_i3_oneOf_i0)
     - [4.1.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted > v`](#oneOf_i3_oneOf_i0_v)
@@ -247,6 +248,7 @@ Specific value: `1`
 | + [args](#oneOf_i2_args )                       | No      | object  | No         | In #/$defs/SpeakArgs | SpeakArgs         |
 | + [timeout_ms](#oneOf_i2_timeout_ms )           | No      | integer | No         | -                    | Timeout Ms        |
 | - [conversation_id](#oneOf_i2_conversation_id ) | No      | string  | No         | -                    | Conversation Id   |
+| - [in_reply_to](#oneOf_i2_in_reply_to )         | No      | string  | No         | -                    | In Reply To       |
 
 ### <a name="oneOf_i2_v"></a>3.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > v`
 
@@ -401,6 +403,21 @@ Specific value: `"speak"`
 | Restrictions                      |                                                                                                           |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^conv_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Econv_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+### <a name="oneOf_i2_in_reply_to"></a>3.8. Property `Machiavillager bridge protocol > oneOf > SpeakAction > in_reply_to`
+
+**Title:** In Reply To
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+**Description:** The player_chat event this speech answers. Set it only for a reply, so the mod does not count the speech as unprompted: replies skip the unprompted-speech cooldown. Omit it for speech the backend starts on its own. Explicit null is rejected. Example: evt_01HZX8K2M9.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
 ## <a name="oneOf_i3"></a>4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`
 

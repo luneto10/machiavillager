@@ -48,6 +48,7 @@ public final class MessageCodec {
     private static final String REASON = "reason";
     private static final String EVENT_ID = "event_id";
     private static final String CONVERSATION_ID = "conversation_id";
+    private static final String IN_REPLY_TO = "in_reply_to";
 
     // Loaded once: the schema is the same for every message. Failing here stops a broken build at startup.
     private static final SchemaValidator SCHEMA = new SchemaValidator();
@@ -119,7 +120,8 @@ public final class MessageCodec {
                 lines(args.getAsJsonArray("lines")),
                 object.get("timeout_ms").getAsInt(),
                 optionalString(object, CONVERSATION_ID),
-                optionalUuid(args, "to"));
+                optionalUuid(args, "to"),
+                optionalString(object, IN_REPLY_TO));
     }
 
     private static ActionStatus actionStatus(JsonObject object) {
@@ -200,6 +202,8 @@ public final class MessageCodec {
         json.add("args", args);
         json.addProperty("timeout_ms", speak.timeoutMs());
         speak.conversationId().ifPresent(id -> json.addProperty(CONVERSATION_ID, id));
+        // Only a reply names the event it answers; an unprompted speech omits the key.
+        speak.inReplyTo().ifPresent(id -> json.addProperty(IN_REPLY_TO, id));
         return json;
     }
 

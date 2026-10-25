@@ -34,9 +34,9 @@ def _hello_raw() -> str:
 
 
 def _client(token: str | None) -> TestClient:
-    app = create_app()
-    # _env_file=None keeps a developer's real backend/.env out of the tests.
+    # _env_file=None keeps a developer's real .env out of the tests (e.g. MACHIAVILLAGER_DEV_ECHO).
     settings = Settings(_env_file=None, bridge_token=SecretStr(token) if token else None)
+    app = create_app(settings)
     app.dependency_overrides[get_settings] = lambda: settings
     return TestClient(app)
 

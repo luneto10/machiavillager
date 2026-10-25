@@ -89,6 +89,8 @@ def test_echo_repeats_a_public_chat_line_to_the_mod():
     assert action.args.lines == [ECHO_PREFIX + "hi there"]
     # Public chat is spoken normally, so there is no private recipient.
     assert action.args.to is None
+    # The echo answers the chat event, so the mod treats it as a reply, not unprompted speech.
+    assert action.in_reply_to == response.json()["event_id"]
 
 
 def test_echo_answers_a_private_chat_privately():

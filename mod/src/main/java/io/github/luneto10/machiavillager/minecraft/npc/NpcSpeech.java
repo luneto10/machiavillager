@@ -1,70 +1,76 @@
 package io.github.luneto10.machiavillager.minecraft.npc;
 
 import io.github.luneto10.machiavillager.domain.behavior.Hearing;
+import io.github.luneto10.machiavillager.minecraft.speech.NpcChatPayload;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.OutgoingChatMessage;
-import net.minecraft.network.chat.PlayerChatMessage;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 /**
- * Makes an NPC "talk", "mutter" or whisper privately. Lines go out as disguised chat: the client renders them
- * like a player's chat (no gray system-message bar), with his name from the chat type decoration.
+ * Makes an NPC talk, mutter or whisper. Each line is built as a styled chat component and sent to the players who
+ * should hear it: players with the mod get it as a payload the client draws as chat, the rest get a system message.
  */
 public final class NpcSpeech {
     private static final double HEARING_RADIUS_SQR = Hearing.DISTANCE * Hearing.DISTANCE;
     private static final double WHISPER_RADIUS_SQR = Hearing.WHISPER_DISTANCE * Hearing.WHISPER_DISTANCE;
 
-    private static final String MUTTER_PREFIX = "mutters: ";
+    // The emote form reads as something he does, not something he says to you.
+    private static final String MUTTER_OPEN = "* ";
+    private static final String MUTTER_VERB = " mutters: ";
 
-    // Chat messages are never filtered for profanity here; the backend owns that setting (#59).
-    private static final boolean NOT_FILTERED = false;
+    // Vanilla keys: chat.type.text is "<%s> %s" and commands.message.display.incoming is "%s whispers to you: %s".
+    private static final String CHAT_KEY = "chat.type.text";
+    private static final String PRIVATE_KEY = "commands.message.display.incoming";
 
     private NpcSpeech() {}
 
     /** Server side only. Shows "<Name> text" to every player within hearing range, like player chat. */
     public static void say(Entity speaker, String text) {
-        // ChatType.CHAT decorates with vanilla's "<%s> %s", so it looks exactly like a player talking.
-        sendWithin(speaker, HEARING_RADIUS_SQR, ChatType.CHAT, Component.literal(text));
+        Component line = Component.translatable(CHAT_KEY, speaker.getDisplayName(), text);
+        sendWithin(speaker, HEARING_RADIUS_SQR, line);
     }
 
     /** Server side only. Shows "* Name mutters: text" in gray italic only to players very close to him. */
     public static void whisper(Entity speaker, String text) {
-        // The emote format ("* Name ...") reads as something he does, not something he says to you.
-        Component muttered = Component.literal(MUTTER_PREFIX + text)
+        Component muttered = Component.empty()
+                .append(MUTTER_OPEN)
+                .append(speaker.getDisplayName())
+                .append(MUTTER_VERB + text)
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
-        sendWithin(speaker, WHISPER_RADIUS_SQR, ChatType.EMOTE_COMMAND, muttered);
+        sendWithin(speaker, WHISPER_RADIUS_SQR, muttered);
     }
 
     /**
-     * Server side only. Shows vanilla's private-message line "Name whispers to you: text" to one player, at any
-     * distance. Never voice.
+     * Server side only. Shows "Name whispers to you: text" in gray italic to one player, at any distance. Never
+     * voice.
      */
     public static void tellPrivately(Entity speaker, ServerPlayer player, String text) {
-        // The incoming /msg chat type gives the gray italic private look players already know.
-        send(player, ChatType.bind(ChatType.MSG_COMMAND_INCOMING, speaker), Component.literal(text));
+        Component whisper = Component.translatable(PRIVATE_KEY, speaker.getDisplayName(), text)
+                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
+        send(player, whisper);
     }
 
-    // One loop for every kind of nearby speech: only the range, the chat type and the content differ.
-    private static void sendWithin(Entity speaker, double radiusSqr, ResourceKey<ChatType> type, Component content) {
+    // One loop for every kind of nearby speech: only the range and the line differ.
+    private static void sendWithin(Entity speaker, double radiusSqr, Component line) {
         if (!(speaker.level() instanceof ServerLevel level)) {
             return;
         }
-        ChatType.Bound bound = ChatType.bind(type, speaker);
         for (ServerPlayer player : level.players()) {
             if (player.distanceToSqr(speaker) <= radiusSqr) {
-                send(player, bound, content);
+                send(player, line);
             }
         }
     }
 
-    // A system (unsigned) message is sent as disguised chat: rendered like chat, with no system-message bar.
-    private static void send(ServerPlayer player, ChatType.Bound bound, Component content) {
-        PlayerChatMessage message = PlayerChatMessage.system(content.getString()).withUnsignedContent(content);
-        player.sendChatMessage(OutgoingChatMessage.create(message), NOT_FILTERED, bound);
+    // Players with the mod get the payload; vanilla players get a system message, which shows the gray bar.
+    private static void send(ServerPlayer player, Component line) {
+        if (ServerPlayNetworking.canSend(player, NpcChatPayload.TYPE)) {
+            ServerPlayNetworking.send(player, new NpcChatPayload(line));
+            return;
+        }
+        player.sendSystemMessage(line);
     }
 }

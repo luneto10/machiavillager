@@ -60,6 +60,7 @@ def echo_action(event: PlayerChatEvent) -> SpeakAction:
     if event.conversation_id is not None:
         action_fields["conversation_id"] = event.conversation_id
 
+    # The echo answers the chat line, so it is a reply: the mod does not count it as unprompted.
     return SpeakAction(
         v=PROTOCOL_VERSION,
         type="action",
@@ -67,6 +68,7 @@ def echo_action(event: PlayerChatEvent) -> SpeakAction:
         action="speak",
         args=SpeakArgs(**args_fields),
         timeout_ms=ECHO_TIMEOUT_MS,
+        in_reply_to=event.event_id,
         **action_fields,
     )
 

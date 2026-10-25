@@ -451,6 +451,12 @@
           "pattern": "^conv_[A-Za-z0-9]{8,32}$",
           "title": "Conversation Id",
           "type": "string"
+        },
+        "in_reply_to": {
+          "description": "The player_chat event this speech answers. Set it only for a reply, so the mod does not count the speech as unprompted: replies skip the unprompted-speech cooldown. Omit it for speech the backend starts on its own. Explicit null is rejected. Example: evt_01HZX8K2M9.",
+          "pattern": "^evt_[A-Za-z0-9]{8,32}$",
+          "title": "In Reply To",
+          "type": "string"
         }
       },
       "required": [

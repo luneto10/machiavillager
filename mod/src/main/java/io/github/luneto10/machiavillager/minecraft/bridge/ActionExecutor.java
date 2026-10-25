@@ -62,7 +62,7 @@ public final class ActionExecutor {
             return;
         }
         // Last check on purpose: it starts the cooldown, so it must run only when the speech really goes ahead.
-        if (!takeRateLimit()) {
+        if (!allowedByRateLimit(action)) {
             reject(id, RATE_LIMITED);
             return;
         }
@@ -136,7 +136,12 @@ public final class ActionExecutor {
         bridge.send(new ActionStatus.Failed(current.requestId(), reason));
     }
 
-    // Every speak counts as unprompted, private ones included, until replies arrive in Checkpoint 5.
+    // A reply answers a player who spoke to him, so it is not unprompted: it skips the limit and never uses it up.
+    private boolean allowedByRateLimit(SpeakAction action) {
+        return action.inReplyTo().isPresent() || takeRateLimit();
+    }
+
+    // Every other speak counts as unprompted, private ones included.
     private boolean takeRateLimit() {
         long now = server.getTickCount();
         return unpromptedCooldown.map(cooldown -> cooldown.tryUse(now)).orElse(true);

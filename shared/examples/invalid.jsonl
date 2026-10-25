@@ -117,6 +117,8 @@
 {"name":"SpeakAction.args.unknown_field","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."],"unexpected_field":true},"timeout_ms":30000}}
 {"name":"SpeakAction.conversation_id.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"conversation_id":null}}
 {"name":"SpeakAction.conversation_id.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Luciano, a word.","I have been thinking about the harvest.","Come find me at the well."]},"timeout_ms":30000,"conversation_id":"!!"}}
+{"name":"SpeakAction.in_reply_to.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"in_reply_to":null}}
+{"name":"SpeakAction.in_reply_to.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"!!"}}
 {"name":"SpeakAction.request_id.drop_required","message":{"v":1,"type":"action","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
 {"name":"SpeakAction.request_id.pattern","message":{"v":1,"type":"action","request_id":"!!","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
 {"name":"SpeakAction.root.unknown_field","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"unexpected_field":true}}

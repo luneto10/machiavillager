@@ -111,6 +111,9 @@ Unknown fields are rejected, never silently ignored.
 
 - **Decision:** the backend may start speech from events. The mod allows at most one unprompted `speak`
   per player every 3 minutes (configurable); replies to a player who spoke to him do not count.
+  A reply is recognised by `in_reply_to`: the `speak` names the `player_chat` event it answers. The mod
+  skips the limit for it and does not start the cooldown. Speech without `in_reply_to` counts as
+  unprompted. The busy rule still applies: one speech at a time.
 - **Why:** endless monologues are tiring. The limit lives in the mod, so a misbehaving backend cannot
   spam players.
 

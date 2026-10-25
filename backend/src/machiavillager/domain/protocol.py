@@ -185,6 +185,17 @@ class SpeakAction(_Envelope):
         ),
     )  # type: ignore[assignment]
 
+    # Same reasoning as conversation_id: explicit null is refused, absence means "not a reply".
+    in_reply_to: EventId = Field(
+        default=None,
+        description=(
+            "The player_chat event this speech answers. Set it only for a reply, so the mod does "
+            "not count the speech as unprompted: replies skip the unprompted-speech cooldown. "
+            "Omit it for speech the backend starts on its own. Explicit null is rejected. "
+            "Example: evt_01HZX8K2M9."
+        ),
+    )  # type: ignore[assignment]
+
 
 class _ActionStatusBase(_Envelope):
     """Base for action_status messages. The status field selects the concrete model."""

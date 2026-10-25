@@ -15,7 +15,7 @@ class ProtocolRecordsTest {
     @Test
     void speakAction_copiesLinesSoLaterChangesDoNotLeakIn() {
         List<String> lines = new ArrayList<>(List.of("hi"));
-        SpeakAction action = new SpeakAction(ACTION_ID, lines, 5000, Optional.empty(), Optional.empty());
+        SpeakAction action = new SpeakAction(ACTION_ID, lines, 5000, Optional.empty(), Optional.empty(), Optional.empty());
 
         lines.add("later");
 
@@ -25,7 +25,7 @@ class ProtocolRecordsTest {
     @Test
     void speakAction_refusesNullLines() {
         assertThrows(NullPointerException.class,
-                () -> new SpeakAction(ACTION_ID, null, 5000, Optional.empty(), Optional.empty()));
+                () -> new SpeakAction(ACTION_ID, null, 5000, Optional.empty(), Optional.empty(), Optional.empty()));
     }
 
     @Test

@@ -13,13 +13,15 @@ import java.util.UUID;
  * @param timeoutMs how long the mod may take before giving up
  * @param conversationId optional conversation this speech belongs to
  * @param to optional private recipient: the lines reach that player alone, at any distance
+ * @param inReplyTo optional player_chat event this speech answers; a reply skips the unprompted-speech limit
  */
 public record SpeakAction(
         String requestId,
         List<String> lines,
         int timeoutMs,
         Optional<String> conversationId,
-        Optional<UUID> to) implements BridgeMessage {
+        Optional<UUID> to,
+        Optional<String> inReplyTo) implements BridgeMessage {
 
     /** Null checks only, and a copy of the lines so later changes to the caller's list do not leak in. */
     public SpeakAction {
@@ -27,5 +29,6 @@ public record SpeakAction(
         lines = List.copyOf(lines);
         Objects.requireNonNull(conversationId, "conversation_id");
         Objects.requireNonNull(to, "to");
+        Objects.requireNonNull(inReplyTo, "in_reply_to");
     }
 }

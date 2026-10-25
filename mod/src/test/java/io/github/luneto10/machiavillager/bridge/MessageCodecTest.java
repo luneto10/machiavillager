@@ -21,6 +21,7 @@ class MessageCodecTest {
             "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_Ab12Cd34\",\"action\":\"speak\","
                     + "\"args\":{\"lines\":[\"hi\"]},\"timeout_ms\":5000}";
     private static final UUID PLAYER = UUID.fromString("7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69");
+    private static final String EVENT = "evt_01HZX8K2M9";
 
     @Test
     void decode_readsSpeakAction() {
@@ -66,8 +67,30 @@ class MessageCodecTest {
     @Test
     void encode_writesRecipientOnlyForPrivateSpeech() {
         BridgeMessage speak = new SpeakAction("act_Ab12Cd34", List.of("hi"), 5000,
-                Optional.empty(), Optional.of(PLAYER));
+                Optional.empty(), Optional.of(PLAYER), Optional.empty());
 
         assertTrue(MessageCodec.encode(speak).contains("\"to\":\"" + PLAYER + "\""));
+    }
+
+    @Test
+    void decode_readsReplyToAnEvent() {
+        String json = SPEAK.replace("\"timeout_ms\":5000}", "\"timeout_ms\":5000,\"in_reply_to\":\"" + EVENT + "\"}");
+
+        assertEquals(Optional.of(EVENT), ((SpeakAction) MessageCodec.decode(json)).inReplyTo());
+    }
+
+    @Test
+    void encode_omitsInReplyToForUnpromptedSpeech() {
+        String json = MessageCodec.encode(MessageCodec.decode(SPEAK));
+
+        assertFalse(json.contains("in_reply_to"));
+    }
+
+    @Test
+    void encode_writesInReplyToOnlyForAReply() {
+        BridgeMessage reply = new SpeakAction("act_Ab12Cd34", List.of("hi"), 5000,
+                Optional.empty(), Optional.empty(), Optional.of(EVENT));
+
+        assertTrue(MessageCodec.encode(reply).contains("\"in_reply_to\":\"" + EVENT + "\""));
     }
 }
