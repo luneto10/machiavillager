@@ -3,8 +3,8 @@
 Run from backend/:
     uv run python scripts/export_protocol_schema.py
 
-This writes shared/protocol.schema.json, shared/PROTOCOL.md and the generated files in
-shared/examples/invalid/. Pass --check to exit 1 instead of writing when any of them is stale.
+This writes shared/protocol.schema.json, shared/PROTOCOL.md and shared/examples/invalid.jsonl.
+Pass --check to exit 1 instead of writing when any of them is stale or missing.
 The test suite runs the same comparisons, so a stale file fails CI.
 """
 
@@ -15,12 +15,11 @@ import tempfile
 from pathlib import Path
 
 from generate_invalid_examples import (
-    INVALID_DIR,
+    INVALID_JSONL,
     VALID_DIR,
-    compare_dir,
     count_by_rule,
     generate_invalid_examples,
-    write_dir,
+    render_invalid_jsonl,
 )
 from json_schema_for_humans.generate import generate_from_file_object
 from json_schema_for_humans.generation_configuration import GenerationConfiguration
@@ -70,8 +69,10 @@ def render_protocol_md() -> str:
 
 
 def _stale(path: Path, expected: str) -> list[str]:
-    current = path.read_text(encoding="utf-8") if path.exists() else ""
-    if current == expected:
+    # A missing file is reported as missing, so the fix is clear when a generated file was deleted.
+    if not path.exists():
+        return [f"{path} is missing"]
+    if path.read_text(encoding="utf-8") == expected:
         return []
     return [f"{path} is stale"]
 
@@ -84,13 +85,16 @@ def main(argv: list[str] | None = None) -> int:
     schema_text = render_schema()
     markdown_text = render_protocol_md()
     generated = generate_invalid_examples(VALID_DIR)
+    invalid_text = render_invalid_jsonl(generated.cases)
 
     for skipped in generated.skipped:
         print(f"skipped {skipped}")
+    for rule, count in sorted(count_by_rule(generated.cases).items()):
+        print(f"  {rule}: {count}")
 
     if args.check:
         problems = _stale(SCHEMA_PATH, schema_text) + _stale(PROTOCOL_MD_PATH, markdown_text)
-        problems += compare_dir(INVALID_DIR, generated.files)
+        problems += _stale(INVALID_JSONL, invalid_text)
         if problems:
             for problem in problems:
                 print(
@@ -104,13 +108,11 @@ def main(argv: list[str] | None = None) -> int:
     # Bytes, not write_text: on Windows write_text turns \n into \r\n and the files would differ.
     SCHEMA_PATH.write_bytes(schema_text.encode("utf-8"))
     PROTOCOL_MD_PATH.write_bytes(markdown_text.encode("utf-8"))
-    write_dir(INVALID_DIR, generated.files)
+    INVALID_JSONL.write_bytes(invalid_text.encode("utf-8"))
 
     print(f"wrote {SCHEMA_PATH}")
     print(f"wrote {PROTOCOL_MD_PATH}")
-    print(f"wrote {len(generated.files)} invalid examples to {INVALID_DIR}")
-    for rule, count in sorted(count_by_rule(generated.files).items()):
-        print(f"  {rule}: {count}")
+    print(f"wrote {len(generated.cases)} invalid cases to {INVALID_JSONL}")
     print(f"skipped {len(generated.skipped)} mutations (see above)")
     return 0
 

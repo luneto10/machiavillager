@@ -1,7 +1,8 @@
-"""Generate shared/examples/invalid from the valid examples, so humans never write invalid ones.
+"""Generate shared/examples/invalid.jsonl from the valid examples, so no one writes them by hand.
 
-Each file in shared/examples/valid is parsed to find its model. The model's JSON Schema says which
-rules the message must follow, and one mutant is made per rule the message breaks on purpose:
+Each file in shared/examples/valid is parsed to find its message type: the Pydantic model class that
+parse_message picks, such as SpeakAction or Hello. The model's JSON Schema says which rules the
+message must follow, and one mutant is made per rule the message breaks on purpose:
 
 - structural: drop each required field, add an unknown field to every object, explicit null for
   each optional field, type = "not_a_type", v (or protocol) = 2 and = true;
@@ -10,10 +11,14 @@ rules the message must follow, and one mutant is made per rule the message break
   (when minItems >= 1), an integer above maximum and below minimum;
 - values: a const or enum that does not list the value used.
 
+Mutants are deduplicated per (message type, field path, rule). Array indices are folded into `*`,
+so args.lines.0 and args.lines.1 are one field. Valid examples are read in sorted order and the
+first mutant for each key is kept, so the cases cover every field that any example of a type has.
+
 A mutant is written only when both parse_message and the bundled JSON Schema reject it. Any
 other mutant is reported as skipped, with the reason, and is not written.
 
-Do not edit the generated files. Regenerate with scripts/export_protocol_schema.py.
+Do not edit the generated file. Regenerate with scripts/export_protocol_schema.py.
 """
 
 import copy
@@ -32,7 +37,7 @@ from machiavillager.domain.protocol import PROTOCOL_VERSION, parse_message, prot
 # This file sits in backend/scripts/, so two parents up is the repo root that holds shared/.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALID_DIR = REPO_ROOT / "shared" / "examples" / "valid"
-INVALID_DIR = REPO_ROOT / "shared" / "examples" / "invalid"
+INVALID_JSONL = REPO_ROOT / "shared" / "examples" / "invalid.jsonl"
 
 # A field no message defines. Adding it must be rejected everywhere (extra="forbid").
 UNEXPECTED_FIELD: Final = "unexpected_field"
@@ -47,9 +52,12 @@ WRONG_WIRE_BOOLEAN: Final = True
 PATTERN_BREAKER: Final = "!!"
 TYPE_KEY: Final = "type"
 ROOT_NAME: Final = "root"
-# Name of the file that holds the generated mutants and their rules, one per file.
-FILE_SUFFIX: Final = ".json"
-JSON_INDENT: Final = 2
+# Joins the parts of a case name, <Model>.<path>.<rule>. Protocol field names never contain a dot.
+NAME_SEPARATOR: Final = "."
+# Stands in for every array index, so all items of one array share one case.
+INDEX_WILDCARD: Final = "*"
+# Compact separators keep each line short, and fixed separators keep the bytes the same everywhere.
+JSON_SEPARATORS: Final = (",", ":")
 
 
 @dataclass(frozen=True)
@@ -58,7 +66,7 @@ class Mutation:
 
     # Path from the root to the node that changes. The last element is the key or the index.
     target: tuple[str | int, ...]
-    # Path shown in the file name. Differs from target only for an unknown field.
+    # Path shown in the case name. Differs from target only for an unknown field.
     where: str
     rule: str
     value: Any = None
@@ -67,14 +75,20 @@ class Mutation:
 
 @dataclass(frozen=True)
 class GeneratedExamples:
-    """The mutants that passed both checks, keyed by file name, plus the ones that were skipped."""
+    """The mutants that passed both checks, keyed by case name, plus the ones that were skipped."""
 
-    files: dict[str, str]
+    cases: dict[str, dict[str, Any]]
     skipped: list[str]
 
 
 def _where(path: tuple[str | int, ...]) -> str:
-    return ".".join(str(part) for part in path) or ROOT_NAME
+    return NAME_SEPARATOR.join(str(part) for part in path) or ROOT_NAME
+
+
+def _fold_indices(where: str) -> str:
+    # Protocol keys are never digits, so a digit segment can only be an array index.
+    parts = where.split(NAME_SEPARATOR)
+    return NAME_SEPARATOR.join(INDEX_WILDCARD if part.isdigit() else part for part in parts)
 
 
 def _resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
@@ -226,63 +240,68 @@ def _rejection_problem(mutant: dict[str, Any], validator: Draft202012Validator) 
 
 
 def generate_invalid_examples(valid_dir: Path = VALID_DIR) -> GeneratedExamples:
-    """Build one mutant per rule for every valid example, and keep those both checks reject."""
+    """Build one mutant per (message type, field, rule); keep only the ones both checks reject."""
 
     validator = Draft202012Validator(protocol_json_schema(), format_checker=FormatChecker())
-    files: dict[str, str] = {}
+    cases: dict[str, dict[str, Any]] = {}
     skipped: list[str] = []
+    # Keys an earlier example already covered. The first mutant for a key is the one kept.
+    covered: set[tuple[str, str, str]] = set()
 
     for example in sorted(valid_dir.glob("*.json")):
         raw = example.read_text(encoding="utf-8")
         document: dict[str, Any] = json.loads(raw)
-        # The model that parse_message picked decides which schema branch the walk follows.
-        model_schema = type(parse_message(raw)).model_json_schema()
+        # The model that parse_message picked names the message type and decides the schema branch.
+        model = type(parse_message(raw))
+        model_name = model.__name__
+        model_schema = model.model_json_schema()
 
         mutations: list[Mutation] = []
         _walk(document, model_schema, model_schema, (), None, mutations)
 
         for mutation in mutations:
+            where = _fold_indices(mutation.where)
+            key = (model_name, where, mutation.rule)
+            if key in covered:
+                continue
+            case_name = NAME_SEPARATOR.join((model_name, where, mutation.rule))
             mutant = _apply(document, mutation)
-            label = f"{example.stem}__{mutation.where}__{mutation.rule}"
             problem = _rejection_problem(mutant, validator)
             if problem is not None:
-                skipped.append(f"{label}: {problem}, not written")
+                skipped.append(f"{example.name} {case_name}: {problem}, not written")
                 continue
-            file_name = label + FILE_SUFFIX
-            if file_name in files:
-                raise ValueError(f"two mutations share the file name {file_name}")
-            files[file_name] = json.dumps(mutant, indent=JSON_INDENT, ensure_ascii=False) + "\n"
+            covered.add(key)
+            cases[case_name] = mutant
 
-    return GeneratedExamples(files=dict(sorted(files.items())), skipped=skipped)
+    return GeneratedExamples(cases=dict(sorted(cases.items())), skipped=skipped)
 
 
-def count_by_rule(file_names: Iterable[str]) -> Counter[str]:
-    """Count generated files per rule. The rule is the last part of the file name."""
+def render_invalid_jsonl(cases: dict[str, dict[str, Any]]) -> str:
+    """One JSON object per line, sorted by name. This text is exactly what the file must hold."""
 
-    return Counter(name[: -len(FILE_SUFFIX)].rsplit("__", 1)[-1] for name in file_names)
-
-
-def compare_dir(directory: Path, expected: dict[str, str]) -> list[str]:
-    """List every way the directory differs from the expected files. An empty list means current."""
-
-    actual = {path.name: path for path in directory.glob(f"*{FILE_SUFFIX}")}
-    problems: list[str] = []
-    for name in sorted(set(expected) - set(actual)):
-        problems.append(f"missing {directory / name}")
-    for name in sorted(set(actual) - set(expected)):
-        problems.append(f"unexpected {actual[name]} (no valid example produces it)")
-    for name in sorted(set(expected) & set(actual)):
-        if actual[name].read_text(encoding="utf-8") != expected[name]:
-            problems.append(f"stale {actual[name]}")
-    return problems
+    # Sorting here keeps the file stable no matter what order the cases were collected in.
+    lines = [
+        json.dumps(
+            {"name": name, "message": cases[name]},
+            separators=JSON_SEPARATORS,
+            ensure_ascii=False,
+        )
+        for name in sorted(cases)
+    ]
+    return "".join(line + "\n" for line in lines)
 
 
-def write_dir(directory: Path, files: dict[str, str]) -> None:
-    """Replace the generated files: delete every old JSON file, then write the new set."""
+def load_invalid_cases(path: Path = INVALID_JSONL) -> list[tuple[str, dict[str, Any]]]:
+    """Read the committed file back as (name, message) pairs, in file order."""
 
-    directory.mkdir(parents=True, exist_ok=True)
-    for old in directory.glob(f"*{FILE_SUFFIX}"):
-        old.unlink()
-    for name, content in files.items():
-        # Bytes, not write_text: on Windows write_text turns \n into \r\n, so files would differ.
-        (directory / name).write_bytes(content.encode("utf-8"))
+    cases: list[tuple[str, dict[str, Any]]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        record = json.loads(line)
+        cases.append((record["name"], record["message"]))
+    return cases
+
+
+def count_by_rule(case_names: Iterable[str]) -> Counter[str]:
+    """Count cases per rule. The rule is the part after the last dot of the case name."""
+
+    return Counter(name.rsplit(NAME_SEPARATOR, 1)[-1] for name in case_names)

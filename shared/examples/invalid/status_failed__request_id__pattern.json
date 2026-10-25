@@ -1,7 +1,0 @@
-{
-  "v": 1,
-  "type": "action_status",
-  "request_id": "!!",
-  "status": "failed",
-  "reason": "disconnected"
-}

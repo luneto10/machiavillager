@@ -64,11 +64,11 @@ server tick and without giving the AI any power beyond an allowlist.
   is stale. Java and Python tests validate the same `shared/examples`.
 - **Why:** the backend needs these models anyway, so a hand-written schema would be a second copy that
   can drift. One source, checked in CI.
-- **Testing:** humans write only the valid examples, one file per message shape. The invalid examples
-  are generated from the models' rules, one file per broken rule (a missing field, an unknown field, a
-  wrong `v`, a value out of range, a broken pattern...). A generated file is written only when both the
-  parser and the schema reject it. Java and Python test the same files. The mod validates each incoming
-  message against the bundled schema, so the rules live only in the schema, not in Java code.
+- **Testing:** humans write only the valid examples, one file per message shape. The invalid cases live
+  in one generated `shared/examples/invalid.jsonl`, one per (message type, field, rule): a missing field,
+  an unknown field, a wrong `v`, a value out of range, a broken pattern... A case is written only when
+  both the parser and the schema reject it. Java and Python test the same file. The mod validates each
+  incoming message against the bundled schema, so the rules live only in the schema, not in Java code.
 - **Changed:** first accepted as a hand-written schema; switched the same day, before any runtime code
   depended on it. Trade-off accepted: the backend owns the contract; the Java tests still enforce it.
 
