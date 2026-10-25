@@ -83,6 +83,34 @@ public final class MessageCodec {
         }
     }
 
+    /**
+     * The request id of a refused action, read from raw JSON when the full decode failed. Returns the id only when
+     * the message is an action with a well-formed id, so the refusal can name it. Never throws.
+     */
+    public static Optional<String> peekActionRequestId(String json) {
+        try {
+            JsonElement root = JsonParser.parseString(json);
+            return root.isJsonObject() ? actionRequestId(root.getAsJsonObject()) : Optional.empty();
+        } catch (JsonParseException | IllegalStateException | ClassCastException e) {
+            // Not JSON at all: nothing to name, so the caller falls back to a bad_message error.
+            return Optional.empty();
+        }
+    }
+
+    private static Optional<String> actionRequestId(JsonObject object) {
+        JsonElement type = object.get(TYPE);
+        JsonElement requestId = object.get(REQUEST_ID);
+        // Missing or non-string fields cannot name an action, so they are not echoed back.
+        if (type == null || requestId == null || !isString(type) || !isString(requestId)) {
+            return Optional.empty();
+        }
+        if (!"action".equals(type.getAsString())) {
+            return Optional.empty();
+        }
+        String candidate = requestId.getAsString();
+        return ProtocolRules.ACTION_ID.matcher(candidate).matches() ? Optional.of(candidate) : Optional.empty();
+    }
+
     /** Writes one message as JSON. Always writes v and type; omits optional fields that are absent. */
     public static String encode(BridgeMessage message) {
         Objects.requireNonNull(message, "message");

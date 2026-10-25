@@ -217,6 +217,18 @@ ActionStatus = Annotated[
     Field(discriminator="status"),
 ]
 
+# The four statuses that end a request. Accepted and Running are progress, not an answer.
+TerminalStatus = Succeeded | Failed | Rejected | Interrupted
+TERMINAL_STATUS_TYPES: Final = (Succeeded, Failed, Rejected, Interrupted)
+
+
+def is_terminal(status: ActionStatus) -> bool:
+    """True when the status ends the request. Only terminal statuses may answer a waiter."""
+
+    # isinstance on the concrete classes: a new status must be listed here on purpose.
+    return isinstance(status, TERMINAL_STATUS_TYPES)
+
+
 Message = Annotated[
     Hello | Welcome | SpeakAction | ActionStatus | PlayerChatEvent | Error,
     Field(discriminator="type"),

@@ -11,9 +11,9 @@ import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
+import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,7 +29,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
@@ -128,7 +127,7 @@ public final class DevCommands {
         Vec3 pos = source.getPosition();
 
         // Bring the existing one instead of creating a second.
-        List<MachiavillagerEntity> existing = findAll(source);
+        List<MachiavillagerEntity> existing = MachiavillagerLookup.findAll(source.getServer());
         if (!existing.isEmpty()) {
             MachiavillagerEntity npc = existing.getFirst();
             npc.teleportTo(source.getLevel(), pos.x, pos.y, pos.z, Set.of(), npc.getYRot(), npc.getXRot(), true);
@@ -142,19 +141,10 @@ public final class DevCommands {
         return 1;
     }
 
-    // Only finds him in loaded chunks.
-    private static List<MachiavillagerEntity> findAll(CommandSourceStack source) {
-        List<MachiavillagerEntity> found = new ArrayList<>();
-        for (ServerLevel level : source.getServer().getAllLevels()) {
-            found.addAll(level.getEntities(ModEntities.MACHIAVILLAGER, entity -> true));
-        }
-        return found;
-    }
-
     // Runs the same dev action on every loaded Machiavillager and reports how many were affected.
     private static int forEachNpc(
             CommandSourceStack source, Consumer<MachiavillagerEntity> action, String doneMessage) {
-        List<MachiavillagerEntity> all = findAll(source);
+        List<MachiavillagerEntity> all = MachiavillagerLookup.findAll(source.getServer());
         all.forEach(action);
 
         // With no NPC loaded, report that instead of a zero count.
@@ -231,7 +221,7 @@ public final class DevCommands {
     // Prints each Machiavillager's odds, one chat line each, so the dice can be checked by eye.
     private static int runBrainOdds(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        List<MachiavillagerEntity> all = findAll(source);
+        List<MachiavillagerEntity> all = MachiavillagerLookup.findAll(source.getServer());
         if (all.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No Machiavillager found."), false);
             return 0;

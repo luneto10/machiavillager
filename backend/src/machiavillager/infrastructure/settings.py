@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # SecretStr so the token prints as ********** in reprs, logs and tracebacks.
     bridge_token: SecretStr | None = None
 
+    # Dev only: mounts POST /dev/speak. Off by default, so a normal run exposes no test endpoints.
+    dev_endpoints: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

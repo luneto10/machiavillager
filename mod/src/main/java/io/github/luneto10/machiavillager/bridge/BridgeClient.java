@@ -1,5 +1,6 @@
 package io.github.luneto10.machiavillager.bridge;
 
+import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Backoff;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
@@ -231,6 +232,11 @@ public final class BridgeClient {
     // Bridge thread. Tells the backend a frame was refused; the connection itself stays open.
     void refuse(WebSocket from, String detail) {
         transmit(from, new BridgeError(BridgeError.Code.BAD_MESSAGE, shorten(detail)));
+    }
+
+    // Bridge thread. An action that could not be decoded is refused by its own id, so the backend knows which request failed.
+    void rejectAction(WebSocket from, String requestId, String reason) {
+        transmit(from, new ActionStatus.Rejected(requestId, reason));
     }
 
     // Bridge thread. The link is gone (closed, errored, or timed out). A stale socket is ignored.

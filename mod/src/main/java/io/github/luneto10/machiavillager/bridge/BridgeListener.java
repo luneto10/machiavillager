@@ -1,7 +1,9 @@
 package io.github.luneto10.machiavillager.bridge;
 
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.ProtocolRules;
 import java.net.http.WebSocket;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -82,8 +84,28 @@ final class BridgeListener implements WebSocket.Listener {
             BridgeMessage message = MessageCodec.decode(text);
             client.runOnBridge(() -> client.onFrame(webSocket, message));
         } catch (MessageCodec.DecodeException rejected) {
-            String detail = String.valueOf(rejected.getMessage());
-            client.runOnBridge(() -> client.refuse(webSocket, detail));
+            refuseFrame(webSocket, text, String.valueOf(rejected.getMessage()));
         }
+    }
+
+    // An action that fails to decode is rejected under its own id, so the backend can tell which request was refused.
+    // Anything else is a plain bad_message error.
+    private void refuseFrame(WebSocket webSocket, String text, String detail) {
+        Optional<String> requestId = MessageCodec.peekActionRequestId(text);
+        if (requestId.isPresent()) {
+            String reason = actionReason(detail);
+            client.runOnBridge(() -> client.rejectAction(webSocket, requestId.get(), reason));
+            return;
+        }
+        client.runOnBridge(() -> client.refuse(webSocket, detail));
+    }
+
+    // Shows the decode reason as the refusal reason, cut to the protocol limit; the reason names the field, never the value.
+    static String actionReason(String detail) {
+        String reason = "unknown action".equals(detail) ? detail : "invalid args: " + detail;
+        int limit = ProtocolRules.MAX_REASON_LENGTH;
+        // Cut by code points, so a surrogate pair is never split and the length matches the contract's count.
+        int units = reason.offsetByCodePoints(0, Math.min(reason.codePointCount(0, reason.length()), limit));
+        return reason.substring(0, units);
     }
 }

@@ -4,10 +4,18 @@ import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
+import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * Starts the backend bridge with the server and stops it at shutdown. The server is the game-thread executor:
@@ -19,6 +27,8 @@ public final class BridgeLifecycle {
 
     // Set while a server runs; null otherwise, and when the settings were invalid.
     private static volatile BridgeClient client;
+    // Runs the actions the backend asks for; set together with the client, null when the bridge is off.
+    private static volatile ActionExecutor executor;
 
     private BridgeLifecycle() {}
 
@@ -26,6 +36,9 @@ public final class BridgeLifecycle {
     public static void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(BridgeLifecycle::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(BridgeLifecycle::stop);
+        // Speech is paced by the server tick, so it advances even while no player is talking.
+        ServerTickEvents.END_SERVER_TICK.register(BridgeLifecycle::tickActions);
+        ServerMessageEvents.CHAT_MESSAGE.register(BridgeLifecycle::onChat);
     }
 
     /** The running client, or empty when no server is running or the bridge settings were invalid. */
@@ -43,6 +56,8 @@ public final class BridgeLifecycle {
             return;
         }
         BridgeClient started = new BridgeClient(config, modVersion(), server, BridgeLifecycle::onMessage);
+        // The executor is in place before the socket starts, so the first action finds it.
+        executor = new ActionExecutor(server, started, SpeechRules.unpromptedCooldown(System.getenv()));
         client = started;
         started.start();
     }
@@ -50,15 +65,38 @@ public final class BridgeLifecycle {
     private static void stop(MinecraftServer server) {
         BridgeClient running = client;
         client = null;
+        executor = null;
         if (running != null) {
             running.stop();
         }
     }
 
-    // Game thread. Actions are only logged until #10 executes them.
+    // Game thread. Speak is executed; any other message is only logged.
     private static void onMessage(BridgeMessage message) {
-        Machiavillager.LOGGER.info(
-                "Bridge received {} (actions are executed in #10)", message.getClass().getSimpleName());
+        ActionExecutor actions = executor;
+        if (message instanceof SpeakAction speak && actions != null) {
+            actions.speak(speak);
+            return;
+        }
+        Machiavillager.LOGGER.info("Bridge received {}", message.getClass().getSimpleName());
+    }
+
+    // Game thread, every server tick: advances the speech in progress.
+    private static void tickActions(MinecraftServer server) {
+        ActionExecutor actions = executor;
+        if (actions != null) {
+            actions.tick();
+        }
+    }
+
+    // Normal chat only: commands such as /say and /me also fire this event, and they must never interrupt him.
+    // The chat handler may finish on a filter thread, so the check is posted back to the server thread.
+    private static void onChat(PlayerChatMessage message, ServerPlayer sender, ChatType.Bound bound) {
+        ActionExecutor actions = executor;
+        if (actions == null || !bound.chatType().is(ChatType.CHAT)) {
+            return;
+        }
+        sender.level().getServer().execute(() -> actions.onPlayerChat(sender));
     }
 
     private static String modVersion() {

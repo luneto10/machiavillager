@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from fastapi import WebSocket, status
 from pydantic import ValidationError
@@ -18,6 +18,10 @@ from machiavillager.domain.protocol import (
     Welcome,
     parse_message,
 )
+
+if TYPE_CHECKING:
+    # Typing only: requests imports this module at runtime, so a real import here would cycle.
+    from machiavillager.api.bridge.requests import PendingRequests
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +103,7 @@ async def handshake(websocket: WebSocket) -> bool:
     return True
 
 
-async def serve(websocket: WebSocket) -> None:
+async def serve(websocket: WebSocket, pending: "PendingRequests") -> None:
     """Read messages until the mod leaves. A bad message is answered, not fatal."""
 
     while True:
@@ -110,3 +114,7 @@ async def serve(websocket: WebSocket) -> None:
             await send_error(websocket, "bad_message", describe(error))
             continue
         log_message("in", message)
+
+        # Only action_status answers a request we sent; every other kind has no waiter here.
+        if message.type == "action_status":
+            pending.resolve(message)

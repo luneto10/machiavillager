@@ -37,7 +37,9 @@ public class MachiavillagerEntity extends PathfinderMob {
             "Friendship is an investment. I expect returns.",
             "Shh. I'm planning. Nothing illegal. Yet.");
 
-    private final NpcBrain brain = new NpcBrain();
+    // Set by the bridge while an action speaks; not saved, since speech never outlives the server session.
+    private boolean speaking;
+    private final NpcBrain brain = new NpcBrain(this::isSpeaking);
 
     public MachiavillagerEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -71,6 +73,21 @@ public class MachiavillagerEntity extends PathfinderMob {
 
     private boolean brainMayCatchUp(PathfinderMob mob, Player player) {
         return brain != null && brain.mayCatchUpTo(player, mob);
+    }
+
+    /** True while a bridge speech is running. The brain makes no decision meanwhile. Server thread only. */
+    public boolean isSpeaking() {
+        return speaking;
+    }
+
+    /** Marks the start and end of a bridge speech. Server thread only. */
+    public void setSpeaking(boolean speaking) {
+        this.speaking = speaking;
+    }
+
+    /** True while a meeting owns him: a warning, a pull, or the talk itself. */
+    public boolean inMeeting() {
+        return brain.inMeeting();
     }
 
     /** Dev: forces a new decision on the next tick. */

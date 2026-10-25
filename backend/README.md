@@ -23,5 +23,9 @@ The Minecraft mod connects to `ws://localhost:8000/bridge` (Checkpoint 4, issue 
 3. The mod reads the same root `.env` when `runClient` or `runServer` starts (issue #9). With no token
    set, the endpoint refuses every connection and the mod stays off.
 4. In game, `/machiavillager bridge status` (operators) shows the link state.
+5. Dev only: set `MACHIAVILLAGER_DEV_ENDPOINTS=true` in the root `.env` and restart the backend. Then open
+   http://localhost:8000/docs, expand `POST /dev/speak` and send `{"lines": ["Hello there."]}`. The reply is
+   the mod's final status (`succeeded`, `rejected`, `failed`, or `interrupted`). With no mod connected it
+   answers 503. The endpoint does not exist unless the flag is set.
 
 Layer rules live in [`docs/architecture.md`](../docs/architecture.md).

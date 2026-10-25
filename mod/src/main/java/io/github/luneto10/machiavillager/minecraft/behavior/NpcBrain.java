@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import net.minecraft.core.BlockPos;
@@ -73,6 +74,8 @@ public final class NpcBrain {
     private final IndependenceDrift drift = new IndependenceDrift();
     private final BrainDebugOverlay overlay = new BrainDebugOverlay();
     private final VillageFinder villages = new VillageFinder();
+    // True while a bridge speech is running; the brain then makes no new decision, so no bark talks over it.
+    private final BooleanSupplier speaking;
     // In memory only: after a restart the first hint waits the minimum again.
     private long activeTicksSinceHint;
     // The running summons, or null. One meeting at a time.
@@ -82,12 +85,24 @@ public final class NpcBrain {
     // Blocked or cancelled summons: each player is retried by timer, not by the dice.
     private final RetrySchedule summonRetries = new RetrySchedule();
 
+    /**
+     * Speaking is supplied by the caller: the brain only asks, so it does not know about the bridge.
+     */
+    public NpcBrain(BooleanSupplier speaking) {
+        this.speaking = Objects.requireNonNull(speaking, "speaking");
+    }
+
+    /** True while a meeting is running, from the warning to the walk home. */
+    public boolean inMeeting() {
+        return meeting != null;
+    }
+
     /** Called every server tick. Decides again when the timer runs out, then acts on the decision. */
     public void tick(PathfinderMob npc, ServerLevel level) {
         // A meeting owns him: decisions wait until it ends, while the story clock keeps running.
         if (meeting != null) {
             tickMeeting(npc, level);
-        } else if (decisionTimer.tick()) {
+        } else if (decisionTimer.tick() && !speaking.getAsBoolean()) {
             decide(npc, level);
         }
         if (storyClock.tick()) {

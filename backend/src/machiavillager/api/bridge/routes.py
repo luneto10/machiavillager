@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from machiavillager.api.bridge.auth import bearer, refusal_reason
 from machiavillager.api.bridge.connections import ModConnections
+from machiavillager.api.bridge.requests import REASON_DISCONNECTED, PendingRequests
 from machiavillager.api.bridge.session import handshake, serve
 from machiavillager.infrastructure.settings import Settings, get_settings
 
@@ -31,13 +32,18 @@ async def bridge(
 
     await websocket.accept()
     connections: ModConnections = websocket.app.state.mod_connections
+    pending: PendingRequests = websocket.app.state.pending_requests
     try:
         # Only a mod that completed the handshake may replace the current one.
         if not await handshake(websocket):
             return
         await connections.take_over(websocket)
-        await serve(websocket)
+        await serve(websocket, pending)
     except WebSocketDisconnect:
         logger.info("bridge connection closed")
     finally:
+        # Only the current mod's departure fails its requests. A replaced mod must not cancel
+        # requests that its successor is already working on.
+        if connections.current() is websocket:
+            pending.cancel_all(REASON_DISCONNECTED)
         connections.release(websocket)
