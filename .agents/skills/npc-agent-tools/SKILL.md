@@ -30,7 +30,8 @@ description: Use when giving the NPC a new ability or behavior on the backend â€
 ## Writing the prompt text
 
 Applies to the persona file, the fixed rules and every prompt string the backend builds.
-Based on the `writing-for-agents` skill; ADR 0005 has the tested persona.
+Based on the `writing-for-agents` skill; ADR 0005 has the tested persona. For the workflow
+(scope, draft, evaluate, harden), use the `prompt-engineering` skill.
 
 - **Positive targets.** Say what he does ("dodge real-world harm in character"), not only what he
   avoids. A bare prohibition makes the banned thing more likely. Keep "never" for hard guardrails
