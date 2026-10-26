@@ -12,6 +12,7 @@ import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.bridge.BridgeStatusText;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+import io.github.luneto10.machiavillager.domain.behavior.RelationshipNudges;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeState;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
@@ -19,6 +20,7 @@ import io.github.luneto10.machiavillager.domain.bridge.EventIds;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
+import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Instant;
@@ -50,6 +52,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code spawn}: summon him, or bring him to you if he already exists.</li>
  *   <li>{@code brain next}: force a new decision now (dev).</li>
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
+ *   <li>{@code brain nudge <-10..10>}: apply an affinity nudge for you, through the same limits as the AI (dev).</li>
  *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set phase <partner|seeds|proposal|regime|war>}: put him in a phase, resetting the ratchet (dev).</li>
@@ -63,6 +66,11 @@ public final class DevCommands {
     private static final int MIN_DEV_VALUE = 0;
     private static final int MAX_DEV_VALUE = 100;
     private static final String VALUE_ARG = "value";
+    private static final String NUDGE_ARG = "affinity_delta";
+    // Dev nudges stay inside the range the policy accepts, so a typo cannot ask for more than a suggestion could.
+    private static final int MIN_NUDGE = -10;
+    private static final int MAX_NUDGE = 10;
+    private static final String DEV_NUDGE_REASON = "dev command";
     private static final String MODEL_ARG = "name";
     private static final String NO_MODELS = "No model list: the backend is not connected or not in dev mode.";
     private static final String NOT_CONNECTED = "Bridge not connected.";
@@ -244,6 +252,7 @@ public final class DevCommands {
                 .requires(OPERATOR)
                 .then(Commands.literal("next").executes(DevCommands::runBrainNext))
                 .then(Commands.literal("odds").executes(DevCommands::runBrainOdds));
+        brain.then(nudge());
 
         // One literal per table entry: "brain do follow", "brain do bark", and so on.
         var does = Commands.literal("do");
@@ -254,6 +263,35 @@ public final class DevCommands {
         // "set" edits the saved story values, and the mood.
         brain.then(set());
         return brain;
+    }
+
+    // "brain nudge <delta>": runs the same path as an AI suggestion, for the player who typed it.
+    private static LiteralArgumentBuilder<CommandSourceStack> nudge() {
+        return Commands.literal("nudge")
+                .then(Commands.argument(NUDGE_ARG, IntegerArgumentType.integer(MIN_NUDGE, MAX_NUDGE))
+                        .executes(DevCommands::runNudge));
+    }
+
+    // Applies the nudge through the bridge's nudger, so the caps and the refusal reasons are the real ones.
+    private static int runNudge(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        UUID playerId = source.getPlayerOrException().getUUID();
+        int delta = IntegerArgumentType.getInteger(context, NUDGE_ARG);
+
+        // The nudger exists only while the bridge runs, so the operator is told when it is off.
+        Optional<RelationshipNudger> nudger = BridgeLifecycle.nudger();
+        if (nudger.isEmpty()) {
+            source.sendFailure(Component.literal("Nudge refused: bridge is off."));
+            return 0;
+        }
+        RelationshipNudges.Result result = nudger.get().suggest(playerId, delta, DEV_NUDGE_REASON);
+        if (result instanceof RelationshipNudges.Applied applied) {
+            source.sendSuccess(() -> Component.literal("Nudge applied: " + applied.delta()), false);
+            return 1;
+        }
+        String reason = ((RelationshipNudges.Rejected) result).reason();
+        source.sendFailure(Component.literal("Nudge refused: " + reason));
+        return 0;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> set() {

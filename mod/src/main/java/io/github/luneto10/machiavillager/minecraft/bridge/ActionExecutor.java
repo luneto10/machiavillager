@@ -3,7 +3,9 @@ package io.github.luneto10.machiavillager.minecraft.bridge;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.behavior.RelationshipNudges;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechQueue;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.domain.time.Cooldown;
@@ -32,15 +34,22 @@ public final class ActionExecutor {
     private final Optional<Cooldown> unpromptedCooldown;
     // Holds the model label of the last accepted reply, for the dev boss bar.
     private final ModelLine lastReply;
+    // Applies suggested affinity changes; shared with the dev nudge command so both use the same limits.
+    private final RelationshipNudger nudger;
     // The speech in progress, or null while he is silent.
     private ActiveSpeech speech;
 
     /** Creates the executor for one server session. The wait is the minimum gap between unprompted speeches. */
     public ActionExecutor(
-            MinecraftServer server, BridgeClient bridge, Duration unpromptedWait, ModelLine lastReply) {
+            MinecraftServer server,
+            BridgeClient bridge,
+            Duration unpromptedWait,
+            ModelLine lastReply,
+            RelationshipNudger nudger) {
         this.server = Objects.requireNonNull(server, "server");
         this.bridge = Objects.requireNonNull(bridge, "bridge");
         this.lastReply = Objects.requireNonNull(lastReply, "lastReply");
+        this.nudger = Objects.requireNonNull(nudger, "nudger");
         long ticks = SpeechRules.toTicks(Objects.requireNonNull(unpromptedWait, "unpromptedWait"));
         this.unpromptedCooldown = ticks > 0 ? Optional.of(new Cooldown(ticks)) : Optional.empty();
     }
@@ -79,6 +88,23 @@ public final class ActionExecutor {
         npc.get().setSpeaking(true);
         Optional<ServerPlayer> recipient = action.to().map(server.getPlayerList()::getPlayer);
         speech = new ActiveSpeech(id, npc.get(), new SpeechQueue(action.lines()), recipient);
+    }
+
+    /**
+     * A suggested affinity change from the backend. It is instant: the limits decide, the change is written at once,
+     * and the statuses say whether it was applied. Server thread only.
+     */
+    public void suggestRelationship(SuggestRelationshipAction action) {
+        String id = action.requestId();
+        RelationshipNudges.Result result = nudger.suggest(action.player(), action.affinityDelta(), action.reason());
+        if (result instanceof RelationshipNudges.Rejected rejected) {
+            reject(id, rejected.reason());
+            return;
+        }
+        // Same statuses as a speech that ends at once: accepted, running, then succeeded.
+        bridge.send(new ActionStatus.Accepted(id));
+        bridge.send(new ActionStatus.Running(id));
+        bridge.send(new ActionStatus.Succeeded(id));
     }
 
     /** Called at the end of every server tick: says the next line when its turn comes, or ends the speech. */
@@ -156,7 +182,7 @@ public final class ActionExecutor {
 
     // Logs the refusal reason (never the chat text), so a missing reply can be found in the game log.
     private void reject(String requestId, String reason) {
-        Machiavillager.LOGGER.info("speak {} rejected: {}", requestId, reason);
+        Machiavillager.LOGGER.info("action {} rejected: {}", requestId, reason);
         bridge.send(new ActionStatus.Rejected(requestId, reason));
     }
 }

@@ -14,7 +14,13 @@ from typing import Annotated, Any, Final
 
 from pydantic import Field, TypeAdapter
 
-from machiavillager.domain.protocol.actions import SpeakAction, SpeakArgs
+from machiavillager.domain.protocol.actions import (
+    BackendAction,
+    SpeakAction,
+    SpeakArgs,
+    SuggestRelationshipAction,
+    SuggestRelationshipArgs,
+)
 from machiavillager.domain.protocol.common import (
     ACTION_ID_PATTERN,
     CANONICAL_UUID_PATTERN,
@@ -71,6 +77,7 @@ from machiavillager.domain.protocol.statuses import (
 
 __all__ = [
     "ACTION_ID_PATTERN",
+    "BackendAction",
     "CANONICAL_UUID_PATTERN",
     "CONVERSATION_ID_PATTERN",
     "DevModelData",
@@ -117,6 +124,8 @@ __all__ = [
     "SpeakAction",
     "SpeakArgs",
     "SpeakLine",
+    "SuggestRelationshipAction",
+    "SuggestRelationshipArgs",
     "Succeeded",
     "TerminalStatus",
     "Welcome",
@@ -127,7 +136,7 @@ __all__ = [
 ]
 
 Message = Annotated[
-    Hello | Welcome | SpeakAction | ActionStatus | ModEvent | Error,
+    Hello | Welcome | BackendAction | ActionStatus | ModEvent | Error,
     Field(discriminator="type"),
 ]
 

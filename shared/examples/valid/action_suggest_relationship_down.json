@@ -1,0 +1,1 @@
+{"v": 1, "type": "action", "request_id": "act_01HZX8K2M9", "action": "suggest_relationship", "args": {"player": "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69", "affinity_delta": -6, "reason": "threatened him for real"}, "timeout_ms": 30000, "in_reply_to": "evt_01HZX8K2M9"}

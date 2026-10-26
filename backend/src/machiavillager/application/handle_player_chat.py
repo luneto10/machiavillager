@@ -6,7 +6,7 @@ from typing import Any, Final
 
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.history_budget import fit_history
-from machiavillager.application.ports import BridgeUnavailable, GameBridge, LineWriter
+from machiavillager.application.ports import BridgeUnavailable, Feeling, GameBridge, LineWriter
 from machiavillager.application.prompt_builder import (
     ConversationLine,
     ProfanityLevel,
@@ -20,11 +20,15 @@ from machiavillager.domain.protocol import (
     SpeakAction,
     SpeakArgs,
     Succeeded,
+    SuggestRelationshipAction,
+    SuggestRelationshipArgs,
     TerminalStatus,
 )
 
 logger = logging.getLogger(__name__)
 
+# The mod answers a suggestion at once, so a short wait keeps a silent mod from delaying the speech.
+SUGGESTION_TIMEOUT_MS: Final = 5_000
 NPC_SPEAKER: Final = "Machiavillager"
 # Marks a line he was talked over in the middle of, so the next reply knows it was cut short.
 CUT_OFF_MARK: Final = " (cut off)"
@@ -74,6 +78,29 @@ def reply_action(
         timeout_ms=MAX_TIMEOUT_MS,
         in_reply_to=event.event_id,
         **action_fields,
+    )
+
+
+def suggest_action(
+    event: PlayerChatEvent,
+    feeling: Feeling,
+    request_id: str,
+) -> SuggestRelationshipAction:
+    """Build the suggest_relationship action that carries his feeling about the player who spoke."""
+
+    # Every field is set: this action has no optional fields, and the contract refuses a null.
+    return SuggestRelationshipAction(
+        v=PROTOCOL_VERSION,
+        type="action",
+        request_id=request_id,
+        action="suggest_relationship",
+        args=SuggestRelationshipArgs(
+            player=event.data.player_uuid,
+            affinity_delta=feeling.affinity_delta,
+            reason=feeling.reason,
+        ),
+        timeout_ms=SUGGESTION_TIMEOUT_MS,
+        in_reply_to=event.event_id,
     )
 
 
@@ -178,6 +205,10 @@ class HandlePlayerChat:
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
         reply = await self._writer.write_reply(messages, irritated=irritated)
 
+        # The feeling goes first: it is instant, while the speak below can take seconds.
+        if reply.feeling is not None:
+            await self._suggest(event, reply.feeling)
+
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
         if not reply.lines:
             logger.info("stayed silent event_id=%s", event.event_id)
@@ -199,6 +230,23 @@ class HandlePlayerChat:
 
         self._remember(key, reply.lines, status)
         logger.info("reply %s finished: %s", action.request_id, status.status)
+
+    async def _suggest(self, event: PlayerChatEvent, feeling: Feeling) -> None:
+        """Send the feeling for the player who spoke. Never raises: the speak still goes out."""
+
+        action = suggest_action(event, feeling, self._new_request_id())
+        try:
+            status = await self._bridge.request(action)
+        except BridgeUnavailable:
+            logger.info("feeling %s not sent: no mod is connected", action.request_id)
+            return
+        except Exception as error:
+            # Type name only: the error text is kept out of the log, as for the other failures.
+            logger.warning("feeling %s failed: %s", action.request_id, type(error).__name__)
+            return
+
+        # The reason text is never logged on this side: only the request id and the status.
+        logger.info("feeling %s finished: %s", action.request_id, status.status)
 
     def _remember(self, key: str, lines: list[str], status: TerminalStatus) -> None:
         """Store only what he actually got out, so later replies build on what was said."""

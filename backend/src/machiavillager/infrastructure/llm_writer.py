@@ -22,10 +22,10 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
-from machiavillager.application.ports import Reply
+from machiavillager.application.ports import Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
-from machiavillager.domain.protocol.common import MAX_MODELS
+from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
 from machiavillager.infrastructure.settings import (
     LLM_BASE_URLS,
     Settings,
@@ -53,10 +53,37 @@ CANNED_LINES: Final = (
 )
 
 
+# Feeling is harder to earn than to lose: a gain is capped at +5, a loss goes down to -10.
+MIN_FEELING_DELTA: Final = -10
+MAX_FEELING_DELTA: Final = 5
+
+
+class FeelingOutput(BaseModel):
+    # No docstring here either: the Field descriptions carry the guidance to the model.
+
+    affinity_delta: int = Field(
+        description=(
+            "How much your feeling for this player moves: -1 to -10 for hatred, a real threat or "
+            "humiliation (-6 or less for a death threat), +1 to +5 for a gift, a rescue or loyalty."
+        )
+    )
+    reason: str = Field(
+        description="What the player did, in a few words, up to 120 characters. Never shown."
+    )
+
+
 class SpeakOutput(BaseModel):
     # No docstring on purpose: PydanticAI appends it to the tool description the model sees.
 
     lines: list[str] = Field(min_length=0)
+    feeling: FeelingOutput | None = Field(
+        default=None,
+        description=(
+            "Set it when the player's last line clearly changes how you feel about them: hatred, a "
+            "threat, an order to vanish, a gift, a rescue. Leave it null for small talk, teasing "
+            "between friends and requests."
+        ),
+    )
 
 
 class NoUsableModelError(Exception):
@@ -208,7 +235,13 @@ class LlmLineWriter:
             # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
             outcome = "reply" if lines else "chose silence"
             self._log_answer(outcome, label, result.usage, elapsed_ms)
-            return Reply(lines=lines, model=label, latency_ms=round(elapsed_ms))
+            feeling = _to_feeling(result.output.feeling)
+            return Reply(
+                lines=lines,
+                model=label,
+                latency_ms=round(elapsed_ms),
+                feeling=feeling,
+            )
 
         # Every model failed: the collected errors go up so write_reply can name them.
         raise ExceptionGroup("no model in the chain answered", errors)
@@ -224,6 +257,22 @@ class LlmLineWriter:
             usage.input_tokens,
             usage.output_tokens,
         )
+
+
+def _to_feeling(output: FeelingOutput | None) -> Feeling | None:
+    """Clamp the model's feeling to the writer's range. A zero delta or empty reason means none."""
+
+    if output is None:
+        return None
+
+    # Clamped here, before the contract sees it, so a model cannot push past the cap.
+    delta = min(max(output.affinity_delta, MIN_FEELING_DELTA), MAX_FEELING_DELTA)
+
+    # Trimmed here too: a long reason is cut, not refused, because the lines still matter.
+    reason = output.reason.strip()[:MAX_FEELING_REASON_LENGTH]
+    if delta == 0 or not reason:
+        return None
+    return Feeling(affinity_delta=delta, reason=reason)
 
 
 def _build_routes(pairs: list[Pair]) -> list[Route]:

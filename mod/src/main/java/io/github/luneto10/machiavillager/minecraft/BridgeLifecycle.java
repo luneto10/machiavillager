@@ -9,10 +9,12 @@ import io.github.luneto10.machiavillager.domain.bridge.NearChatCooldown;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
 import io.github.luneto10.machiavillager.domain.bridge.ChatAddressing;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
 import io.github.luneto10.machiavillager.minecraft.bridge.ModelLine;
 import io.github.luneto10.machiavillager.minecraft.bridge.PlayerChatReporter;
+import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -41,6 +43,8 @@ public final class BridgeLifecycle {
     private static volatile NearChatCooldown nearCooldown;
     // The model label of the last reply, for the dev boss bar; a fresh one per start, null when the bridge is off.
     private static volatile ModelLine modelLine;
+    // Applies suggested affinity changes; fresh per start, null when the bridge is off.
+    private static volatile RelationshipNudger nudger;
 
     private BridgeLifecycle() {}
 
@@ -56,6 +60,11 @@ public final class BridgeLifecycle {
     /** The running client, or empty when no server is running or the bridge settings were invalid. */
     public static Optional<BridgeClient> current() {
         return Optional.ofNullable(client);
+    }
+
+    /** The nudger of the running server, or empty when the bridge is off. Dev command and executor share it. */
+    public static Optional<RelationshipNudger> nudger() {
+        return Optional.ofNullable(nudger);
     }
 
     /** Dev: the model label the boss bar shows. Back to "no reply yet" when the bridge is off or restarted. */
@@ -81,8 +90,12 @@ public final class BridgeLifecycle {
         // Fresh per start, so a restart shows "no reply yet" again until the next reply.
         ModelLine line = new ModelLine();
         modelLine = line;
+        // Built per start too, so a restart starts with no recorded nudges and the same limits.
+        RelationshipNudger nudges = new RelationshipNudger(server);
+        nudger = nudges;
         // The executor is in place before the socket starts, so the first action finds it.
-        executor = new ActionExecutor(server, started, SpeechRules.unpromptedCooldown(System.getenv()), line);
+        executor = new ActionExecutor(
+                server, started, SpeechRules.unpromptedCooldown(System.getenv()), line, nudges);
         client = started;
         started.start();
     }
@@ -91,6 +104,7 @@ public final class BridgeLifecycle {
         BridgeClient running = client;
         client = null;
         executor = null;
+        nudger = null;
         nearCooldown = null;
         modelLine = null;
         if (running != null) {
@@ -98,11 +112,15 @@ public final class BridgeLifecycle {
         }
     }
 
-    // Game thread. Speak is executed; any other message is only logged.
+    // Game thread. Speak and relationship suggestions are executed; any other message is only logged.
     private static void onMessage(BridgeMessage message) {
         ActionExecutor actions = executor;
         if (message instanceof SpeakAction speak && actions != null) {
             actions.speak(speak);
+            return;
+        }
+        if (message instanceof SuggestRelationshipAction suggest && actions != null) {
+            actions.suggestRelationship(suggest);
             return;
         }
         Machiavillager.LOGGER.info("Bridge received {}", message.getClass().getSimpleName());

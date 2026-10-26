@@ -11,20 +11,32 @@
   - [2.3. Property `Machiavillager bridge protocol > oneOf > Welcome > protocol`](#oneOf_i1_protocol)
   - [2.4. Property `Machiavillager bridge protocol > oneOf > Welcome > models`](#oneOf_i1_models)
     - [2.4.1. Machiavillager bridge protocol > oneOf > Welcome > models > models items](#oneOf_i1_models_items)
-- [3. Property `Machiavillager bridge protocol > oneOf > SpeakAction`](#oneOf_i2)
-  - [3.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > v`](#oneOf_i2_v)
-  - [3.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > type`](#oneOf_i2_type)
-  - [3.3. Property `Machiavillager bridge protocol > oneOf > SpeakAction > request_id`](#oneOf_i2_request_id)
-  - [3.4. Property `Machiavillager bridge protocol > oneOf > SpeakAction > action`](#oneOf_i2_action)
-  - [3.5. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args`](#oneOf_i2_args)
-    - [3.5.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args > lines`](#oneOf_i2_args_lines)
-      - [3.5.1.1. Machiavillager bridge protocol > oneOf > SpeakAction > args > lines > lines items](#oneOf_i2_args_lines_items)
-    - [3.5.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args > to`](#oneOf_i2_args_to)
-  - [3.6. Property `Machiavillager bridge protocol > oneOf > SpeakAction > timeout_ms`](#oneOf_i2_timeout_ms)
-  - [3.7. Property `Machiavillager bridge protocol > oneOf > SpeakAction > conversation_id`](#oneOf_i2_conversation_id)
-  - [3.8. Property `Machiavillager bridge protocol > oneOf > SpeakAction > in_reply_to`](#oneOf_i2_in_reply_to)
-  - [3.9. Property `Machiavillager bridge protocol > oneOf > SpeakAction > model`](#oneOf_i2_model)
-  - [3.10. Property `Machiavillager bridge protocol > oneOf > SpeakAction > latency_ms`](#oneOf_i2_latency_ms)
+- [3. Property `Machiavillager bridge protocol > oneOf > item 2`](#oneOf_i2)
+  - [3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction`](#oneOf_i2_oneOf_i0)
+    - [3.1.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > v`](#oneOf_i2_oneOf_i0_v)
+    - [3.1.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > type`](#oneOf_i2_oneOf_i0_type)
+    - [3.1.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > request_id`](#oneOf_i2_oneOf_i0_request_id)
+    - [3.1.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > action`](#oneOf_i2_oneOf_i0_action)
+    - [3.1.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args`](#oneOf_i2_oneOf_i0_args)
+      - [3.1.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > lines`](#oneOf_i2_oneOf_i0_args_lines)
+        - [3.1.5.1.1. Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > lines > lines items](#oneOf_i2_oneOf_i0_args_lines_items)
+      - [3.1.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > to`](#oneOf_i2_oneOf_i0_args_to)
+    - [3.1.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > timeout_ms`](#oneOf_i2_oneOf_i0_timeout_ms)
+    - [3.1.7. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > conversation_id`](#oneOf_i2_oneOf_i0_conversation_id)
+    - [3.1.8. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > in_reply_to`](#oneOf_i2_oneOf_i0_in_reply_to)
+    - [3.1.9. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > model`](#oneOf_i2_oneOf_i0_model)
+    - [3.1.10. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > latency_ms`](#oneOf_i2_oneOf_i0_latency_ms)
+  - [3.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction`](#oneOf_i2_oneOf_i1)
+    - [3.2.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > v`](#oneOf_i2_oneOf_i1_v)
+    - [3.2.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > type`](#oneOf_i2_oneOf_i1_type)
+    - [3.2.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > request_id`](#oneOf_i2_oneOf_i1_request_id)
+    - [3.2.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > action`](#oneOf_i2_oneOf_i1_action)
+    - [3.2.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args`](#oneOf_i2_oneOf_i1_args)
+      - [3.2.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > player`](#oneOf_i2_oneOf_i1_args_player)
+      - [3.2.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > affinity_delta`](#oneOf_i2_oneOf_i1_args_affinity_delta)
+      - [3.2.5.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > reason`](#oneOf_i2_oneOf_i1_args_reason)
+    - [3.2.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > timeout_ms`](#oneOf_i2_oneOf_i1_timeout_ms)
+    - [3.2.7. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > in_reply_to`](#oneOf_i2_oneOf_i1_in_reply_to)
 - [4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`](#oneOf_i3)
   - [4.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted`](#oneOf_i3_oneOf_i0)
     - [4.1.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted > v`](#oneOf_i3_oneOf_i0_v)
@@ -109,7 +121,7 @@
 | ------------------------- |
 | [Hello](#oneOf_i0)        |
 | [Welcome](#oneOf_i1)      |
-| [SpeakAction](#oneOf_i2)  |
+| [item 2](#oneOf_i2)       |
 | [ActionStatus](#oneOf_i3) |
 | [item 4](#oneOf_i4)       |
 | [Error](#oneOf_i5)        |
@@ -283,7 +295,20 @@ Specific value: `1`
 | **Min length** | 1  |
 | **Max length** | 80 |
 
-## <a name="oneOf_i2"></a>3. Property `Machiavillager bridge protocol > oneOf > SpeakAction`
+## <a name="oneOf_i2"></a>3. Property `Machiavillager bridge protocol > oneOf > item 2`
+
+|                           |                  |
+| ------------------------- | ---------------- |
+| **Type**                  | `combining`      |
+| **Required**              | No               |
+| **Additional properties** | Any type allowed |
+
+| One of(Option)                                  |
+| ----------------------------------------------- |
+| [SpeakAction](#oneOf_i2_oneOf_i0)               |
+| [SuggestRelationshipAction](#oneOf_i2_oneOf_i1) |
+
+### <a name="oneOf_i2_oneOf_i0"></a>3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction`
 
 **Title:** SpeakAction
 
@@ -296,20 +321,20 @@ Specific value: `1`
 
 **Description:** Backend asks the mod to speak a short sequence of lines as one action.
 
-| Property                                        | Pattern | Type    | Deprecated | Definition           | Title/Description |
-| ----------------------------------------------- | ------- | ------- | ---------- | -------------------- | ----------------- |
-| + [v](#oneOf_i2_v )                             | No      | const   | No         | -                    | V                 |
-| + [type](#oneOf_i2_type )                       | No      | const   | No         | -                    | Type              |
-| + [request_id](#oneOf_i2_request_id )           | No      | string  | No         | -                    | Request Id        |
-| + [action](#oneOf_i2_action )                   | No      | const   | No         | -                    | Action            |
-| + [args](#oneOf_i2_args )                       | No      | object  | No         | In #/$defs/SpeakArgs | SpeakArgs         |
-| + [timeout_ms](#oneOf_i2_timeout_ms )           | No      | integer | No         | -                    | Timeout Ms        |
-| - [conversation_id](#oneOf_i2_conversation_id ) | No      | string  | No         | -                    | Conversation Id   |
-| - [in_reply_to](#oneOf_i2_in_reply_to )         | No      | string  | No         | -                    | In Reply To       |
-| - [model](#oneOf_i2_model )                     | No      | string  | No         | -                    | Model             |
-| - [latency_ms](#oneOf_i2_latency_ms )           | No      | integer | No         | -                    | Latency Ms        |
+| Property                                                 | Pattern | Type    | Deprecated | Definition           | Title/Description |
+| -------------------------------------------------------- | ------- | ------- | ---------- | -------------------- | ----------------- |
+| + [v](#oneOf_i2_oneOf_i0_v )                             | No      | const   | No         | -                    | V                 |
+| + [type](#oneOf_i2_oneOf_i0_type )                       | No      | const   | No         | -                    | Type              |
+| + [request_id](#oneOf_i2_oneOf_i0_request_id )           | No      | string  | No         | -                    | Request Id        |
+| + [action](#oneOf_i2_oneOf_i0_action )                   | No      | const   | No         | -                    | Action            |
+| + [args](#oneOf_i2_oneOf_i0_args )                       | No      | object  | No         | In #/$defs/SpeakArgs | SpeakArgs         |
+| + [timeout_ms](#oneOf_i2_oneOf_i0_timeout_ms )           | No      | integer | No         | -                    | Timeout Ms        |
+| - [conversation_id](#oneOf_i2_oneOf_i0_conversation_id ) | No      | string  | No         | -                    | Conversation Id   |
+| - [in_reply_to](#oneOf_i2_oneOf_i0_in_reply_to )         | No      | string  | No         | -                    | In Reply To       |
+| - [model](#oneOf_i2_oneOf_i0_model )                     | No      | string  | No         | -                    | Model             |
+| - [latency_ms](#oneOf_i2_oneOf_i0_latency_ms )           | No      | integer | No         | -                    | Latency Ms        |
 
-### <a name="oneOf_i2_v"></a>3.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > v`
+#### <a name="oneOf_i2_oneOf_i0_v"></a>3.1.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > v`
 
 **Title:** V
 
@@ -322,7 +347,7 @@ Specific value: `1`
 
 Specific value: `1`
 
-### <a name="oneOf_i2_type"></a>3.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > type`
+#### <a name="oneOf_i2_oneOf_i0_type"></a>3.1.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > type`
 
 **Title:** Type
 
@@ -335,7 +360,7 @@ Specific value: `1`
 
 Specific value: `"action"`
 
-### <a name="oneOf_i2_request_id"></a>3.3. Property `Machiavillager bridge protocol > oneOf > SpeakAction > request_id`
+#### <a name="oneOf_i2_oneOf_i0_request_id"></a>3.1.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > request_id`
 
 **Title:** Request Id
 
@@ -350,7 +375,7 @@ Specific value: `"action"`
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^act_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eact_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
-### <a name="oneOf_i2_action"></a>3.4. Property `Machiavillager bridge protocol > oneOf > SpeakAction > action`
+#### <a name="oneOf_i2_oneOf_i0_action"></a>3.1.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > action`
 
 **Title:** Action
 
@@ -363,7 +388,7 @@ Specific value: `"action"`
 
 Specific value: `"speak"`
 
-### <a name="oneOf_i2_args"></a>3.5. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args`
+#### <a name="oneOf_i2_oneOf_i0_args"></a>3.1.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args`
 
 **Title:** SpeakArgs
 
@@ -376,12 +401,12 @@ Specific value: `"speak"`
 
 **Description:** Arguments for speak. See SpeakArgs.
 
-| Property                         | Pattern | Type            | Deprecated | Definition | Title/Description |
-| -------------------------------- | ------- | --------------- | ---------- | ---------- | ----------------- |
-| + [lines](#oneOf_i2_args_lines ) | No      | array of string | No         | -          | Lines             |
-| - [to](#oneOf_i2_args_to )       | No      | string          | No         | -          | To                |
+| Property                                  | Pattern | Type            | Deprecated | Definition | Title/Description |
+| ----------------------------------------- | ------- | --------------- | ---------- | ---------- | ----------------- |
+| + [lines](#oneOf_i2_oneOf_i0_args_lines ) | No      | array of string | No         | -          | Lines             |
+| - [to](#oneOf_i2_oneOf_i0_args_to )       | No      | string          | No         | -          | To                |
 
-#### <a name="oneOf_i2_args_lines"></a>3.5.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args > lines`
+##### <a name="oneOf_i2_oneOf_i0_args_lines"></a>3.1.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > lines`
 
 **Title:** Lines
 
@@ -400,11 +425,11 @@ Specific value: `"speak"`
 | **Additional items** | False              |
 | **Tuple validation** | See below          |
 
-| Each item of this array must be           | Description |
-| ----------------------------------------- | ----------- |
-| [lines items](#oneOf_i2_args_lines_items) | -           |
+| Each item of this array must be                    | Description |
+| -------------------------------------------------- | ----------- |
+| [lines items](#oneOf_i2_oneOf_i0_args_lines_items) | -           |
 
-##### <a name="oneOf_i2_args_lines_items"></a>3.5.1.1. Machiavillager bridge protocol > oneOf > SpeakAction > args > lines > lines items
+###### <a name="oneOf_i2_oneOf_i0_args_lines_items"></a>3.1.5.1.1. Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > lines > lines items
 
 |              |          |
 | ------------ | -------- |
@@ -416,7 +441,7 @@ Specific value: `"speak"`
 | **Min length** | 1   |
 | **Max length** | 256 |
 
-#### <a name="oneOf_i2_args_to"></a>3.5.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > args > to`
+##### <a name="oneOf_i2_oneOf_i0_args_to"></a>3.1.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > args > to`
 
 **Title:** To
 
@@ -432,7 +457,7 @@ Specific value: `"speak"`
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$``` [Test](https://regex101.com/?regex=%5E%5B0-9a-fA-F%5D%7B8%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B12%7D%24) |
 
-### <a name="oneOf_i2_timeout_ms"></a>3.6. Property `Machiavillager bridge protocol > oneOf > SpeakAction > timeout_ms`
+#### <a name="oneOf_i2_oneOf_i0_timeout_ms"></a>3.1.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > timeout_ms`
 
 **Title:** Timeout Ms
 
@@ -448,7 +473,7 @@ Specific value: `"speak"`
 | **Minimum**  | &ge; 100    |
 | **Maximum**  | &le; 120000 |
 
-### <a name="oneOf_i2_conversation_id"></a>3.7. Property `Machiavillager bridge protocol > oneOf > SpeakAction > conversation_id`
+#### <a name="oneOf_i2_oneOf_i0_conversation_id"></a>3.1.7. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > conversation_id`
 
 **Title:** Conversation Id
 
@@ -463,7 +488,7 @@ Specific value: `"speak"`
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^conv_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Econv_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
-### <a name="oneOf_i2_in_reply_to"></a>3.8. Property `Machiavillager bridge protocol > oneOf > SpeakAction > in_reply_to`
+#### <a name="oneOf_i2_oneOf_i0_in_reply_to"></a>3.1.8. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > in_reply_to`
 
 **Title:** In Reply To
 
@@ -478,7 +503,7 @@ Specific value: `"speak"`
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
-### <a name="oneOf_i2_model"></a>3.9. Property `Machiavillager bridge protocol > oneOf > SpeakAction > model`
+#### <a name="oneOf_i2_oneOf_i0_model"></a>3.1.9. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > model`
 
 **Title:** Model
 
@@ -494,7 +519,7 @@ Specific value: `"speak"`
 | **Min length** | 1  |
 | **Max length** | 80 |
 
-### <a name="oneOf_i2_latency_ms"></a>3.10. Property `Machiavillager bridge protocol > oneOf > SpeakAction > latency_ms`
+#### <a name="oneOf_i2_oneOf_i0_latency_ms"></a>3.1.10. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction > latency_ms`
 
 **Title:** Latency Ms
 
@@ -509,6 +534,181 @@ Specific value: `"speak"`
 | ------------ | ----------- |
 | **Minimum**  | &ge; 0      |
 | **Maximum**  | &le; 600000 |
+
+### <a name="oneOf_i2_oneOf_i1"></a>3.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction`
+
+**Title:** SuggestRelationshipAction
+
+|                           |                                   |
+| ------------------------- | --------------------------------- |
+| **Type**                  | `object`                          |
+| **Required**              | No                                |
+| **Additional properties** | Not allowed                       |
+| **Defined in**            | #/$defs/SuggestRelationshipAction |
+
+**Description:** Backend suggests a bounded change to how he feels about one player. The mod validates it.
+
+| Property                                         | Pattern | Type    | Deprecated | Definition                         | Title/Description       |
+| ------------------------------------------------ | ------- | ------- | ---------- | ---------------------------------- | ----------------------- |
+| + [v](#oneOf_i2_oneOf_i1_v )                     | No      | const   | No         | -                                  | V                       |
+| + [type](#oneOf_i2_oneOf_i1_type )               | No      | const   | No         | -                                  | Type                    |
+| + [request_id](#oneOf_i2_oneOf_i1_request_id )   | No      | string  | No         | -                                  | Request Id              |
+| + [action](#oneOf_i2_oneOf_i1_action )           | No      | const   | No         | -                                  | Action                  |
+| + [args](#oneOf_i2_oneOf_i1_args )               | No      | object  | No         | In #/$defs/SuggestRelationshipArgs | SuggestRelationshipArgs |
+| + [timeout_ms](#oneOf_i2_oneOf_i1_timeout_ms )   | No      | integer | No         | -                                  | Timeout Ms              |
+| - [in_reply_to](#oneOf_i2_oneOf_i1_in_reply_to ) | No      | string  | No         | -                                  | In Reply To             |
+
+#### <a name="oneOf_i2_oneOf_i1_v"></a>3.2.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > v`
+
+**Title:** V
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Wire version of the message. Always 1. A breaking change bumps it.
+
+Specific value: `1`
+
+#### <a name="oneOf_i2_oneOf_i1_type"></a>3.2.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > type`
+
+**Title:** Type
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Message kind. Always "action".
+
+Specific value: `"action"`
+
+#### <a name="oneOf_i2_oneOf_i1_request_id"></a>3.2.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > request_id`
+
+**Title:** Request Id
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** Generated by the backend: act_ followed by 16 random hex characters. Unique per action; every action_status for this action echoes it. Example: act_3fa9c01b7e2d4f60.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^act_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eact_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+#### <a name="oneOf_i2_oneOf_i1_action"></a>3.2.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > action`
+
+**Title:** Action
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Name of the allowlisted action. "suggest_relationship" suggests a feeling change; the mod validates, caps and applies it.
+
+Specific value: `"suggest_relationship"`
+
+#### <a name="oneOf_i2_oneOf_i1_args"></a>3.2.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args`
+
+**Title:** SuggestRelationshipArgs
+
+|                           |                                 |
+| ------------------------- | ------------------------------- |
+| **Type**                  | `object`                        |
+| **Required**              | Yes                             |
+| **Additional properties** | Not allowed                     |
+| **Defined in**            | #/$defs/SuggestRelationshipArgs |
+
+**Description:** Arguments for suggest_relationship. See SuggestRelationshipArgs.
+
+| Property                                                    | Pattern | Type    | Deprecated | Definition | Title/Description |
+| ----------------------------------------------------------- | ------- | ------- | ---------- | ---------- | ----------------- |
+| + [player](#oneOf_i2_oneOf_i1_args_player )                 | No      | string  | No         | -          | Player            |
+| + [affinity_delta](#oneOf_i2_oneOf_i1_args_affinity_delta ) | No      | integer | No         | -          | Affinity Delta    |
+| + [reason](#oneOf_i2_oneOf_i1_args_reason )                 | No      | string  | No         | -          | Reason            |
+
+##### <a name="oneOf_i2_oneOf_i1_args_player"></a>3.2.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > player`
+
+**Title:** Player
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+| **Format**   | `uuid`   |
+
+**Description:** The player who spoke, in canonical 8-4-4-4-12 form. Set by the backend from the player_chat event it answers. Example: "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69".
+
+| Restrictions                      |                                                                                                                                                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$``` [Test](https://regex101.com/?regex=%5E%5B0-9a-fA-F%5D%7B8%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B12%7D%24) |
+
+##### <a name="oneOf_i2_oneOf_i1_args_affinity_delta"></a>3.2.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > affinity_delta`
+
+**Title:** Affinity Delta
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How much his affinity for this player moves, from -10 to 10. Negative when the player threatened, humiliated or betrayed him; positive when the player earned his trust. 0 means no change and is never sent. Example: -6.
+
+| Restrictions |          |
+| ------------ | -------- |
+| **Minimum**  | &ge; -10 |
+| **Maximum**  | &le; 10  |
+
+##### <a name="oneOf_i2_oneOf_i1_args_reason"></a>3.2.5.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > reason`
+
+**Title:** Reason
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** What the player did, in a few words, 1 to 120 characters. Logged with the change; never shown to players. Example: "threatened him for real".
+
+| Restrictions   |     |
+| -------------- | --- |
+| **Min length** | 1   |
+| **Max length** | 120 |
+
+#### <a name="oneOf_i2_oneOf_i1_timeout_ms"></a>3.2.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > timeout_ms`
+
+**Title:** Timeout Ms
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How long the mod may take before the action is reported as failed with reason timeout, in milliseconds. Between 100 and 120000. Example: 30000.
+
+| Restrictions |             |
+| ------------ | ----------- |
+| **Minimum**  | &ge; 100    |
+| **Maximum**  | &le; 120000 |
+
+#### <a name="oneOf_i2_oneOf_i1_in_reply_to"></a>3.2.7. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > in_reply_to`
+
+**Title:** In Reply To
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+**Description:** The player_chat event this suggestion comes from. Always set for this action. Explicit null is rejected. Example: evt_01HZX8K2M9.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
 ## <a name="oneOf_i3"></a>4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`
 
