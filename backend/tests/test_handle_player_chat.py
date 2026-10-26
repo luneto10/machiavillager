@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -269,24 +270,37 @@ def test_no_connected_mod_speaks_nothing_and_does_not_raise():
     assert _npc_texts(store, f"player:{PLAYER_UUID}") == []
 
 
-def test_second_event_while_the_first_is_in_flight_is_skipped():
+def test_events_during_a_reply_coalesce_into_one_reply_to_the_newest(caplog):
     gate = asyncio.Event()
     writer = FakeWriter(gate=gate)
     bridge = FakeBridge(_succeeded())
     handler = _handler(writer, bridge)
 
     async def scenario() -> None:
-        first = asyncio.create_task(handler(_chat_event(event_id="evt_test00000001")))
+        first = asyncio.create_task(
+            handler(_chat_event(text="first line", event_id="evt_test00000001"))
+        )
         # One turn lets the first call reach the writer and hold there.
         await asyncio.sleep(0)
-        await handler(_chat_event(event_id="evt_test00000002"))
+        await handler(_chat_event(text="second line", event_id="evt_test00000002"))
+        await handler(_chat_event(text="third line", event_id="evt_test00000003"))
         gate.set()
         await first
 
-    asyncio.run(scenario())
+    with caplog.at_level(logging.INFO):
+        asyncio.run(scenario())
 
-    assert len(writer.calls) == 1
-    assert len(bridge.actions) == 1
+    assert len(writer.calls) == 2
+    assert [action.in_reply_to for action in bridge.actions] == [
+        "evt_test00000001",
+        "evt_test00000003",
+    ]
+    # Both parked lines reach the newest reply's history, each exactly once.
+    user_texts = [m.content for m in writer.calls[1][0] if m.role == "user"]
+    assert sum("second line" in text for text in user_texts) == 1
+    assert sum("third line" in text for text in user_texts) == 1
+    assert "reply queued event_id=evt_test00000002" in caplog.text
+    assert "reply superseded event_id=evt_test00000002" in caplog.text
 
 
 def test_a_finished_reply_frees_the_player_for_the_next_one():

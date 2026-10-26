@@ -9,6 +9,7 @@ from machiavillager.application.prompt_builder import (
     PROFANITY_RULES,
     ConversationLine,
     build_prompt,
+    persona_for_phase,
 )
 from machiavillager.domain.protocol import NpcSnapshot
 
@@ -116,3 +117,76 @@ def test_persona_file_no_longer_asks_for_crude_humor():
     persona_file = backend / "src" / "machiavillager" / "persona" / "machiavillager.md"
 
     assert "caralho" not in persona_file.read_text(encoding="utf-8")
+
+
+PHASED_PERSONA = """\
+# Machiavillager
+Shared intro.
+
+## Voice
+Shared voice.
+
+## Phase: partner
+Partner only.
+
+## Phase: seeds
+Seeds only.
+
+## Phase: regime
+Regime only.
+
+## Closing
+Shared end.
+"""
+PHASE_NAMES = ["partner", "seeds", "regime"]
+
+
+def test_partner_phase_keeps_shared_text_and_only_the_partner_section():
+    text = persona_for_phase(PHASED_PERSONA, "partner")
+
+    assert "Shared intro." in text
+    assert "Shared voice." in text
+    assert "Shared end." in text
+    assert "Partner only." in text
+    assert "Seeds only." not in text
+    assert "Regime only." not in text
+
+
+def test_regime_phase_gets_regime_only():
+    text = persona_for_phase(PHASED_PERSONA, "regime")
+
+    assert "Regime only." in text
+    assert "Partner only." not in text
+    assert "Seeds only." not in text
+
+
+def test_phase_heading_is_renamed_and_sections_keep_their_order():
+    text = persona_for_phase(PHASED_PERSONA, "partner")
+
+    assert "## Your phase now\nPartner only." in text
+    assert text.index("Shared intro.") < text.index("Partner only.") < text.index("Shared end.")
+
+
+@pytest.mark.parametrize("phase", PHASE_NAMES)
+def test_no_other_phase_name_or_text_leaks(phase):
+    text = persona_for_phase(PHASED_PERSONA, phase)
+
+    assert "## Phase:" not in text
+    assert text.count("## Your phase now") == 1
+    for other in PHASE_NAMES:
+        if other != phase:
+            assert f"{other.capitalize()} only." not in text
+
+
+def test_prompt_uses_the_npc_phase_section():
+    messages = build_prompt(PHASED_PERSONA, "Luciano", [], NPC)
+
+    assert "Seeds only." in messages[1].content
+    assert "Partner only." not in messages[1].content
+
+
+def test_no_game_state_uses_the_partner_phase():
+    messages = build_prompt(PHASED_PERSONA, "Luciano", [], None)
+
+    assert "Partner only." in messages[1].content
+    assert "Seeds only." not in messages[1].content

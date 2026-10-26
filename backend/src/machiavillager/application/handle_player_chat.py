@@ -85,35 +85,59 @@ class HandlePlayerChat:
         self._new_request_id = new_request_id
         self._clock = clock
         self._in_flight: set[str] = set()
+        # One newest pending event per player; an older pending one is replaced by a newer one.
+        self._pending: dict[str, PlayerChatEvent] = {}
 
     async def __call__(self, event: PlayerChatEvent) -> None:
         player = event.data.player_uuid
 
+        # Every line is kept as it arrives, so the next reply reads the whole thread.
+        self._store_line(event)
+
         # A spamming player cannot burn the model budget: one reply per player at a time.
         if player in self._in_flight:
-            logger.info("reply already in flight event_id=%s", event.event_id)
+            self._park(event)
             return
 
         self._in_flight.add(player)
         try:
-            await self._reply(event)
+            # Lines that arrived during a reply are answered in turn, one reply to the newest.
+            current: PlayerChatEvent | None = event
+            while current is not None:
+                await self._reply(current)
+                current = self._pending.pop(player, None)
         finally:
             self._in_flight.discard(player)
 
+    def _store_line(self, event: PlayerChatEvent) -> None:
+        """Add his chat line to its thread the moment it arrives."""
+
+        # Stored once, here, so no reply adds the same line again.
+        player_line = ConversationLine(event.data.player_name, event.data.text, from_npc=False)
+        self._store.add(conversation_key(event), player_line, self._clock())
+
+    def _park(self, event: PlayerChatEvent) -> None:
+        """Hold a line that arrived mid-reply; only the newest held line gets a reply."""
+
+        # The replaced line stays in the thread, so the coalesced reply still sees it.
+        player = event.data.player_uuid
+        older = self._pending.get(player)
+        if older is not None:
+            logger.info("reply superseded event_id=%s", older.event_id)
+        self._pending[player] = event
+        logger.info("reply queued event_id=%s", event.event_id)
+
     async def _reply(self, event: PlayerChatEvent) -> None:
-        now = self._clock()
         key = conversation_key(event)
 
-        # History is read before his new line is added, so the line is not counted twice.
-        history = self._store.recent(key, now)
-        player_line = ConversationLine(event.data.player_name, event.data.text, from_npc=False)
-        self._store.add(key, player_line, now)
+        # The thread already ends with his newest line, so the prompt reads it from the store.
+        history = self._store.recent(key, self._clock())
 
         npc = event.data.npc
         messages = build_prompt(
             self._read_persona(),
             event.data.player_name,
-            [*history, player_line],
+            history,
             npc,
             profanity=self._profanity,
         )

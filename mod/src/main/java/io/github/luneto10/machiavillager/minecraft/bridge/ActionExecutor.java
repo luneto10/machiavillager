@@ -1,5 +1,6 @@
 package io.github.luneto10.machiavillager.minecraft.bridge;
 
+import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
@@ -147,7 +148,9 @@ public final class ActionExecutor {
         return unpromptedCooldown.map(cooldown -> cooldown.tryUse(now)).orElse(true);
     }
 
+    // Logs the refusal reason (never the chat text), so a missing reply can be found in the game log.
     private void reject(String requestId, String reason) {
+        Machiavillager.LOGGER.info("speak {} rejected: {}", requestId, reason);
         bridge.send(new ActionStatus.Rejected(requestId, reason));
     }
 }
