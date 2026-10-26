@@ -3,8 +3,9 @@ package io.github.luneto10.machiavillager.minecraft;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
+import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
-import io.github.luneto10.machiavillager.domain.bridge.NameMention;
+import io.github.luneto10.machiavillager.domain.bridge.ChatAddressing;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
@@ -31,6 +32,8 @@ public final class BridgeLifecycle {
     private static volatile BridgeClient client;
     // Runs the actions the backend asks for; set together with the client, null when the bridge is off.
     private static volatile ActionExecutor executor;
+    // Read once at server start: when true, only lines that name him are forwarded to the backend.
+    private static volatile boolean requireName;
 
     private BridgeLifecycle() {}
 
@@ -58,6 +61,8 @@ public final class BridgeLifecycle {
             return;
         }
         BridgeClient started = new BridgeClient(config, modVersion(), server, BridgeLifecycle::onMessage);
+        // Read with the other bridge settings, so a restart picks up a changed variable.
+        requireName = ChatAddressing.requireName(System.getenv());
         // The executor is in place before the socket starts, so the first action finds it.
         executor = new ActionExecutor(server, started, SpeechRules.unpromptedCooldown(System.getenv()));
         client = started;
@@ -105,13 +110,17 @@ public final class BridgeLifecycle {
         });
     }
 
-    // Server thread. A line that calls him by name goes to the backend, if the bridge is running and he can hear it.
+    // Server thread. A line goes to the backend if the bridge is running, he can hear it, and the addressing rule allows it.
     private static void reportChat(ServerPlayer sender, String text) {
         BridgeClient running = client;
-        if (running == null || !NameMention.matches(text)) {
+        if (running == null) {
             return;
         }
-        PlayerChatReporter.build(sender.level().getServer(), sender, text).ifPresent(event -> {
+        Optional<Addressed> addressed = ChatAddressing.decide(text, requireName);
+        if (addressed.isEmpty()) {
+            return;
+        }
+        PlayerChatReporter.build(sender.level().getServer(), sender, text, addressed.get()).ifPresent(event -> {
             running.send(event);
             // Logged by id only: the chat text never reaches the log.
             Machiavillager.LOGGER.info("player_chat sent event_id={}", event.eventId());

@@ -21,4 +21,7 @@ class LineWriter(Protocol):
     """Turns a built prompt into the lines he speaks."""
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
-        """Return 1-8 lines that fit speak. Never raises for provider problems."""
+        """Return 0-8 lines that fit speak; an empty list means he chose to say nothing.
+
+        Never raises for provider problems.
+        """

@@ -123,10 +123,20 @@ def test_overlong_output_is_fitted_before_it_is_returned():
     assert all(len(line) <= MAX_LINE_LENGTH for line in lines)
 
 
-def test_output_empty_after_fitting_speaks_a_canned_line():
+def test_output_empty_after_fitting_is_silence_not_a_canned_line():
     writer = _writer(_chain(_answers("   ", "")))
 
-    assert _is_one_canned_line(_reply(writer))
+    assert _reply(writer) == []
+
+
+def test_empty_speak_call_is_silence_and_logged_without_text(caplog):
+    writer = _writer(_chain(_answers()))
+
+    with caplog.at_level(logging.INFO):
+        lines = _reply(writer)
+
+    assert lines == []
+    assert "LLM chose silence from fake-ok" in caplog.text
 
 
 def test_irritated_uses_the_irritated_chain():

@@ -140,9 +140,15 @@ class HandlePlayerChat:
             history,
             npc,
             profanity=self._profanity,
+            addressed=event.data.addressed,
         )
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
         lines = await self._writer.write_reply(messages, irritated=irritated)
+
+        # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
+        if not lines:
+            logger.info("stayed silent event_id=%s", event.event_id)
+            return
 
         action = reply_action(event, lines, self._new_request_id())
         try:

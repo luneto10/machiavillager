@@ -34,9 +34,10 @@ public final class PlayerChatReporter {
 
     /**
      * The event for this line, or empty when he cannot hear it: he must be loaded, in the speaker's dimension,
-     * and the speaker must be within reach.
+     * and the speaker must be within reach. The addressed reason comes from the caller, which decided it.
      */
-    public static Optional<PlayerChatEvent> build(MinecraftServer server, ServerPlayer sender, String text) {
+    public static Optional<PlayerChatEvent> build(
+            MinecraftServer server, ServerPlayer sender, String text, Addressed addressed) {
         Optional<MachiavillagerEntity> found = MachiavillagerLookup.find(server);
         if (found.isEmpty() || !(sender.level() instanceof ServerLevel level)) {
             return Optional.empty();
@@ -54,7 +55,7 @@ public final class PlayerChatReporter {
                 sender.getUUID(),
                 sender.getPlainTextName(),
                 text,
-                Addressed.NAME,
+                addressed,
                 Optional.empty(),
                 Optional.of(snapshot)));
     }

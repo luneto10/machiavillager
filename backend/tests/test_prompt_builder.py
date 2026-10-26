@@ -190,3 +190,24 @@ def test_no_game_state_uses_the_partner_phase():
 
     assert "Partner only." in messages[1].content
     assert "Seeds only." not in messages[1].content
+
+
+# Only overheard speech (addressed "near") tells him he may stay silent.
+@pytest.mark.parametrize("addressed", ["name", "conversation", "butt_in", "private"])
+def test_only_near_address_adds_the_overheard_line(addressed):
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC, addressed=addressed))
+
+    assert "Overheard" not in state
+
+
+def test_near_address_adds_the_overheard_line_last():
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC, addressed="near"))
+
+    assert state.splitlines()[-1].startswith("Overheard: this player did not call you")
+
+
+def test_near_address_without_game_state_still_gets_the_overheard_line():
+    state = _state(build_prompt(PERSONA, "Luciano", [], None, addressed="near"))
+
+    assert state.startswith("Game state unknown right now; stay vague about it.")
+    assert state.splitlines()[-1].startswith("Overheard:")

@@ -270,6 +270,40 @@ def test_no_connected_mod_speaks_nothing_and_does_not_raise():
     assert _npc_texts(store, f"player:{PLAYER_UUID}") == []
 
 
+def test_silence_sends_nothing_and_keeps_only_the_player_line(caplog):
+    store = ConversationStore()
+    bridge = FakeBridge(_succeeded())
+
+    with caplog.at_level(logging.INFO):
+        _run(
+            _handler(FakeWriter(()), bridge, store),
+            _chat_event(event_id="evt_test00000001"),
+        )
+
+    recent = store.recent(f"player:{PLAYER_UUID}", NOW)
+    assert bridge.actions == []
+    assert [(line.text, line.from_npc) for line in recent] == [("hi", False)]
+    assert "stayed silent event_id=evt_test00000001" in caplog.text
+
+
+def test_near_chat_tells_the_model_it_was_overheard():
+    writer = FakeWriter()
+
+    _run(_handler(writer, FakeBridge(_succeeded())), _chat_event(addressed="near"))
+
+    system_text = "\n".join(m.content for m in writer.calls[0][0] if m.role == "system")
+    assert "Overheard" in system_text
+
+
+def test_name_chat_is_not_marked_as_overheard():
+    writer = FakeWriter()
+
+    _run(_handler(writer, FakeBridge(_succeeded())), _chat_event(addressed="name"))
+
+    system_text = "\n".join(m.content for m in writer.calls[0][0] if m.role == "system")
+    assert "Overheard" not in system_text
+
+
 def test_events_during_a_reply_coalesce_into_one_reply_to_the_newest(caplog):
     gate = asyncio.Event()
     writer = FakeWriter(gate=gate)

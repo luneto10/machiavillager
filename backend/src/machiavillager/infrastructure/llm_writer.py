@@ -52,15 +52,11 @@ CANNED_LINES: Final = (
 class SpeakOutput(BaseModel):
     # No docstring on purpose: PydanticAI appends it to the tool description the model sees.
 
-    lines: list[str] = Field(min_length=1)
+    lines: list[str] = Field(min_length=0)
 
 
 class NoUsableModelError(Exception):
     """Every pair in the chain was skipped for lack of a key."""
-
-
-class EmptyReplyError(Exception):
-    """The model answered, but nothing was left to say after fitting."""
 
 
 class LlmLineWriter:
@@ -115,7 +111,7 @@ class LlmLineWriter:
         )
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
-        """Return 1-8 lines that fit speak. Falls back to a canned line; never raises."""
+        """Return 0-8 fitted lines; [] means he chose silence. Failures speak a canned line."""
 
         try:
             return await self._answer(messages, irritated=irritated)
@@ -146,20 +142,23 @@ class LlmLineWriter:
 
         # The model's lines may be longer or more numerous than the mod accepts, so they are fitted.
         lines = fit_to_speak(result.output.lines)
-        if not lines:
-            raise EmptyReplyError()
 
-        self._log_success(result.response.model_name, result.usage, elapsed_ms)
+        # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
+        outcome = "reply" if lines else "chose silence"
+        self._log_answer(outcome, result.response.model_name, result.usage, elapsed_ms)
         return lines
 
-    def _log_success(self, model_name: str | None, usage: RunUsage, elapsed_ms: float) -> None:
+    def _log_answer(
+        self, outcome: str, model_name: str | None, usage: RunUsage, elapsed_ms: float
+    ) -> None:
         """Log which model answered and what it cost. Never logs the text."""
 
         # The response names the model id only; the label adds the provider when it is known.
         name = model_name or "unknown"
         label = self._labels.get(name, name)
         logger.info(
-            "LLM reply from %s in %.0f ms, tokens in=%s out=%s",
+            "LLM %s from %s in %.0f ms, tokens in=%s out=%s",
+            outcome,
             label,
             elapsed_ms,
             usage.input_tokens,
