@@ -23,7 +23,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from machiavillager.domain.protocol.actions import SpeakArgs
-from machiavillager.infrastructure.settings import LLM_BASE_URLS, Settings
+from machiavillager.infrastructure.settings import LLM_BASE_URLS, Settings, parse_model_pair
 
 # The shortlist from ADR 0005: the chosen chain plus the fastest rejected model as a baseline.
 # NVIDIA's /models lists far more than a free key can call; most others return 404.
@@ -155,22 +155,6 @@ def is_valid_speak(response: dict[str, Any]) -> list[str] | None:
     except ValidationError:
         return None
     return [str(line) for line in args.lines]
-
-
-def parse_model_pair(text: str) -> tuple[str, str]:
-    """Split "provider:model" into its parts, rejecting providers with no base URL."""
-
-    # Split on the first colon only, since model ids such as "openai/gpt-oss-20b" hold slashes.
-    provider, separator, model = text.partition(":")
-    if not separator or not model:
-        raise ValueError(f"expected provider:model, got {text!r}")
-
-    # Unknown providers have no base URL, so reject them before any request is built.
-    if provider not in LLM_BASE_URLS:
-        raise ValueError(
-            f"unknown provider {provider!r}, expected one of {', '.join(LLM_BASE_URLS)}"
-        )
-    return provider, model
 
 
 def median(values: list[float]) -> float | None:
