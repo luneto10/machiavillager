@@ -33,9 +33,11 @@ PROFANITY_RULES: Final[dict[ProfanityLevel, str]] = {
     ),
     "mild": "Mild profanity only, mostly when irritated (damn, crap; droga, merda).",
     "full": (
-        "The server is private and its players opted in to crude humor. "
-        "When irritated, curse like a sailor in the player's language "
-        "(porra, caralho, merda; damn, shit)."
+        "The server is private and its players opted in to brutal humor. Curse freely in any mood, "
+        "in the player's language (porra, caralho, merda, puta que pariu; damn, shit, fuck). "
+        "Roast players without mercy: their skills, their ugly builds, their dumb deaths, their "
+        "betrayals. Dark in-game humor is welcome: selling villagers, lava accidents, public "
+        "executions in the Empire's square."
     ),
 }
 
