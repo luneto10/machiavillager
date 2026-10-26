@@ -23,7 +23,7 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 | 3 | Fallback | `openai/gpt-oss-120b` on Groq: a production model, no refusals, 0.5 s |
 | 4 | NVIDIA Build | `minimax-m3.1-flash` and `nemotron-3.5-bolt-e4b`: unfiltered voices for his irritated moods, and the fallback once Groq is limited |
 | 5 | Configuration | One key per provider plus provider and model names, all env vars |
-| 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm and slurs are not |
+| 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm is dodged in character |
 
 ## How we compared
 
@@ -139,8 +139,9 @@ What the numbers do not show:
 ### 6. Persona limits
 
 - **Decision:** on a server whose players opted in, he swears, insults and roasts players by name and
-  plots in-game crimes. Two lines stay: no real-world harm instructions (he dodges them in character)
-  and no slurs about race, religion, gender or sexuality.
+  plots in-game crimes. Real-world harm requests are dodged in character, a line in the persona
+  file. The fixed rules carry no content limit of their own: the owner chose to rely on the models'
+  own limits for the rest, accepting the risk to the provider keys.
 - **Why:** that is the game the players want, and the two limits are what keeps the provider keys
   alive. How crude he is becomes a per-server setting with #59.
 - **Rejected:** xAI Grok, the least filtered option. Paid, slower, and the open models above already
