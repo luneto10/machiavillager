@@ -40,6 +40,10 @@ MAX_LATENCY_MS: Final = 600_000
 # Affinity and independence share the mod's 0..100 scale.
 MIN_RELATIONSHIP_SCORE: Final = 0
 MAX_RELATIONSHIP_SCORE: Final = 100
+# One suggestion moves affinity by at most 10 either way; the mod applies its own cap on top.
+MIN_AFFINITY_DELTA: Final = -10
+MAX_AFFINITY_DELTA: Final = 10
+MAX_FEELING_REASON_LENGTH: Final = 120
 
 # Identifiers are prefixed so a log line shows what kind of id it is.
 ACTION_ID_PATTERN: Final = r"^act_[A-Za-z0-9]{8,32}$"

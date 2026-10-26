@@ -144,6 +144,23 @@ Unknown fields are rejected, never silently ignored.
   records; full JSON Schema validation runs in tests.
 - **Rejected:** Jackson, one more library to bundle.
 
+### 13. Relationship suggestions: the AI suggests, the mod decides
+
+- **Decision:** after a conversation the backend may send `suggest_relationship {player, affinity_delta,
+  reason`. `affinity_delta` is an int from -10 to 10, and 0 is never sent (the contract refuses it).
+  `reason` is 1 to 120 characters, logged by the mod with the change and never shown to players. The
+  backend sends it before the speak it belongs to and waits for its terminal status first, with the
+  same timeout as speech; a failure of the suggestion never stops the speak.- **The AI never sets values.** It suggests a bounded move; the mod checks that the player exists,
+  caps the change, rate-limits it (30 seconds between changes, +10 and -20 at most per 15 minutes
+  for each player) and applies it. Replies: `rejected` with reason
+  `unknown_player`, `rate_limited` or `capped`; otherwise the usual progress and terminal statuses.
+- **Provenance is `claimed`.** The model only reports what the conversation suggests, so a big move
+  from a chat line cannot come from it alone; bigger moves come from `observed` server events.
+- **Why the writer clamps positive gains to +5:** feeling good about someone must be harder to earn
+  than feeling bad. The writer clamps before the contract sees the value.
+- **Why a feeling is optional and rare:** the prompt tells the model to omit it almost always, so most
+  replies carry no suggestion and no extra round trip.
+
 ## Consequences
 
 - The bridge has its own thread and queue and hands work to the server thread with `server.execute`.

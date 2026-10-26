@@ -8,6 +8,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
+from machiavillager.application.ports import Feeling
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
 from machiavillager.infrastructure.llm_writer import (
@@ -121,7 +122,7 @@ def test_bad_answer_without_a_speak_call_falls_through_to_the_next_model(caplog)
 
     assert reply.lines == ["second"]
     assert reply.model == "groq:fake-ok"
-    assert "LLM groq:fake-text failed (UnexpectedModelBehavior), trying the next" in caplog.text
+    assert "LLM groq:fake-text failed (UnexpectedModelBehavior, status=None)" in caplog.text
 
 
 def test_every_model_failing_speaks_a_canned_line(caplog):
@@ -384,3 +385,53 @@ def test_use_model_refuses_an_unknown_provider():
 
     with pytest.raises(ValueError, match="unknown provider"):
         writer.use_model("openai:gpt-4o")
+
+
+def _feeling_model(delta: int, reason: str) -> FunctionModel:
+    """A fake model that answers with one line and a feeling about the player."""
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        # The feeling rides along in the speak call, as the optional field the model may fill.
+        args = {"lines": ["Hm."], "feeling_delta": delta, "feeling_reason": reason}
+        return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
+
+    return FunctionModel(reply, model_name="fake-feel")
+
+
+def _feeling_from(delta: int, reason: str = "threatened me") -> Feeling | None:
+    writer = _writer(_chain(_feeling_model(delta, reason)))
+
+    return asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling
+
+
+def test_feeling_comes_back_in_the_reply():
+    assert _feeling_from(-6) == Feeling(affinity_delta=-6, reason="threatened me")
+
+
+def test_positive_feeling_is_capped_at_plus_five():
+    assert _feeling_from(9) == Feeling(affinity_delta=5, reason="threatened me")
+
+
+def test_negative_feeling_is_capped_at_minus_ten():
+    assert _feeling_from(-15) == Feeling(affinity_delta=-10, reason="threatened me")
+
+
+def test_zero_feeling_is_no_feeling():
+    assert _feeling_from(0) is None
+
+
+def test_long_reason_is_trimmed_to_120_characters():
+    feeling = _feeling_from(-3, "r" * 200)
+
+    assert feeling is not None
+    assert len(feeling.reason) == 120
+
+
+def test_blank_reason_is_no_feeling():
+    assert _feeling_from(-3, "   ") is None
+
+
+def test_speak_without_a_feeling_field_gives_no_feeling():
+    writer = _writer(_chain(_answers("Hello.")))
+
+    assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling is None

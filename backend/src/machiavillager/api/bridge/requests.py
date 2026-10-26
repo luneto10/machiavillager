@@ -12,8 +12,8 @@ from machiavillager.application.ports import BridgeUnavailable
 from machiavillager.domain.protocol import (
     PROTOCOL_VERSION,
     ActionStatus,
+    BackendAction,
     Failed,
-    SpeakAction,
     TerminalStatus,
     is_terminal,
 )
@@ -85,7 +85,7 @@ class ModGameBridge:
         self._connections = connections
         self._pending = pending
 
-    async def request(self, action: SpeakAction) -> TerminalStatus:
+    async def request(self, action: BackendAction) -> TerminalStatus:
         websocket = self._connections.current()
         if websocket is None:
             raise BridgeUnavailable(NO_MOD_MESSAGE)

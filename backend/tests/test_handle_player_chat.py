@@ -7,13 +7,15 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import pytest
+
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.handle_player_chat import (
     HandlePlayerChat,
     conversation_key,
     reply_action,
 )
-from machiavillager.application.ports import BridgeUnavailable, Reply
+from machiavillager.application.ports import BridgeUnavailable, Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import (
     PROTOCOL_VERSION,
@@ -24,6 +26,7 @@ from machiavillager.domain.protocol import (
     PlayerChatEvent,
     SpeakAction,
     Succeeded,
+    SuggestRelationshipAction,
 )
 
 PLAYER_UUID = "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69"
@@ -43,18 +46,25 @@ class FakeWriter:
         *,
         model: str | None = None,
         latency_ms: int | None = None,
+        feeling: Feeling | None = None,
     ):
         self._lines = list(lines)
         self._gate = gate
         self._model = model
         self._latency_ms = latency_ms
+        self._feeling = feeling
         self.calls: list[tuple[list[PromptMessage], bool]] = []
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         self.calls.append((messages, irritated))
         if self._gate is not None:
             await self._gate.wait()
-        return Reply(lines=list(self._lines), model=self._model, latency_ms=self._latency_ms)
+        return Reply(
+            lines=list(self._lines),
+            model=self._model,
+            latency_ms=self._latency_ms,
+            feeling=self._feeling,
+        )
 
 
 class FakeBridge:
@@ -515,3 +525,79 @@ def test_a_long_thread_reaches_the_writer_trimmed_and_ends_with_the_newest_line(
     assert len(stored) == 20
     assert len(dialogue) < len(stored)
     assert dialogue[-1] == ("user", texts[-1])
+
+
+class SuggestionFailsBridge(FakeBridge):
+    """A mod that fails the suggest_relationship action with one error and speaks normally."""
+
+    def __init__(self, error: Exception):
+        super().__init__(_succeeded())
+        self._suggestion_error = error
+
+    async def request(self, action: Any) -> Any:
+        if isinstance(action, SuggestRelationshipAction):
+            self.actions.append(action)
+            raise self._suggestion_error
+        return await super().request(action)
+
+
+FEELING = Feeling(affinity_delta=-6, reason="threatened him for real")
+
+
+def _suggestions(bridge: FakeBridge) -> list[SuggestRelationshipAction]:
+    return [a for a in bridge.actions if isinstance(a, SuggestRelationshipAction)]
+
+
+def _speaks(bridge: FakeBridge) -> list[SpeakAction]:
+    return [a for a in bridge.actions if isinstance(a, SpeakAction)]
+
+
+def test_feeling_is_sent_as_a_suggestion_before_the_speak():
+    bridge = FakeBridge(_succeeded())
+    event = _chat_event(event_id="evt_test00000001")
+
+    _run(_handler(FakeWriter(feeling=FEELING), bridge), event)
+
+    assert [type(a) for a in bridge.actions] == [SuggestRelationshipAction, SpeakAction]
+    suggestion = bridge.actions[0]
+    assert suggestion.action == "suggest_relationship"
+    assert str(suggestion.args.player) == PLAYER_UUID
+    assert suggestion.args.affinity_delta == -6
+    assert suggestion.in_reply_to == "evt_test00000001"
+
+
+@pytest.mark.parametrize("error", [BridgeUnavailable("no mod"), RuntimeError("socket broke")])
+def test_a_failed_suggestion_never_blocks_the_speak(error):
+    bridge = SuggestionFailsBridge(error)
+
+    _run(_handler(FakeWriter(feeling=FEELING), bridge), _chat_event())
+
+    assert len(_suggestions(bridge)) == 1
+    assert [a.args.lines for a in _speaks(bridge)] == [["Hello."]]
+
+
+def test_reply_without_a_feeling_sends_only_the_speak():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event())
+
+    assert len(bridge.actions) == 1
+    assert isinstance(bridge.actions[0], SpeakAction)
+
+
+def test_feeling_with_no_lines_sends_only_the_suggestion():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter((), feeling=FEELING), bridge), _chat_event())
+
+    assert [type(a) for a in bridge.actions] == [SuggestRelationshipAction]
+
+
+def test_the_feeling_reason_is_never_logged_at_info(caplog):
+    bridge = FakeBridge(_succeeded())
+
+    with caplog.at_level(logging.INFO):
+        _run(_handler(FakeWriter(feeling=FEELING), bridge), _chat_event())
+
+    assert "feeling act_0123456789abcdef finished: succeeded" in caplog.text
+    assert "threatened him for real" not in caplog.text

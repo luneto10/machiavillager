@@ -19,6 +19,7 @@ import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.bridge.ProtocolRules;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.time.Instant;
@@ -115,7 +116,7 @@ public final class MessageCodec {
         return switch (string(object, TYPE)) {
             case "hello" -> new Hello(string(object, "mod_version"));
             case "welcome" -> new Welcome(welcomeModels(object));
-            case "action" -> speakAction(object);
+            case "action" -> actionMessage(object);
             case "action_status" -> actionStatus(object);
             case "event" -> event(object);
             case "error" -> error(object);
@@ -126,6 +127,26 @@ public final class MessageCodec {
     // Absent means no models: a backend that sends no list still welcomes the mod.
     private static List<String> welcomeModels(JsonObject object) {
         return object.has(MODELS) ? lines(object.getAsJsonArray(MODELS)) : List.of();
+    }
+
+    // An action message is one of several kinds; its "action" name decides which record it becomes.
+    private static BridgeMessage actionMessage(JsonObject object) {
+        return switch (string(object, "action")) {
+            case "speak" -> speakAction(object);
+            case "suggest_relationship" -> suggestRelationship(object);
+            default -> throw new DecodeException("unknown action");
+        };
+    }
+
+    private static SuggestRelationshipAction suggestRelationship(JsonObject object) {
+        JsonObject args = object.getAsJsonObject("args");
+        return new SuggestRelationshipAction(
+                string(object, REQUEST_ID),
+                uuid(args, "player"),
+                args.get("affinity_delta").getAsInt(),
+                string(args, REASON),
+                object.get("timeout_ms").getAsInt(),
+                optionalString(object, IN_REPLY_TO));
     }
 
     private static SpeakAction speakAction(JsonObject object) {
@@ -216,6 +237,7 @@ public final class MessageCodec {
             case Hello hello -> helloJson(hello);
             case Welcome welcome -> welcomeJson(welcome);
             case SpeakAction speak -> speakJson(speak);
+            case SuggestRelationshipAction suggest -> suggestRelationshipJson(suggest);
             case ActionStatus status -> statusJson(status);
             case PlayerChatEvent event -> playerChatJson(event);
             case DevModelEvent event -> devModelJson(event);
@@ -260,6 +282,22 @@ public final class MessageCodec {
         // Dev-only fields: the model that wrote the lines and its latency. Absent ones are left out, never null.
         speak.model().ifPresent(name -> json.addProperty(MODEL, name));
         speak.latencyMs().ifPresent(ms -> json.addProperty(LATENCY_MS, ms));
+        return json;
+    }
+
+    // The suggestion carries the player and the signed delta; the reason is text the backend wrote, sent as is.
+    private static JsonObject suggestRelationshipJson(SuggestRelationshipAction suggest) {
+        JsonObject json = envelope("action");
+        json.addProperty(REQUEST_ID, suggest.requestId());
+        json.addProperty("action", "suggest_relationship");
+        JsonObject args = new JsonObject();
+        args.addProperty("player", suggest.player().toString());
+        args.addProperty("affinity_delta", suggest.affinityDelta());
+        args.addProperty(REASON, suggest.reason());
+        json.add("args", args);
+        json.addProperty("timeout_ms", suggest.timeoutMs());
+        // Only a suggestion that answers a chat line names it; an unprompted one omits the key.
+        suggest.inReplyTo().ifPresent(id -> json.addProperty(IN_REPLY_TO, id));
         return json;
     }
 

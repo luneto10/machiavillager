@@ -16,6 +16,7 @@ import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.time.Instant;
 import java.util.List;
@@ -187,6 +188,37 @@ class MessageCodecTest {
                 "evt_0123456789abcdef", Instant.parse("2026-10-18T12:00:00Z"), DevModelOp.RESET, Optional.empty())));
 
         assertEquals(DevModelOp.RESET, ((DevModelEvent) message).op());
+    }
+
+    // Both suggestion examples as the backend writes them: a loss of affinity, then a gain.
+    private static final String SUGGEST_DOWN =
+            "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"suggest_relationship\","
+                    + "\"args\":{\"player\":\"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69\",\"affinity_delta\":-6,"
+                    + "\"reason\":\"threatened him for real\"},\"timeout_ms\":30000,\"in_reply_to\":\"evt_01HZX8K2M9\"}";
+    private static final String SUGGEST_UP =
+            "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"suggest_relationship\","
+                    + "\"args\":{\"player\":\"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69\",\"affinity_delta\":4,"
+                    + "\"reason\":\"brought him the iron he asked for\"},\"timeout_ms\":30000,"
+                    + "\"in_reply_to\":\"evt_01HZX8K2M9\"}";
+
+    @Test
+    void decode_readsSuggestRelationshipDown() {
+        SuggestRelationshipAction suggest = (SuggestRelationshipAction) MessageCodec.decode(SUGGEST_DOWN);
+
+        assertEquals(PLAYER, suggest.player());
+        assertEquals(-6, suggest.affinityDelta());
+        assertEquals("threatened him for real", suggest.reason());
+        assertEquals(Optional.of(EVENT), suggest.inReplyTo());
+    }
+
+    @Test
+    void encode_roundTripsSuggestRelationshipUp() {
+        BridgeMessage decoded = MessageCodec.decode(SUGGEST_UP);
+
+        String encoded = MessageCodec.encode(decoded);
+
+        assertTrue(encoded.contains("\"action\":\"suggest_relationship\""));
+        assertEquals(decoded, MessageCodec.decode(encoded));
     }
 
     @Test
