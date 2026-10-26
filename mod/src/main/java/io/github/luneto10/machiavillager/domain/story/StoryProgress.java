@@ -30,6 +30,12 @@ public final class StoryProgress {
         return new StoryProgress(MIN, Phase.PARTNER, Phase.PARTNER);
     }
 
+    /** Dev: puts him straight in a phase, ambition at its entry. Resets the ratchet, so testing can go back. */
+    public static StoryProgress atPhase(Phase phase, Personality personality) {
+        Objects.requireNonNull(phase, "phase");
+        return new StoryProgress(personality.entryOf(phase), phase, phase);
+    }
+
     /** Rebuilds a saved state as-is (no growth, no hysteresis). Rejects values that could not have been saved. */
     public static StoryProgress restored(double ambition, Phase phase, Phase highestPhase) {
         Objects.requireNonNull(phase, "phase");

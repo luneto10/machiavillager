@@ -108,6 +108,11 @@ public final class StoryData extends SavedData {
         setProgress(progress.withAmbition(value, personality));
     }
 
+    /** Dev: puts him straight in a phase, and resets the ratchet to it. */
+    public void setPhase(Phase phase, Personality personality) {
+        setProgress(StoryProgress.atPhase(phase, personality));
+    }
+
     /** Dev: sets independence. */
     public void setIndependence(int value) {
         setRelationships(relationships.withIndependence(value));

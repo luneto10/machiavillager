@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.luneto10.machiavillager.bridge.BridgeStatusText;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
@@ -42,6 +43,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
  *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
+ *   <li>{@code brain set phase <partner|seeds|proposal|regime|war>}: put him in a phase, resetting the ratchet (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
  * </ul>
  */
@@ -183,7 +185,14 @@ public final class DevCommands {
             mood.then(Commands.literal(value.name().toLowerCase(Locale.ROOT))
                     .executes(context -> runSetMood(context, value)));
         }
-        return set.then(mood);
+
+        // One literal per phase, named in lower case: "brain set phase regime".
+        var phase = Commands.literal("phase");
+        for (Phase value : Phase.values()) {
+            phase.then(Commands.literal(value.name().toLowerCase(Locale.ROOT))
+                    .executes(context -> runSetPhase(context, value)));
+        }
+        return set.then(mood).then(phase);
     }
 
     private static RequiredArgumentBuilder<CommandSourceStack, Integer> valueArgument(
@@ -208,6 +217,19 @@ public final class DevCommands {
         StoryData data = StoryData.get(context.getSource().getServer());
         data.setIndependence(IntegerArgumentType.getInteger(context, VALUE_ARG));
         String message = "Independence is now " + data.relationships().independence() + ".";
+        context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
+
+    // Puts him straight in a phase and resets the ratchet, so testing can go back. Works even with no NPC spawned.
+    private static int runSetPhase(CommandContext<CommandSourceStack> context, Phase phase) {
+        MinecraftServer server = context.getSource().getServer();
+        StoryData data = StoryData.get(server);
+        data.setPhase(phase, StoryData.personality(server));
+
+        // Shows the phase he landed in, with the ambition that put him there.
+        StoryProgress progress = data.progress();
+        String message = "Phase is now " + progress.phase() + " (ambition " + (int) progress.ambition() + ").";
         context.getSource().sendSuccess(() -> Component.literal(message), false);
         return 1;
     }

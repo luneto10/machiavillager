@@ -122,4 +122,27 @@ class StoryProgressTest {
         assertEquals(StoryProgress.MIN, StoryProgress.initial().withAmbition(BELOW_MIN, STANDARD).ambition());
         assertEquals(Phase.PARTNER, StoryProgress.initial().withAmbition(BELOW_MIN, STANDARD).phase());
     }
+
+    @Test
+    void atPhase_regimeThenPartner_goesBackToPartner() {
+        StoryProgress regime = StoryProgress.atPhase(Phase.REGIME, STANDARD);
+        assertEquals(Phase.REGIME, regime.phase());
+
+        StoryProgress partner = StoryProgress.atPhase(Phase.PARTNER, STANDARD);
+
+        assertEquals(Phase.PARTNER, partner.phase());
+        assertEquals(Phase.PARTNER, partner.highestPhase());
+        assertEquals(StoryProgress.MIN, partner.ambition());
+    }
+
+    @Test
+    void atPhase_eachPhase_ambitionAtEntryAndHighestIsPhase() {
+        for (Phase phase : Phase.values()) {
+            StoryProgress progress = StoryProgress.atPhase(phase, STANDARD);
+
+            assertEquals(STANDARD.entryOf(phase), progress.ambition());
+            assertEquals(phase, progress.phase());
+            assertEquals(phase, progress.highestPhase());
+        }
+    }
 }
