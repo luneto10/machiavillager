@@ -122,7 +122,7 @@ def test_bad_answer_without_a_speak_call_falls_through_to_the_next_model(caplog)
 
     assert reply.lines == ["second"]
     assert reply.model == "groq:fake-ok"
-    assert "LLM groq:fake-text failed (UnexpectedModelBehavior), trying the next" in caplog.text
+    assert "LLM groq:fake-text failed (UnexpectedModelBehavior, status=None)" in caplog.text
 
 
 def test_every_model_failing_speaks_a_canned_line(caplog):
@@ -392,7 +392,7 @@ def _feeling_model(delta: int, reason: str) -> FunctionModel:
 
     def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         # The feeling rides along in the speak call, as the optional field the model may fill.
-        args = {"lines": ["Hm."], "feeling": {"affinity_delta": delta, "reason": reason}}
+        args = {"lines": ["Hm."], "feeling_delta": delta, "feeling_reason": reason}
         return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
 
     return FunctionModel(reply, model_name="fake-feel")

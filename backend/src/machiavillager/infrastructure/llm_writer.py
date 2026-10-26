@@ -58,31 +58,25 @@ MIN_FEELING_DELTA: Final = -10
 MAX_FEELING_DELTA: Final = 5
 
 
-class FeelingOutput(BaseModel):
-    # No docstring here either: the Field descriptions carry the guidance to the model.
-
-    affinity_delta: int = Field(
-        description=(
-            "How much your feeling for this player moves: -1 to -10 for hatred, a real threat or "
-            "humiliation (-6 or less for a death threat), +1 to +5 for a gift, a rescue or loyalty."
-        )
-    )
-    reason: str = Field(
-        description="What the player did, in a few words, up to 120 characters. Never shown."
-    )
-
-
 class SpeakOutput(BaseModel):
     # No docstring on purpose: PydanticAI appends it to the tool description the model sees.
 
     lines: list[str] = Field(min_length=0)
-    feeling: FeelingOutput | None = Field(
+
+    # Two flat fields, not one nested object: NVIDIA rejects the $defs a nested model adds, and
+    # gpt-oss wrote the object as a string, which Groq answers with a 400.
+    feeling_delta: int | None = Field(
         default=None,
         description=(
-            "Set it when the player's last line clearly changes how you feel about them: hatred, a "
-            "threat, an order to vanish, a gift, a rescue. Leave it null for small talk, teasing "
+            "Set it when the player's last line clearly changes how you feel about them: -4 to -8 "
+            "for hatred or an order to vanish, -9 or -10 for a death threat, +2 to +5 for a gift, "
+            "a rescue, loyalty or real affection. Leave it null for small talk, teasing "
             "between friends and requests."
         ),
+    )
+    feeling_reason: str | None = Field(
+        default=None,
+        description="With feeling_delta: what the player did, a few words. Never shown.",
     )
 
 
@@ -224,7 +218,14 @@ class LlmLineWriter:
                 # A bad answer from one model does not end the chain; the next model gets its turn.
                 errors.append(error)
                 # Type name only: the error text can hold player words or provider details.
-                logger.info("LLM %s failed (%s), trying the next", label, type(error).__name__)
+                # The HTTP status (429 rate limit, 404 no access) says why; it holds no player text.
+                status = getattr(error, "status_code", None)
+                logger.info(
+                    "LLM %s failed (%s, status=%s), trying the next",
+                    label,
+                    type(error).__name__,
+                    status,
+                )
                 continue
 
             elapsed_ms = (time.perf_counter() - started) * 1000
@@ -235,7 +236,7 @@ class LlmLineWriter:
             # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
             outcome = "reply" if lines else "chose silence"
             self._log_answer(outcome, label, result.usage, elapsed_ms)
-            feeling = _to_feeling(result.output.feeling)
+            feeling = _to_feeling(result.output.feeling_delta, result.output.feeling_reason)
             return Reply(
                 lines=lines,
                 model=label,
@@ -259,17 +260,17 @@ class LlmLineWriter:
         )
 
 
-def _to_feeling(output: FeelingOutput | None) -> Feeling | None:
+def _to_feeling(delta: int | None, reason: str | None) -> Feeling | None:
     """Clamp the model's feeling to the writer's range. A zero delta or empty reason means none."""
 
-    if output is None:
+    if delta is None or reason is None:
         return None
 
     # Clamped here, before the contract sees it, so a model cannot push past the cap.
-    delta = min(max(output.affinity_delta, MIN_FEELING_DELTA), MAX_FEELING_DELTA)
+    delta = min(max(delta, MIN_FEELING_DELTA), MAX_FEELING_DELTA)
 
     # Trimmed here too: a long reason is cut, not refused, because the lines still matter.
-    reason = output.reason.strip()[:MAX_FEELING_REASON_LENGTH]
+    reason = reason.strip()[:MAX_FEELING_REASON_LENGTH]
     if delta == 0 or not reason:
         return None
     return Feeling(affinity_delta=delta, reason=reason)
