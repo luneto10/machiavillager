@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import Any, Final
 
 from machiavillager.application.conversation_store import ConversationStore
+from machiavillager.application.history_budget import fit_history
 from machiavillager.application.ports import BridgeUnavailable, GameBridge, LineWriter
 from machiavillager.application.prompt_builder import (
     ConversationLine,
@@ -162,7 +163,8 @@ class HandlePlayerChat:
         key = conversation_key(event)
 
         # The thread already ends with his newest line, so the prompt reads it from the store.
-        history = self._store.recent(key, self._clock())
+        # The store keeps every line; only the newest that fit the token budget reach the model.
+        history = fit_history(self._store.recent(key, self._clock()))
 
         npc = event.data.npc
         messages = build_prompt(

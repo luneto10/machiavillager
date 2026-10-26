@@ -494,3 +494,24 @@ def test_held_lines_join_the_thread_even_when_the_reply_fails():
 
     texts = [line.text for line in store.recent(f"player:{PLAYER_UUID}", NOW)]
     assert texts == ["first", "held"]
+
+
+def test_a_long_thread_reaches_the_writer_trimmed_and_ends_with_the_newest_line():
+    store = ConversationStore()
+    writer = FakeWriter(("Hello.",))
+    handler = _handler(writer, FakeBridge(_succeeded()), store)
+    # Long lines, so the token budget keeps only the newest few of the thread.
+    texts = [f"{i:02d} " + "word " * 40 for i in range(30)]
+    events = [
+        _chat_event(text=text, event_id=f"evt_test{i:08d}") for i, text in enumerate(texts, start=1)
+    ]
+
+    _run(handler, *events)
+
+    messages, _ = writer.calls[-1]
+    dialogue = _dialogue(messages)
+    stored = store.recent(f"player:{PLAYER_UUID}", NOW)
+    # The store keeps its 20 lines; only the prompt is trimmed.
+    assert len(stored) == 20
+    assert len(dialogue) < len(stored)
+    assert dialogue[-1] == ("user", texts[-1])

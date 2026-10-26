@@ -176,4 +176,8 @@ Adding one is a URL in `LLM_BASE_URLS`, a key setting and pairs in the chains.
     the same as a rate limit or a timeout.
 - He answers in one or two short lines by default and goes up to 8 for drama (decrees, proposals,
   betrayals, plot reveals, rants).
+- Prompt size, measured on `gpt-oss-120b` for a Partner reply: 1,024 tokens, then 825 after trimming the
+  persona, the fixed rules and the `full` profanity text (about 20% less). The dialogue sent is capped
+  at about 450 estimated tokens (`history_budget.py`) even though 20 lines are stored, so a long
+  conversation does not grow the cost of every reply without limit.
 - When a model is retired or a new one appears, rerun `compare_models.py` and update this record.
