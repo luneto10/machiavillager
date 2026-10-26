@@ -51,4 +51,5 @@ by `python scripts/sync_skills.py`. Use them:
 - `fabric-mod-dev` — mod code, threading, client/server split, run/restart rules.
 - `bridge-protocol` — adding a game action or event across Java and Python.
 - `npc-agent-tools` — adding a PydanticAI tool / persona / memory behavior.
+- `prompt-engineering` — designing, testing and hardening a prompt (vendored, MIT).
 - `checkpoint-workflow` — running a checkpoint end to end.

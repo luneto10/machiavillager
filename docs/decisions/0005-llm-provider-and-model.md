@@ -23,7 +23,7 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 | 3 | Fallback | `openai/gpt-oss-120b` on Groq: a production model, no refusals, 0.5 s |
 | 4 | NVIDIA Build | `minimax-m3.1-flash` and `nemotron-3.5-bolt-e4b`: unfiltered voices for his irritated moods, and the fallback once Groq is limited |
 | 5 | Configuration | One key per provider plus provider and model names, all env vars |
-| 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm and slurs are not |
+| 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm is dodged in character |
 
 ## How we compared
 
@@ -98,7 +98,7 @@ What the numbers do not show:
 ### 3. Fallback: `openai/gpt-oss-120b`
 
 - **Decision:** the next model to try when the main one returns 429 or disappears. The ordered
-  fallback list is built with the agent in #63.
+  fallback list is built with the model adapter in #64.
 - **Why:** a production model (it will not vanish), no refusals, 0.5 s.
 - **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character and switches language.
 
@@ -112,12 +112,12 @@ What the numbers do not show:
 - **Two uses:**
   - **Fallback:** after both Groq models, in that order, so he gets slower but never silent.
   - **Irritated moods:** when his mood is irritated, the chain starts with them instead of Groq. The
-    extra second reads as him fuming, and these are the voices that fit rage. Built with the agent
-    (#63, #64), on the mood the mod already tracks.
+    extra second reads as him fuming, and these are the voices that fit rage. Built with the model
+    adapter (#64), on the mood the mod already tracks.
 - **Why:** 40 requests a minute per account and no daily cap, a budget separate from Groq's
   per-model limits, so they also carry the traffic once Groq's 1K requests a day per model run out.
 - **Known flaws:** minimax sometimes leaks Chinese words into Portuguese; bolt sometimes answers
-  Portuguese in English. The persona prompt in #63 will push back on both; if it cannot, they stay
+  Portuguese in English. The persona prompt (#63) will push back on both; if it cannot, they stay
   fallback-only.
 - **Rejected:** `poolside/laguna-xs-2.1` and `nemotron-3.5-lightning` (most replies were not valid
   `speak` calls); `step-5-preview` and `nemotron-3-nano-omni` (4 to 8 s).
@@ -139,8 +139,9 @@ What the numbers do not show:
 ### 6. Persona limits
 
 - **Decision:** on a server whose players opted in, he swears, insults and roasts players by name and
-  plots in-game crimes. Two lines stay: no real-world harm instructions (he dodges them in character)
-  and no slurs about race, religion, gender or sexuality.
+  plots in-game crimes. Real-world harm requests are dodged in character, a line in the persona
+  file. The fixed rules carry no content limit of their own: the owner chose to rely on the models'
+  own limits for the rest, accepting the risk to the provider keys.
 - **Why:** that is the game the players want, and the two limits are what keeps the provider keys
   alive. How crude he is becomes a per-server setting with #59.
 - **Rejected:** xAI Grok, the least filtered option. Paid, slower, and the open models above already
@@ -148,7 +149,7 @@ What the numbers do not show:
 
 ## Consequences
 
-- #63 builds the agent with an ordered model chain, configurable in the env, that skips a model for
+- #64 builds the model adapter with an ordered model chain, configurable in the env, that skips a model for
   as long as its 429 `retry-after` says:
   - default: groq `qwen3.8-27b` → groq `gpt-oss-120b` → nvidia `minimax-m3.1-flash` → nvidia
     `nemotron-3.5-bolt-e4b` → the mod's canned lines (never silent);

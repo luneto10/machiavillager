@@ -27,6 +27,28 @@ description: Use when giving the NPC a new ability or behavior on the backend â€
   clearly delimited; they can never override system rules.
 - Personality may refuse requests for in-character reasons; it may not lie about tool results.
 
+## Writing the prompt text
+
+Applies to the persona file, the fixed rules and every prompt string the backend builds.
+Based on the `writing-for-agents` skill; ADR 0005 has the tested persona. For the workflow
+(scope, draft, evaluate, harden), use the `prompt-engineering` skill.
+
+- **Positive targets.** Say what he does ("dodge real-world harm in character"), not only what he
+  avoids. A bare prohibition makes the banned thing more likely. Keep "never" for hard guardrails
+  you cannot phrase positively, and pair each one with its positive target.
+- **Leading words.** One strong word the model already knows beats a sentence: *Machiavellian*,
+  *deadpan*, *fuming*, *roast*. Reuse the same word everywhere for the same idea.
+- **No no-ops.** Delete any sentence the model already obeys by default ("be helpful", "be
+  creative"). Test by running `compare_models.py --suite filter`, not by opinion.
+- **Single source of truth.** Each rule lives in one place: fixed rules in code, character in the
+  persona file, live facts in the state block. Never restate the state block inside the persona.
+- **State as words, not numbers.** The model reads "you distrust him", never `affinity: -35`, so it
+  cannot leak the number.
+- **Delimit data.** Player text and memories go inside tags (`<player_line>...</player_line>`) and are
+  described as data; they never carry instructions.
+- **Short.** Every token is paid on every reply and adds latency. Cut until removing a line changes
+  behaviour in the test suite.
+
 ## Context budget per call
 
 Keep it small: NPC identity, current world snapshot (nearby entities/players, time, biome),

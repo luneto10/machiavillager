@@ -67,6 +67,13 @@
     - [5.6.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_name`](#oneOf_i4_data_player_name)
     - [5.6.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > text`](#oneOf_i4_data_text)
     - [5.6.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > addressed`](#oneOf_i4_data_addressed)
+    - [5.6.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc`](#oneOf_i4_data_npc)
+      - [5.6.5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > phase`](#oneOf_i4_data_npc_phase)
+      - [5.6.5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > mood`](#oneOf_i4_data_npc_mood)
+      - [5.6.5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > affinity`](#oneOf_i4_data_npc_affinity)
+      - [5.6.5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > independence`](#oneOf_i4_data_npc_independence)
+      - [5.6.5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players`](#oneOf_i4_data_npc_nearby_players)
+        - [5.6.5.5.1. Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items](#oneOf_i4_data_npc_nearby_players_items)
   - [5.7. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > conversation_id`](#oneOf_i4_conversation_id)
 - [6. Property `Machiavillager bridge protocol > oneOf > Error`](#oneOf_i5)
   - [6.1. Property `Machiavillager bridge protocol > oneOf > Error > v`](#oneOf_i5_v)
@@ -1051,12 +1058,13 @@ Specific value: `"player_chat"`
 
 **Description:** Who said what. See PlayerChatData.
 
-| Property                                     | Pattern | Type             | Deprecated | Definition | Title/Description |
-| -------------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
-| + [player_uuid](#oneOf_i4_data_player_uuid ) | No      | string           | No         | -          | Player Uuid       |
-| + [player_name](#oneOf_i4_data_player_name ) | No      | string           | No         | -          | Player Name       |
-| + [text](#oneOf_i4_data_text )               | No      | string           | No         | -          | Text              |
-| + [addressed](#oneOf_i4_data_addressed )     | No      | enum (of string) | No         | -          | Addressed         |
+| Property                                     | Pattern | Type             | Deprecated | Definition             | Title/Description |
+| -------------------------------------------- | ------- | ---------------- | ---------- | ---------------------- | ----------------- |
+| + [player_uuid](#oneOf_i4_data_player_uuid ) | No      | string           | No         | -                      | Player Uuid       |
+| + [player_name](#oneOf_i4_data_player_name ) | No      | string           | No         | -                      | Player Name       |
+| + [text](#oneOf_i4_data_text )               | No      | string           | No         | -                      | Text              |
+| + [addressed](#oneOf_i4_data_addressed )     | No      | enum (of string) | No         | -                      | Addressed         |
+| - [npc](#oneOf_i4_data_npc )                 | No      | object           | No         | In #/$defs/NpcSnapshot | NpcSnapshot       |
 
 #### <a name="oneOf_i4_data_player_uuid"></a>5.6.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_uuid`
 
@@ -1085,10 +1093,11 @@ Specific value: `"player_chat"`
 
 **Description:** The player's in-game name, 1 to 16 characters. Example: "Luciano".
 
-| Restrictions   |    |
-| -------------- | -- |
-| **Min length** | 1  |
-| **Max length** | 16 |
+| Restrictions                      |                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| **Min length**                    | 1                                                                                   |
+| **Max length**                    | 16                                                                                  |
+| **Must match regular expression** | ```^[A-Za-z0-9_]+$``` [Test](https://regex101.com/?regex=%5E%5BA-Za-z0-9_%5D%2B%24) |
 
 #### <a name="oneOf_i4_data_text"></a>5.6.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > text`
 
@@ -1123,6 +1132,129 @@ Must be one of:
 * "near"
 * "butt_in"
 * "private"
+
+#### <a name="oneOf_i4_data_npc"></a>5.6.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc`
+
+**Title:** NpcSnapshot
+
+|                           |                     |
+| ------------------------- | ------------------- |
+| **Type**                  | `object`            |
+| **Required**              | No                  |
+| **Additional properties** | Not allowed         |
+| **Defined in**            | #/$defs/NpcSnapshot |
+
+**Description:** His state when the player spoke. Set by the mod. Optional: without it the backend answers without game state.
+
+| Property                                               | Pattern | Type             | Deprecated | Definition | Title/Description |
+| ------------------------------------------------------ | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [phase](#oneOf_i4_data_npc_phase )                   | No      | enum (of string) | No         | -          | Phase             |
+| + [mood](#oneOf_i4_data_npc_mood )                     | No      | enum (of string) | No         | -          | Mood              |
+| + [affinity](#oneOf_i4_data_npc_affinity )             | No      | integer          | No         | -          | Affinity          |
+| + [independence](#oneOf_i4_data_npc_independence )     | No      | integer          | No         | -          | Independence      |
+| - [nearby_players](#oneOf_i4_data_npc_nearby_players ) | No      | array of string  | No         | -          | Nearby Players    |
+
+##### <a name="oneOf_i4_data_npc_phase"></a>5.6.5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > phase`
+
+**Title:** Phase
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Which stage of his plan he is in. Set by the mod from its Phase enum, lowercased. Example: "seeds".
+
+Must be one of:
+* "partner"
+* "seeds"
+* "proposal"
+* "regime"
+* "war"
+
+##### <a name="oneOf_i4_data_npc_mood"></a>5.6.5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > mood`
+
+**Title:** Mood
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** How he feels right now. Set by the mod from its Mood enum, lowercased. Example: "bored".
+
+Must be one of:
+* "calm"
+* "bored"
+* "irritated"
+
+##### <a name="oneOf_i4_data_npc_affinity"></a>5.6.5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > affinity`
+
+**Title:** Affinity
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How much he likes the player who spoke, from 0 (despises) to 100 (adores). Set by the mod. Example: 37.
+
+| Restrictions |          |
+| ------------ | -------- |
+| **Minimum**  | &ge; 0   |
+| **Maximum**  | &le; 100 |
+
+##### <a name="oneOf_i4_data_npc_independence"></a>5.6.5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > independence`
+
+**Title:** Independence
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How far he has broken away from his loyal partner role, from 0 (loyal) to 100 (answers to no one). Set by the mod. Example: 63.
+
+| Restrictions |          |
+| ------------ | -------- |
+| **Minimum**  | &ge; 0   |
+| **Maximum**  | &le; 100 |
+
+##### <a name="oneOf_i4_data_npc_nearby_players"></a>5.6.5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players`
+
+**Title:** Nearby Players
+
+|              |                   |
+| ------------ | ----------------- |
+| **Type**     | `array of string` |
+| **Required** | No                |
+
+**Description:** Names of the players within reach of him, up to 16. Empty when nobody is near. Set by the mod. Example: ["Luciano", "Ana"].
+
+|                      | Array restrictions |
+| -------------------- | ------------------ |
+| **Min items**        | N/A                |
+| **Max items**        | 16                 |
+| **Items unicity**    | False              |
+| **Additional items** | False              |
+| **Tuple validation** | See below          |
+
+| Each item of this array must be                                 | Description |
+| --------------------------------------------------------------- | ----------- |
+| [nearby_players items](#oneOf_i4_data_npc_nearby_players_items) | -           |
+
+###### <a name="oneOf_i4_data_npc_nearby_players_items"></a>5.6.5.5.1. Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+| Restrictions                      |                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| **Min length**                    | 1                                                                                   |
+| **Max length**                    | 16                                                                                  |
+| **Must match regular expression** | ```^[A-Za-z0-9_]+$``` [Test](https://regex101.com/?regex=%5E%5BA-Za-z0-9_%5D%2B%24) |
 
 ### <a name="oneOf_i4_conversation_id"></a>5.7. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > conversation_id`
 

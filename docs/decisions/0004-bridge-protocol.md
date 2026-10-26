@@ -123,6 +123,7 @@ Unknown fields are rejected, never silently ignored.
   the 60-second silence rule are built together with the AI.
 - **Addressed chat:** `player_chat` carries `addressed`, which says why the mod forwarded the line:
   `name`, `conversation`, `near`, `butt_in` (the player talked over him) or `private` (the @m channel).
+- **NPC state:** `player_chat` may carry an optional `npc` object (phase, mood, affinity, independence and nearby players) with his state when the player spoke; without it the backend answers without game state.
 
 ### 11. Configuration
 

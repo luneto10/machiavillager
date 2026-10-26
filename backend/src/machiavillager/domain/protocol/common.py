@@ -32,6 +32,10 @@ MAX_REASON_LENGTH: Final = 200
 MAX_DETAIL_LENGTH: Final = 500
 MAX_PLAYER_NAME_LENGTH: Final = 16
 MAX_CHAT_TEXT_LENGTH: Final = 256
+MAX_NEARBY_PLAYERS: Final = 16
+# Affinity and independence share the mod's 0..100 scale.
+MIN_RELATIONSHIP_SCORE: Final = 0
+MAX_RELATIONSHIP_SCORE: Final = 100
 
 # Identifiers are prefixed so a log line shows what kind of id it is.
 ACTION_ID_PATTERN: Final = r"^act_[A-Za-z0-9]{8,32}$"
@@ -49,6 +53,15 @@ Reason = Annotated[str, StringConstraints(max_length=MAX_REASON_LENGTH)]
 ErrorCode = Literal["bad_message", "unsupported_protocol", "unauthorized", "internal"]
 # Why the mod forwarded a chat line. "private" is the @m channel; the rest are public chat.
 ChatAddress = Literal["name", "conversation", "near", "butt_in", "private"]
+# Mod's Phase and Mood enums, lowercased.
+NpcPhase = Literal["partner", "seeds", "proposal", "regime", "war"]
+NpcMood = Literal["calm", "bored", "irritated"]
+# Minecraft names use letters, digits and underscore only. The pattern also keeps a name from
+# carrying markup into the prompt, where it is written unescaped.
+PlayerName = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=MAX_PLAYER_NAME_LENGTH, pattern=r"^[A-Za-z0-9_]+$"),
+]
 
 
 def _require_canonical_uuid(value: object) -> object:

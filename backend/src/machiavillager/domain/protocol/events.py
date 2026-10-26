@@ -9,14 +9,60 @@ from pydantic import AwareDatetime, Field, StringConstraints
 
 from machiavillager.domain.protocol.common import (
     MAX_CHAT_TEXT_LENGTH,
-    MAX_PLAYER_NAME_LENGTH,
+    MAX_NEARBY_PLAYERS,
+    MAX_RELATIONSHIP_SCORE,
+    MIN_RELATIONSHIP_SCORE,
     ChatAddress,
     ClosedModel,
     ConversationId,
     EnvelopeModel,
     EventId,
+    NpcMood,
+    NpcPhase,
+    PlayerName,
     PlayerUuid,
 )
+
+
+class NpcSnapshot(ClosedModel):
+    """His state when a player spoke. Sent by the mod so the backend can answer in character."""
+
+    phase: NpcPhase = Field(
+        description=(
+            "Which stage of his plan he is in. Set by the mod from its Phase enum, lowercased. "
+            'Example: "seeds".'
+        )
+    )
+    mood: NpcMood = Field(
+        description=(
+            "How he feels right now. Set by the mod from its Mood enum, lowercased. "
+            'Example: "bored".'
+        )
+    )
+    affinity: int = Field(
+        ge=MIN_RELATIONSHIP_SCORE,
+        le=MAX_RELATIONSHIP_SCORE,
+        description=(
+            "How much he likes the player who spoke, from 0 (despises) to 100 (adores). "
+            "Set by the mod. Example: 37."
+        ),
+    )
+    independence: int = Field(
+        ge=MIN_RELATIONSHIP_SCORE,
+        le=MAX_RELATIONSHIP_SCORE,
+        description=(
+            "How far he has broken away from his loyal partner role, from 0 (loyal) to 100 "
+            "(answers to no one). Set by the mod. Example: 63."
+        ),
+    )
+    nearby_players: list[PlayerName] = Field(
+        default_factory=list,
+        max_length=MAX_NEARBY_PLAYERS,
+        description=(
+            "Names of the players within reach of him, up to 16. Empty when nobody is near. "
+            'Set by the mod. Example: ["Luciano", "Ana"].'
+        ),
+    )
 
 
 class PlayerChatData(ClosedModel):
@@ -28,9 +74,9 @@ class PlayerChatData(ClosedModel):
             'Example: "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69".'
         )
     )
-    player_name: Annotated[
-        str, StringConstraints(min_length=1, max_length=MAX_PLAYER_NAME_LENGTH)
-    ] = Field(description='The player\'s in-game name, 1 to 16 characters. Example: "Luciano".')
+    player_name: PlayerName = Field(
+        description='The player\'s in-game name, 1 to 16 characters. Example: "Luciano".'
+    )
     text: Annotated[str, StringConstraints(min_length=1, max_length=MAX_CHAT_TEXT_LENGTH)] = Field(
         description=(
             "What the player typed, 1 to 256 characters. Set by the mod. Chat text is never "
@@ -47,6 +93,15 @@ class PlayerChatData(ClosedModel):
             '"private": the @m channel. The text is private and is never voice.'
         )
     )
+
+    # Not Optional on purpose: explicit null is rejected, and the default None applies when absent.
+    npc: NpcSnapshot = Field(
+        default=None,
+        description=(
+            "His state when the player spoke. Set by the mod. Optional: without it the backend "
+            "answers without game state."
+        ),
+    )  # type: ignore[assignment]
 
 
 class PlayerChatEvent(EnvelopeModel):

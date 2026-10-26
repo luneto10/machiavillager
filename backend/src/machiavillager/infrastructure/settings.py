@@ -5,6 +5,8 @@ from typing import Literal
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from machiavillager.application.prompt_builder import ProfanityLevel
+
 # parents[4] is the repo root, shared with the mod; parents[3] is backend/, kept as a fallback.
 # pydantic-settings lets LATER files win, so the root file is listed last to take precedence.
 _REPO_ROOT_ENV = Path(__file__).resolve().parents[4] / ".env"
@@ -48,6 +50,10 @@ class Settings(BaseSettings):
     # Chosen in ADR 0005: best character, no refusals, ~0.4 s on Groq. Preview model, so it may
     # be retired; the fallback list arrives with the agent (#63).
     llm_model: str = "qwen/qwen3.8-27b"
+
+    # Per-server choice: mild by default (public repo, other servers did not opt in).
+    # The owner's server sets full.
+    profanity: ProfanityLevel = "mild"
 
     def llm_key(self, provider: str) -> str | None:
         """Secret value of that provider's key, or None when unset or empty."""
