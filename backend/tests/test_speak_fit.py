@@ -25,6 +25,20 @@ def test_splits_long_line_at_last_space_before_the_limit():
     assert fit_to_speak([line]) == ["a" * 200, "b" * 100]
 
 
+def test_splits_after_the_last_sentence_end_within_the_limit():
+    # The full stop at index 199 is the last sentence end that fits, so the first piece keeps it.
+    line = "a" * 199 + ". " + "b" * 99
+
+    assert fit_to_speak([line]) == ["a" * 199 + ".", "b" * 99]
+
+
+def test_ignores_sentence_end_beyond_the_limit_and_uses_the_space():
+    # The full stop sits past the limit, so the cut falls back to the space at index 200.
+    line = "a" * 200 + " " + "b" * 60 + ". " + "c" * 50
+
+    assert fit_to_speak([line]) == ["a" * 200, "b" * 60 + ". " + "c" * 50]
+
+
 def test_hard_cuts_long_line_without_a_space():
     line = "x" * (MAX_LINE_LENGTH + 44)
 
@@ -55,3 +69,18 @@ def test_splitting_counts_toward_the_line_limit():
     fitted = fit_to_speak([line])
 
     assert len(fitted) == MAX_SPEAK_LINES
+
+
+def test_strips_cjk_and_collapses_the_double_space_it_leaves():
+    # Open models leak Chinese into Portuguese; the removed character leaves no double space.
+    assert fit_to_speak(["em…呃, em melhorias"]) == ["em…, em melhorias"]
+
+
+def test_drops_a_line_made_only_of_cjk():
+    assert fit_to_speak(["你好世界", "hi"]) == ["hi"]
+
+
+def test_leaves_accented_portuguese_and_emoji_untouched():
+    text = "não é ação, café! 🎉"
+
+    assert fit_to_speak([text]) == [text]

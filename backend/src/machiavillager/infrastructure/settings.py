@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # Median reply is 0.4 s; a model slower than this is skipped for the next one in the chain.
     llm_timeout_seconds: float = 4.0
 
+    # Caps output tokens per reply. 8 full lines plus the tool-call JSON and gpt-oss reasoning can
+    # reach ~700, so 800 only cuts runaways.
+    llm_max_tokens: int = 800
+
     # Per-server choice: mild by default (public repo, other servers did not opt in).
     # The owner's server sets full.
     profanity: ProfanityLevel = "mild"

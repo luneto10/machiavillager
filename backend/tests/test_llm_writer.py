@@ -7,6 +7,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
@@ -193,3 +194,40 @@ def test_system_messages_become_instructions_and_last_player_line_the_prompt():
 def test_prompt_without_a_player_line_is_rejected():
     with pytest.raises(ValueError):
         _split_messages([PromptMessage("system", "Rules.")])
+
+
+def test_speak_tool_description_is_only_the_speak_sentence():
+    seen: list[str] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].description)
+        return _speak("hi")
+
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+
+    _reply(writer)
+
+    assert seen == ["Say lines out loud in Minecraft chat."]
+
+
+def test_requests_send_the_default_max_tokens_cap():
+    seen: list[ModelSettings | None] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.model_settings)
+        return _speak("hi")
+
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+
+    _reply(writer)
+
+    assert seen[0] is not None
+    assert seen[0]["max_tokens"] == 800
+
+
+def test_max_tokens_setting_reaches_the_writer():
+    settings = Settings(groq_api_key="x", llm_max_tokens=123, _env_file=None)
+
+    writer = LlmLineWriter.from_settings(settings)
+
+    assert writer._request_settings["max_tokens"] == 123

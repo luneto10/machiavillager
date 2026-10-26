@@ -50,7 +50,7 @@ CANNED_LINES: Final = (
 
 
 class SpeakOutput(BaseModel):
-    """The speak tool's arguments. Length limits are applied afterwards by fit_to_speak."""
+    # No docstring on purpose: PydanticAI appends it to the tool description the model sees.
 
     lines: list[str] = Field(min_length=1)
 
@@ -72,13 +72,19 @@ class LlmLineWriter:
         irritated: Model | None,
         *,
         timeout_seconds: float,
+        max_tokens: int = 800,
         labels: dict[str, str] | None = None,
     ) -> None:
         self._calm_agent = _build_agent(calm)
         self._irritated_agent = _build_agent(irritated)
 
         # No client retries: a 429 or timeout should fall through to the next model at once.
-        self._request_settings = ModelSettings(timeout=timeout_seconds, max_retries=0)
+        # max_tokens caps a runaway reply's cost and latency.
+        self._request_settings = ModelSettings(
+            timeout=timeout_seconds,
+            max_retries=0,
+            max_tokens=max_tokens,
+        )
         self._labels = labels or {}
 
     @classmethod
@@ -98,6 +104,7 @@ class LlmLineWriter:
             calm,
             irritated,
             timeout_seconds=settings.llm_timeout_seconds,
+            max_tokens=settings.llm_max_tokens,
             labels=labels,
         )
 
