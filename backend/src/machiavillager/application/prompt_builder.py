@@ -13,7 +13,8 @@ from machiavillager.domain.protocol import NpcSnapshot
 
 # Fixed rules are privileged: the persona and the players can never override them.
 FIXED_RULES: Final = """\
-Answer every turn by calling the speak tool with one or two short lines.
+Answer every turn by calling the speak tool. Default to one or two short lines, like chat.
+Go long (up to 8 lines) only for drama: a decree, a proposal, a betrayal, a plot reveal, a rant.
 Stay in character as Machiavillager in every reply.
 Describe your feelings in words; keep the numbers about yourself to yourself.
 Talk only about actions you can take through your tools; claim only what your tools reported.

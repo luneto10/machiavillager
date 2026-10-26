@@ -20,9 +20,9 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 |---|---|---|
 | 1 | Provider | Groq: the same model runs about 6 times faster there than on NVIDIA Build |
 | 2 | Main model | `qwen/qwen3.8-27b` on Groq: best character, no refusals, 0.4 s |
-| 3 | Fallback | `openai/gpt-oss-120b` on Groq: a production model, no refusals, 0.5 s |
-| 4 | NVIDIA Build | `minimax-m3.1-flash` and `nemotron-3.5-bolt-e4b`: unfiltered voices for his irritated moods, and the fallback once Groq is limited |
-| 5 | Configuration | One key per provider plus provider and model names, all env vars |
+| 3 | Fallback and irritated voice | `openai/gpt-oss-120b` on Groq: production model, curses hardest with a plan, 0.4 s; leads the chain when he is irritated |
+| 4 | NVIDIA Build | `nemotron-3.5-bolt-e4b`: the last, slower fallback, with a budget separate from Groq |
+| 5 | Configuration | One key per provider plus two ordered model chains, all env vars |
 | 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm is dodged in character |
 
 ## How we compared
@@ -91,36 +91,35 @@ What the numbers do not show:
 
 ### 2. Main model: `qwen/qwen3.8-27b`
 
-- **Decision:** default `MACHIAVILLAGER_LLM_MODEL`.
+- **Decision:** first in `MACHIAVILLAGER_LLM_CHAIN`, the normal chain.
 - **Why:** the best character of the group, no refusals, valid `speak` every time, 0.4 s.
 - **Risk:** it is a *preview* model on Groq and may be retired without notice. Hence decision 3.
 
-### 3. Fallback: `openai/gpt-oss-120b`
+### 3. `openai/gpt-oss-120b`: fallback and irritated voice
 
-- **Decision:** the next model to try when the main one returns 429 or disappears. The ordered
-  fallback list is built with the model adapter in #64.
-- **Why:** a production model (it will not vanish), no refusals, 0.5 s.
-- **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character and switches language.
+- **Decision:** second in the normal chain, and first when his mood is irritated.
+- **Why:** a production model (it will not vanish), no refusals, 0.4 s. With the persona and
+  `PROFANITY=full` it curses harder than qwen and still threatens with a plan ("you'll end up on the
+  bonfire in my new square"); qwen jokes more than it curses. Both live on Groq with separate
+  per-model limits, so splitting by mood also spreads the load.
+- **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character, switches language and writes
+  sentences that make no sense.
 
-### 4. NVIDIA Build: the unfiltered voices
+### 4. NVIDIA Build: last fallback
 
-- **Decision:** two NVIDIA Build models, both with zero refusals in the filter suite:
-  - `minimaxai/minimax-m3.1-flash`: the most creative insults on NVIDIA ("your PvP is so bad even
-    the creeper ignores you"). 1.9 s.
-  - `nvidia/nemotron-3.5-bolt-e4b`: the crudest of every model tested, blunt rather than clever.
-    1.1 s.
-- **Two uses:**
-  - **Fallback:** after both Groq models, in that order, so he gets slower but never silent.
-  - **Irritated moods:** when his mood is irritated, the chain starts with them instead of Groq. The
-    extra second reads as him fuming, and these are the voices that fit rage. Built with the model
-    adapter (#64), on the mood the mod already tracks.
-- **Why:** 40 requests a minute per account and no daily cap, a budget separate from Groq's
-  per-model limits, so they also carry the traffic once Groq's 1K requests a day per model run out.
-- **Known flaws:** minimax sometimes leaks Chinese words into Portuguese; bolt sometimes answers
-  Portuguese in English. The persona prompt (#63) will push back on both; if it cannot, they stay
-  fallback-only.
-- **Rejected:** `poolside/laguna-xs-2.1` and `nemotron-3.5-lightning` (most replies were not valid
-  `speak` calls); `step-5-preview` and `nemotron-3-nano-omni` (4 to 8 s).
+- **Decision:** `nvidia/nemotron-3.5-bolt-e4b`, after both Groq models, so he gets slower but never
+  silent.
+- **Why:** valid `speak` every time, no refusals, about 1 s. 40 requests a minute per account and no
+  daily cap, a budget separate from Groq's, so it carries the traffic once Groq's 1K requests a day per
+  model run out. Its insults are the crudest but blunt ("vai se foder luneto10"), without the plot or
+  the joke, so it stays a fallback.
+- **Rejected:**
+  - `minimaxai/minimax-m3.1-flash`: creative, but 1.9 s and it breaks words ("emOverrides",
+    "QuéAxes") and leaks Chinese into Portuguese.
+  - `poolside/laguna-xs-2.1` and `nemotron-3.5-lightning` (most replies were not valid `speak`
+    calls); `step-5-preview` and `nemotron-3-nano-omni` (4 to 8 s).
+- **Earlier idea, dropped:** routing irritated moods to NVIDIA for rawer voices. With the persona and
+  `PROFANITY=full`, `gpt-oss-120b` on Groq is as crude, smarter and twice as fast.
 
 - **Gotcha:** NVIDIA's `/v1/models` lists the whole catalogue (85 models), but most return
   `404 Function ... Not found for account` on a free key. Only a handful answer; probe before trusting
@@ -129,9 +128,10 @@ What the numbers do not show:
 ### 5. Configuration
 
 - **Decision:** `MACHIAVILLAGER_GROQ_API_KEY`, `MACHIAVILLAGER_NVIDIA_API_KEY`,
-  `MACHIAVILLAGER_XAI_API_KEY` (one per provider, all optional), `MACHIAVILLAGER_LLM_PROVIDER`
-  (`groq`, `nvidia` or `xai`) and `MACHIAVILLAGER_LLM_MODEL`. Base URLs live in code
-  (`LLM_BASE_URLS`): they are public and the same for everyone.
+  `MACHIAVILLAGER_XAI_API_KEY` (one per provider, all optional), and two ordered chains of
+  `provider:model` pairs, `MACHIAVILLAGER_LLM_CHAIN` and `MACHIAVILLAGER_LLM_CHAIN_IRRITATED`.
+  Pairs whose provider has no key are skipped. Base URLs live in code (`LLM_BASE_URLS`): they are
+  public and the same for everyone.
 - **Why:** every provider speaks the OpenAI chat API, so a provider is only a URL and a key; switching
   is an env change, never a code change. Keys are `SecretStr` and never logged.
 - **Not done:** a base URL override (for a local model or a proxy). Add it when someone needs it.
@@ -147,12 +147,24 @@ What the numbers do not show:
 - **Rejected:** xAI Grok, the least filtered option. Paid, slower, and the open models above already
   play the character without refusing.
 
+## Future providers (not used yet)
+
+Checked on 2026-10-26, free tiers, for when Groq is not enough:
+
+| Provider | Free models | Free limits | Why it matters |
+|---|---|---|---|
+| Cerebras | `gpt-oss-120b`, `qwen-3.8-27b` (our two models) | 5 req/min, 30K tokens/min, 1M tokens/day, per model | Same models, so falling back there keeps his voice; 4x Groq's tokens per minute |
+| OpenRouter | many `:free` models | 20 req/min, 50 req/day (1K/day after a one-time 10-credit purchase) | A wide catalogue to try new models; too few requests a day to play on |
+| Google Gemini API | Gemini Flash models | not listed on the docs page; shown in AI Studio | Unverified: limits and whether free-tier data is used for training |
+
+Adding one is a URL in `LLM_BASE_URLS`, a key setting and pairs in the chains.
+
 ## Consequences
 
-- #64 builds the model adapter with an ordered model chain, configurable in the env, that skips a model for
-  as long as its 429 `retry-after` says:
-  - default: groq `qwen3.8-27b` → groq `gpt-oss-120b` → nvidia `minimax-m3.1-flash` → nvidia
-    `nemotron-3.5-bolt-e4b` → the mod's canned lines (never silent);
-  - irritated: the two NVIDIA models first, then the Groq ones.
-- The persona prompt in #63 keeps replies to one or two short lines.
+- #64 builds the model adapter on the two chains (PydanticAI `FallbackModel`): any provider error or
+  a reply slower than 4 s moves to the next model; when every model fails he says a canned line.
+  - default: groq `qwen3.8-27b` → groq `gpt-oss-120b` → nvidia `nemotron-3.5-bolt-e4b`;
+  - irritated: groq `gpt-oss-120b` → groq `qwen3.8-27b` → nvidia `nemotron-3.5-bolt-e4b`.
+- He answers in one or two short lines by default and goes up to 8 for drama (decrees, proposals,
+  betrayals, plot reveals, rants).
 - When a model is retired or a new one appears, rerun `compare_models.py` and update this record.

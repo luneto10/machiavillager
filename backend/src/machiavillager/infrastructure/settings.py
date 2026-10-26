@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +18,22 @@ LLM_BASE_URLS: dict[str, str] = {
     "nvidia": "https://integrate.api.nvidia.com/v1",
     "xai": "https://api.x.ai/v1",
 }
+
+
+def parse_model_pair(text: str) -> tuple[str, str]:
+    """Split "provider:model" into its parts, rejecting providers with no base URL."""
+
+    # Split on the first colon only, since model ids such as "openai/gpt-oss-20b" hold slashes.
+    provider, separator, model = text.partition(":")
+    if not separator or not model:
+        raise ValueError(f"expected provider:model, got {text!r}")
+
+    # Unknown providers have no base URL, so reject them before any request is built.
+    if provider not in LLM_BASE_URLS:
+        raise ValueError(
+            f"unknown provider {provider!r}, expected one of {', '.join(LLM_BASE_URLS)}"
+        )
+    return provider, model
 
 
 class Settings(BaseSettings):
@@ -44,12 +59,20 @@ class Settings(BaseSettings):
     nvidia_api_key: SecretStr | None = None
     xai_api_key: SecretStr | None = None
 
-    # Which provider the LLM calls go to; its base URL comes from LLM_BASE_URLS.
-    llm_provider: Literal["groq", "nvidia", "xai"] = "groq"
+    # Ordered provider:model pairs, tried left to right. Qwen is the best character (ADR 0005).
+    # Its base URL comes from LLM_BASE_URLS; pairs whose provider has no key are skipped.
+    llm_chain: str = (
+        "groq:qwen/qwen3.8-27b,groq:openai/gpt-oss-120b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
+    )
 
-    # Chosen in ADR 0005: best character, no refusals, ~0.4 s on Groq. Preview model, so it may
-    # be retired; the fallback list arrives with the agent (#63).
-    llm_model: str = "qwen/qwen3.8-27b"
+    # Used when he is irritated: gpt-oss-120b curses harder, so it leads. NVIDIA bolt is the slow
+    # last fallback and has its own request budget.
+    llm_chain_irritated: str = (
+        "groq:openai/gpt-oss-120b,groq:qwen/qwen3.8-27b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
+    )
+
+    # Median reply is 0.4 s; a model slower than this is skipped for the next one in the chain.
+    llm_timeout_seconds: float = 4.0
 
     # Per-server choice: mild by default (public repo, other servers did not opt in).
     # The owner's server sets full.
