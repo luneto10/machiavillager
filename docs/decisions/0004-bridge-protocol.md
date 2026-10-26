@@ -151,7 +151,8 @@ Unknown fields are rejected, never silently ignored.
   `reason` is 1 to 120 characters, logged by the mod with the change and never shown to players. The
   backend sends it before the speak it belongs to and waits for its terminal status first, with the
   same timeout as speech; a failure of the suggestion never stops the speak.- **The AI never sets values.** It suggests a bounded move; the mod checks that the player exists,
-  caps the change, rate-limits it per hour and applies it. Replies: `rejected` with reason
+  caps the change, rate-limits it (30 seconds between changes, +10 and -20 at most per 15 minutes
+  for each player) and applies it. Replies: `rejected` with reason
   `unknown_player`, `rate_limited` or `capped`; otherwise the usual progress and terminal statuses.
 - **Provenance is `claimed`.** The model only reports what the conversation suggests, so a big move
   from a chat line cannot come from it alone; bigger moves come from `observed` server events.

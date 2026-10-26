@@ -11,7 +11,7 @@ class RelationshipNudgesTest {
     private static final UUID PLAYER = UUID.fromString("7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69");
     private static final UUID OTHER = UUID.fromString("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
     private static final long INTERVAL = RelationshipNudges.INTERVAL_TICKS;
-    private static final long HOUR = RelationshipNudges.BUDGET_WINDOW_TICKS;
+    private static final long WINDOW = RelationshipNudges.BUDGET_WINDOW_TICKS;
 
     @Test
     void positiveDeltaAboveTheRiseLimit_isClampedToFive() {
@@ -44,7 +44,7 @@ class RelationshipNudgesTest {
     }
 
     @Test
-    void risesInOneHour_stopAtTheRiseLimit_andTheLastOneIsClamped() {
+    void risesInOneWindow_stopAtTheRiseLimit_andTheLastOneIsClamped() {
         RelationshipNudges nudges = new RelationshipNudges();
         nudges.tryNudge(PLAYER, 4, 0);
         nudges.tryNudge(PLAYER, 4, INTERVAL);
@@ -55,7 +55,7 @@ class RelationshipNudgesTest {
     }
 
     @Test
-    void dropsInOneHour_stopAtTheDropLimit_andTheLastOneIsClamped() {
+    void dropsInOneWindow_stopAtTheDropLimit_andTheLastOneIsClamped() {
         RelationshipNudges nudges = new RelationshipNudges();
         nudges.tryNudge(PLAYER, -8, 0);
         nudges.tryNudge(PLAYER, -8, INTERVAL);
@@ -77,12 +77,12 @@ class RelationshipNudgesTest {
     }
 
     @Test
-    void budgetResetsWhenTheHourWindowIsOver() {
+    void budgetResetsWhenTheWindowIsOver() {
         RelationshipNudges nudges = new RelationshipNudges();
         nudges.tryNudge(PLAYER, 5, 0);
         nudges.tryNudge(PLAYER, 5, INTERVAL);
 
-        assertEquals(new Applied(5), nudges.tryNudge(PLAYER, 5, HOUR));
+        assertEquals(new Applied(5), nudges.tryNudge(PLAYER, 5, WINDOW));
     }
 
     @Test

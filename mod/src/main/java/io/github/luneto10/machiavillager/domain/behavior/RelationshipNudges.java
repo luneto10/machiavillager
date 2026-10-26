@@ -8,22 +8,22 @@ import java.util.UUID;
 
 /**
  * Decides how far a suggested affinity change may move him. The AI proposes a delta; this class clamps it, spaces
- * the applied changes out per player, and caps how much each player can move him per hour. Pure Java: no
- * Minecraft imports. Mutable on purpose: it remembers the last applied nudge and the hourly spending per player.
+ * the applied changes out per player, and caps how much each player can move him per window. Pure Java: no
+ * Minecraft imports. Mutable on purpose: it remembers the last applied nudge and the spending per player in the current window.
  */
 public final class RelationshipNudges {
     /** Largest rise one suggestion may apply. Feeling good is harder to earn than feeling bad. */
     public static final int MAX_RISE = 5;
     /** Largest drop one suggestion may apply, as a magnitude: a suggestion of -15 applies -10. */
     public static final int MAX_DROP = 10;
-    /** Ticks between two applied nudges to the same player: 2 minutes. */
-    public static final long INTERVAL_TICKS = 2_400;
-    /** Length of the budget window: 1 hour, counted from the first applied nudge of that window (fixed window). */
-    public static final long BUDGET_WINDOW_TICKS = 72_000;
+    /** Ticks between two applied nudges to the same player: 30 seconds. */
+    public static final long INTERVAL_TICKS = 600;
+    /** Length of the budget window: 15 minutes, counted from the first applied nudge of that window (fixed window). */
+    public static final long BUDGET_WINDOW_TICKS = 18_000;
     /** Most affinity one player may add in one window. */
-    public static final int HOURLY_RISE_LIMIT = 10;
+    public static final int WINDOW_RISE_LIMIT = 10;
     /** Most affinity one player may remove in one window, as a magnitude. */
-    public static final int HOURLY_DROP_LIMIT = 20;
+    public static final int WINDOW_DROP_LIMIT = 20;
 
     /** Refused: a suggestion of zero moves nothing. */
     public static final String INVALID_DELTA = "invalid_delta";
@@ -60,7 +60,7 @@ public final class RelationshipNudges {
         Budget budget = budgetOf(player, nowTicks);
         int clamped = Math.clamp(delta, -MAX_DROP, MAX_RISE);
         // Only the room left in this direction counts, so a partly used budget clamps the nudge instead of refusing it.
-        int room = clamped > 0 ? HOURLY_RISE_LIMIT - budget.rise : HOURLY_DROP_LIMIT - budget.drop;
+        int room = clamped > 0 ? WINDOW_RISE_LIMIT - budget.rise : WINDOW_DROP_LIMIT - budget.drop;
         int magnitude = Math.min(Math.abs(clamped), room);
         if (magnitude <= 0) {
             return new Rejected(CAPPED);
