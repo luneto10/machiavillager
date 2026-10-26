@@ -1,7 +1,12 @@
 """The prompt the model reads: order, state as words, fallback, and tag escaping."""
 
+from pathlib import Path
+
+import pytest
+
 from machiavillager.application.prompt_builder import (
     FIXED_RULES,
+    PROFANITY_RULES,
     ConversationLine,
     build_prompt,
 )
@@ -18,7 +23,7 @@ NPC = NpcSnapshot(
 
 
 def _state(messages) -> str:
-    return messages[2].content
+    return messages[3].content
 
 
 def test_messages_are_rules_then_persona_then_state_then_dialogue():
@@ -33,11 +38,13 @@ def test_messages_are_rules_then_persona_then_state_then_dialogue():
         "system",
         "system",
         "system",
+        "system",
         "user",
         "assistant",
     ]
     assert messages[0].content == FIXED_RULES
     assert messages[1].content == PERSONA
+    assert messages[2].content == PROFANITY_RULES["mild"]
 
 
 def test_state_block_uses_words_and_never_the_raw_numbers():
@@ -86,3 +93,26 @@ def test_his_own_lines_are_plain_assistant_text():
 
     assert message.role == "assistant"
     assert message.content == "I am watching."
+
+
+# Each level is its own system message, right after the persona.
+@pytest.mark.parametrize("level", ["off", "mild", "full"])
+def test_each_profanity_level_sits_right_after_the_persona(level):
+    messages = build_prompt(PERSONA, "Luciano", [], NPC, profanity=level)
+
+    assert messages[2].content == PROFANITY_RULES[level]
+
+
+def test_profanity_defaults_to_mild():
+    # Mild is the default because other servers did not opt in to crude humor.
+    messages = build_prompt(PERSONA, "Luciano", [], NPC)
+
+    assert messages[2].content == PROFANITY_RULES["mild"]
+
+
+def test_persona_file_no_longer_asks_for_crude_humor():
+    # The crude-humor wording moved out of the persona; the profanity level now decides it.
+    backend = Path(__file__).resolve().parents[1]
+    persona_file = backend / "src" / "machiavillager" / "persona" / "machiavillager.md"
+
+    assert "caralho" not in persona_file.read_text(encoding="utf-8")
