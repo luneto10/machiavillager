@@ -106,8 +106,9 @@ What the numbers do not show:
 
 - **Decision:** `nvidia/nemotron-3.5-bolt-e4b` on NVIDIA Build is the last fallback, used only when
   both Groq models are rate limited. He gets slower, never silent.
-- **Why:** valid `speak` every time, no refusals, 1.1 s median. Its limit (40 requests a minute,
-  per account) does not share Groq's per-model budget. Its insults are blunt rather than clever and
+- **Why:** valid `speak` every time, no refusals, 1.1 s median. Its limit (40 requests a minute
+  per account, no daily cap) does not share Groq's per-model budget, so it also absorbs the traffic
+  once Groq's 1K requests a day per model run out. Its insults are blunt rather than clever and
   it sometimes answers Portuguese in English, which is acceptable for a rare fallback.
 - **Rejected:**
   - `minimaxai/minimax-m3.1-flash`: the best character on NVIDIA, but slower (1.9 s) and it leaks
