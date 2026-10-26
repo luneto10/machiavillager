@@ -48,6 +48,23 @@ Everything runs inside the Java mod: no separate backend.
   sleeping, entering a world), `AiEventThrottle`, `ContextTrimmer`, `ToolAvailabilityFilter` and
   `ToolListTrimmer` (send only the tools that apply right now), web search, camera vision.
 
+## More details worth reusing
+
+- **Chat window:** `MessageWindowChatMemory` with the last **20 messages**, saved on every message and
+  never reset by silence. Game events enter the same window as short system lines
+  (`<SYSTEM> A heavy block has dropped on verity during this turn`), which is how he remembers what
+  happened, not only what was said. Idle chatter is a `<SYSTEM>` prompt too ("you are bored, comment
+  on the environment").
+- **Token cost:** the world is not in the prompt. A fixed template plus the 20-message window; facts
+  come from tools only when asked.
+- **Providers (`VerityConfig`):** the player picks `AiProvider` (OpenAI default, Groq, Gemini,
+  OpenRouter, Mistral, Ollama), endpoint, model and key in the mod config; `temperature` 0.8. Ollama:
+  `localhost` is forced to `127.0.0.1` because Java resolves IPv6 first on Windows.
+- **Voice:** `TTSProvider` NATIVE (OS voice), LOCAL (sherpa-onnx), GROQ, KOKORO (server, voice
+  `am_fenrir`); `STTProvider` NATIVE, GROQ (Whisper), WHISPER (local). Check these first at CP11.
+- **Config worth copying:** `requireVerity` (must say his name to talk to him), `immersiveMode`
+  (hide UI and chat when voice is on), a karma bar HUD.
+
 ## Mapping to Machiavillager
 
 | Verity | Ours |
@@ -57,7 +74,7 @@ Everything runs inside the Java mod: no separate backend.
 | Secrets gated by karma | Persona sections gated by story phase (`## Phase: <name>`, only the current one is sent) |
 | Karma 0-20 | Affinity per player and independence 0-100; ambition drives the phase |
 | `@Tool` perception and actions in Java | PydanticAI tools in the backend that send an allowlisted bridge request; the mod answers with the data or runs the action |
-| JSON memory files | Checkpoint 7, same two kinds: chat history and model-managed memories, marked `claimed` when a player said it |
+| JSON memory files | Checkpoint 7 (#72): same two kinds, in one SQLite file per world (no install, no server): chat window, game events as system lines, model-managed memories marked `claimed` when a player said it |
 | Proactive events with cooldowns | Mod events over the bridge, triggered with cooldowns, never per tick |
 | Tool list trimming | Register only the tools that apply this turn (`npc-agent-tools`) |
 

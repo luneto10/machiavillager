@@ -12,7 +12,7 @@ def _line(text: str, *, from_npc: bool = False) -> ConversationLine:
     return ConversationLine("Luciano", text, from_npc=from_npc)
 
 
-def test_keeps_only_the_last_ten_lines():
+def test_keeps_only_the_newest_lines():
     store = ConversationStore()
 
     for number in range(MAX_LINES + 3):
@@ -22,8 +22,15 @@ def test_keeps_only_the_last_ten_lines():
     assert texts == [f"line {number}" for number in range(3, MAX_LINES + 3)]
 
 
-def test_conversation_is_forgotten_after_a_minute_of_silence():
+def test_by_default_a_quiet_conversation_is_not_forgotten():
     store = ConversationStore()
+    store.add(KEY, _line("hi"), now=0.0)
+
+    assert len(store.recent(KEY, now=SILENCE_SECONDS * 1000)) == 1
+
+
+def test_conversation_is_forgotten_after_a_minute_of_silence_when_enabled():
+    store = ConversationStore(silence_seconds=SILENCE_SECONDS)
     store.add(KEY, _line("hi"), now=100.0)
 
     # Exactly the limit still counts; one second more and the conversation is over.
@@ -32,7 +39,7 @@ def test_conversation_is_forgotten_after_a_minute_of_silence():
 
 
 def test_a_new_line_after_the_silence_starts_a_fresh_conversation():
-    store = ConversationStore()
+    store = ConversationStore(silence_seconds=SILENCE_SECONDS)
     store.add(KEY, _line("old"), now=0.0)
 
     store.add(KEY, _line("new"), now=SILENCE_SECONDS * 10)
@@ -41,7 +48,7 @@ def test_a_new_line_after_the_silence_starts_a_fresh_conversation():
 
 
 def test_an_active_conversation_does_not_expire_mid_talk():
-    store = ConversationStore()
+    store = ConversationStore(silence_seconds=SILENCE_SECONDS)
     store.add(KEY, _line("first"), now=0.0)
     store.add(KEY, _line("second", from_npc=True), now=50.0)
 

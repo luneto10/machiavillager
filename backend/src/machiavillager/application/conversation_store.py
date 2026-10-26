@@ -1,4 +1,4 @@
-"""Recent dialogue per conversation, kept in memory. CP7 moves it into the database.
+"""Recent dialogue per conversation, kept in memory. CP7 (#72) saves it per world.
 
 Time is passed in by the caller, so tests control it and this module never reads a clock.
 """
@@ -7,16 +7,19 @@ from typing import Final
 
 from machiavillager.application.prompt_builder import ConversationLine
 
-# Only the newest lines reach the prompt, so a long chat cannot grow it without limit.
-MAX_LINES: Final = 10
-# A conversation with no line for this long is over; the next line starts a fresh one.
+# Only the newest lines reach the prompt, so a long chat cannot grow it without limit. Twenty is
+# what Verity keeps: enough to remember what was just said and done, small enough to stay cheap.
+MAX_LINES: Final = 20
+# Optional: a conversation with no line for this long is over. Off by default, so he does not forget
+# a chat because the player went quiet for a minute.
 SILENCE_SECONDS: Final = 60.0
 
 
 class ConversationStore:
-    """Keeps the last lines of each conversation and forgets it after a silence."""
+    """Keeps the last lines of each conversation; forgets it after a silence only when asked to."""
 
-    def __init__(self) -> None:
+    def __init__(self, silence_seconds: float | None = None) -> None:
+        self._silence_seconds = silence_seconds
         self._lines: dict[str, list[ConversationLine]] = {}
         self._last_at: dict[str, float] = {}
 
@@ -35,7 +38,11 @@ class ConversationStore:
     def _expire(self, key: str, now: float) -> None:
         # Silence is measured from the newest line, so an active thread never expires mid-talk.
         last_at = self._last_at.get(key)
-        if last_at is None or now - last_at <= SILENCE_SECONDS:
+        if (
+            self._silence_seconds is None
+            or last_at is None
+            or now - last_at <= self._silence_seconds
+        ):
             return
         self._lines.pop(key, None)
         self._last_at.pop(key, None)
