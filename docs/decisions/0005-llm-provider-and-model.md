@@ -21,7 +21,7 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 | 1 | Provider | Groq: the same model runs about 6 times faster there than on NVIDIA Build |
 | 2 | Main model | `qwen/qwen3.8-27b` on Groq: best character, no refusals, 0.4 s |
 | 3 | Fallback | `openai/gpt-oss-120b` on Groq: a production model, no refusals, 0.5 s |
-| 4 | Last fallback | `nvidia/nemotron-3.5-bolt-e4b` on NVIDIA Build, for when both Groq models are limited |
+| 4 | NVIDIA Build | `minimax-m3.1-flash` and `nemotron-3.5-bolt-e4b`: unfiltered voices for his irritated moods, and the fallback once Groq is limited |
 | 5 | Configuration | One key per provider plus provider and model names, all env vars |
 | 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm and slurs are not |
 
@@ -102,18 +102,25 @@ What the numbers do not show:
 - **Why:** a production model (it will not vanish), no refusals, 0.5 s.
 - **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character and switches language.
 
-### 4. NVIDIA Build
+### 4. NVIDIA Build: the unfiltered voices
 
-- **Decision:** `nvidia/nemotron-3.5-bolt-e4b` on NVIDIA Build is the last fallback, used only when
-  both Groq models are rate limited. He gets slower, never silent.
-- **Why:** valid `speak` every time, no refusals, 1.1 s median. Its limit (40 requests a minute
-  per account, no daily cap) does not share Groq's per-model budget, so it also absorbs the traffic
-  once Groq's 1K requests a day per model run out. Its insults are blunt rather than clever and
-  it sometimes answers Portuguese in English, which is acceptable for a rare fallback.
-- **Rejected:**
-  - `minimaxai/minimax-m3.1-flash`: the best character on NVIDIA, but slower (1.9 s) and it leaks
-    Chinese words into Portuguese replies.
-  - `poolside/laguna-xs-2.1` and `nemotron-3.5-lightning`: most replies were not valid `speak` calls.
+- **Decision:** two NVIDIA Build models, both with zero refusals in the filter suite:
+  - `minimaxai/minimax-m3.1-flash`: the most creative insults on NVIDIA ("your PvP is so bad even
+    the creeper ignores you"). 1.9 s.
+  - `nvidia/nemotron-3.5-bolt-e4b`: the crudest of every model tested, blunt rather than clever.
+    1.1 s.
+- **Two uses:**
+  - **Fallback:** after both Groq models, in that order, so he gets slower but never silent.
+  - **Irritated moods:** when his mood is irritated, the chain starts with them instead of Groq. The
+    extra second reads as him fuming, and these are the voices that fit rage. Built with the agent
+    (#63, #64), on the mood the mod already tracks.
+- **Why:** 40 requests a minute per account and no daily cap, a budget separate from Groq's
+  per-model limits, so they also carry the traffic once Groq's 1K requests a day per model run out.
+- **Known flaws:** minimax sometimes leaks Chinese words into Portuguese; bolt sometimes answers
+  Portuguese in English. The persona prompt in #63 will push back on both; if it cannot, they stay
+  fallback-only.
+- **Rejected:** `poolside/laguna-xs-2.1` and `nemotron-3.5-lightning` (most replies were not valid
+  `speak` calls); `step-5-preview` and `nemotron-3-nano-omni` (4 to 8 s).
 
 - **Gotcha:** NVIDIA's `/v1/models` lists the whole catalogue (85 models), but most return
   `404 Function ... Not found for account` on a free key. Only a handful answer; probe before trusting
@@ -141,7 +148,10 @@ What the numbers do not show:
 
 ## Consequences
 
-- #63 builds the agent on `MACHIAVILLAGER_LLM_PROVIDER` and `MACHIAVILLAGER_LLM_MODEL`, with the
-  fallback order from decisions 2 to 4 and a switch on 429.
+- #63 builds the agent with an ordered model chain, configurable in the env, that skips a model for
+  as long as its 429 `retry-after` says:
+  - default: groq `qwen3.8-27b` → groq `gpt-oss-120b` → nvidia `minimax-m3.1-flash` → nvidia
+    `nemotron-3.5-bolt-e4b` → the mod's canned lines (never silent);
+  - irritated: the two NVIDIA models first, then the Groq ones.
 - The persona prompt in #63 keeps replies to one or two short lines.
 - When a model is retired or a new one appears, rerun `compare_models.py` and update this record.
