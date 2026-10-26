@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -8,6 +9,10 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from machiavillager.api.app import create_app
+from machiavillager.api.bridge.ids import new_request_id
+from machiavillager.application.conversation_store import ConversationStore
+from machiavillager.application.handle_player_chat import HandlePlayerChat
+from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import (
     MAX_LINE_LENGTH,
     PROTOCOL_VERSION,
@@ -132,3 +137,36 @@ def test_echo_truncates_a_long_line_to_the_protocol_limit():
 
     assert len(action.args.lines[0]) == MAX_LINE_LENGTH
     assert action.args.lines[0].startswith(ECHO_PREFIX)
+
+
+class _FixedWriter:
+    """Stands in for the LLM: answers with fixed lines, so no network is used."""
+
+    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
+        return ["Ah, Luciano.", "Sit down."]
+
+
+def test_player_chat_gets_the_ai_reply_over_the_real_bridge():
+    with (
+        _client(dev_endpoints=True, dev_echo=False) as client,
+        _connect_fake_mod(client) as mod,
+    ):
+        # The app's real bridge, a fake writer: the reply path runs end to end without a model.
+        client.app.state.handle_player_chat = HandlePlayerChat(
+            _FixedWriter(),
+            client.app.state.game_bridge,
+            ConversationStore(),
+            lambda: "Persona.",
+            "mild",
+            new_request_id,
+            time.monotonic,
+        )
+        response = _chat(client, text="hi there", addressed="private", player_uuid=PLAYER_UUID)
+        action = parse_message(mod.receive_text())
+        assert isinstance(action, SpeakAction)
+        mod.send_text(_status_json(action.request_id, "succeeded"))
+
+    assert response.status_code == 202
+    assert action.args.lines == ["Ah, Luciano.", "Sit down."]
+    assert action.in_reply_to == response.json()["event_id"]
+    assert action.args.to == UUID(PLAYER_UUID)

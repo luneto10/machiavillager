@@ -250,6 +250,11 @@ public final class NpcBrain {
         act(npc, level);
     }
 
+    /** His current temperament. Server thread only. */
+    public Mood mood() {
+        return mood;
+    }
+
     /** Dev: changes his mood now. The next decision already uses it. */
     public void setMood(Mood mood) {
         this.mood = Objects.requireNonNull(mood, "mood");

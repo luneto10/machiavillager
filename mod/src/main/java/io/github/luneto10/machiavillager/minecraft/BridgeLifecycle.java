@@ -4,9 +4,11 @@ import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.NameMention;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
+import io.github.luneto10.machiavillager.minecraft.bridge.PlayerChatReporter;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -96,7 +98,24 @@ public final class BridgeLifecycle {
         if (actions == null || !bound.chatType().is(ChatType.CHAT)) {
             return;
         }
-        sender.level().getServer().execute(() -> actions.onPlayerChat(sender));
+        String text = message.signedContent();
+        sender.level().getServer().execute(() -> {
+            actions.onPlayerChat(sender);
+            reportChat(sender, text);
+        });
+    }
+
+    // Server thread. A line that calls him by name goes to the backend, if the bridge is running and he can hear it.
+    private static void reportChat(ServerPlayer sender, String text) {
+        BridgeClient running = client;
+        if (running == null || !NameMention.matches(text)) {
+            return;
+        }
+        PlayerChatReporter.build(sender.level().getServer(), sender, text).ifPresent(event -> {
+            running.send(event);
+            // Logged by id only: the chat text never reaches the log.
+            Machiavillager.LOGGER.info("player_chat sent event_id={}", event.eventId());
+        });
     }
 
     private static String modVersion() {

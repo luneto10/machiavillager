@@ -103,6 +103,11 @@ public class MachiavillagerEntity extends PathfinderMob {
     }
 
     /** Dev: changes his mood now. */
+    /** His current mood, read for the bridge's player_chat snapshot. Server thread only. */
+    public Mood mood() {
+        return brain.mood();
+    }
+
     public void setMood(Mood mood) {
         brain.setMood(mood);
     }

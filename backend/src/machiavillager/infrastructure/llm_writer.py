@@ -87,6 +87,12 @@ class LlmLineWriter:
         )
         self._labels = labels or {}
 
+    @property
+    def has_models(self) -> bool:
+        """True when either chain has at least one model, so a reply can be written at all."""
+
+        return self._calm_agent is not None or self._irritated_agent is not None
+
     @classmethod
     def from_settings(cls, settings: Settings) -> "LlmLineWriter":
         """Build both chains from settings. Pairs whose provider has no key are skipped."""

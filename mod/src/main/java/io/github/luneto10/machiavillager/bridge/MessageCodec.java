@@ -7,19 +7,23 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
 import io.github.luneto10.machiavillager.domain.bridge.Hello;
+import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.bridge.ProtocolRules;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -147,7 +151,24 @@ public final class MessageCodec {
                 string(data, "player_name"),
                 string(data, "text"),
                 Addressed.fromWire(string(data, "addressed")),
-                optionalString(object, CONVERSATION_ID));
+                optionalString(object, CONVERSATION_ID),
+                optionalNpc(data));
+    }
+
+    // Optional: a player_chat without his state still decodes, with no npc.
+    private static Optional<NpcSnapshot> optionalNpc(JsonObject data) {
+        if (!data.has("npc")) {
+            return Optional.empty();
+        }
+        JsonObject npc = data.getAsJsonObject("npc");
+        // Nearby names are optional in the schema; an absent list means nobody is near him.
+        List<String> nearby = npc.has("nearby_players") ? lines(npc.getAsJsonArray("nearby_players")) : List.of();
+        return Optional.of(new NpcSnapshot(
+                Phase.valueOf(string(npc, "phase").toUpperCase(Locale.ROOT)),
+                Mood.valueOf(string(npc, "mood").toUpperCase(Locale.ROOT)),
+                npc.get("affinity").getAsInt(),
+                npc.get("independence").getAsInt(),
+                nearby));
     }
 
     private static BridgeError error(JsonObject object) {
@@ -247,8 +268,25 @@ public final class MessageCodec {
         data.addProperty("player_name", event.playerName());
         data.addProperty("text", event.text());
         data.addProperty("addressed", event.addressed().wireName());
+        // His state is optional: a player_chat sent without it omits the key entirely.
+        event.npc().ifPresent(npc -> data.add("npc", npcJson(npc)));
         json.add("data", data);
         event.conversationId().ifPresent(id -> json.addProperty(CONVERSATION_ID, id));
+        return json;
+    }
+
+    // Phase and mood go out lowercase, the spelling the schema's enums use.
+    private static JsonObject npcJson(NpcSnapshot npc) {
+        JsonObject json = new JsonObject();
+        json.addProperty("phase", npc.phase().name().toLowerCase(Locale.ROOT));
+        json.addProperty("mood", npc.mood().name().toLowerCase(Locale.ROOT));
+        json.addProperty("affinity", npc.affinity());
+        json.addProperty("independence", npc.independence());
+        JsonArray names = new JsonArray();
+        for (String name : npc.nearbyPlayers()) {
+            names.add(name);
+        }
+        json.add("nearby_players", names);
         return json;
     }
 

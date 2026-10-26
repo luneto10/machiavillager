@@ -6,9 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
+import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
+import io.github.luneto10.machiavillager.domain.story.Phase;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +28,15 @@ class MessageCodecTest {
                     + "\"args\":{\"lines\":[\"hi\"]},\"timeout_ms\":5000}";
     private static final UUID PLAYER = UUID.fromString("7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69");
     private static final String EVENT = "evt_01HZX8K2M9";
+
+    private static PlayerChatEvent chatEvent(Optional<NpcSnapshot> npc) {
+        return new PlayerChatEvent(EVENT, Instant.parse("2026-10-18T12:00:00Z"), PLAYER, "Luciano", "hi",
+                Addressed.NAME, Optional.empty(), npc);
+    }
+
+    private static NpcSnapshot snapshot() {
+        return new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"));
+    }
 
     @Test
     void decode_readsSpeakAction() {
@@ -38,6 +53,27 @@ class MessageCodecTest {
         String json = SPEAK.replace("\"args\":{", "\"args\":{\"to\":\"" + PLAYER + "\",");
 
         assertEquals(Optional.of(PLAYER), ((SpeakAction) MessageCodec.decode(json)).to());
+    }
+
+    @Test
+    void encode_writesNpcSnapshotWithLowercaseEnums() {
+        String json = MessageCodec.encode(chatEvent(Optional.of(snapshot())));
+
+        assertTrue(json.contains("\"npc\":{\"phase\":\"seeds\",\"mood\":\"bored\",\"affinity\":37,"
+                + "\"independence\":63,\"nearby_players\":[\"Luciano\",\"Ana\"]}"));
+    }
+
+    @Test
+    void encode_omitsNpcWhenAbsent() {
+        assertFalse(MessageCodec.encode(chatEvent(Optional.empty())).contains("\"npc\""));
+    }
+
+    @Test
+    void decode_readsNpcSnapshotBackFromEncodedEvent() {
+        PlayerChatEvent event = (PlayerChatEvent) MessageCodec.decode(
+                MessageCodec.encode(chatEvent(Optional.of(snapshot()))));
+
+        assertEquals(Optional.of(snapshot()), event.npc());
     }
 
     @Test
