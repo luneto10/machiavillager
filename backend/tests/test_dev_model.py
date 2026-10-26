@@ -29,6 +29,8 @@ AUTH_HEADERS = {"Authorization": f"Bearer {TOKEN}"}
 HELLO = '{"v": 1, "type": "hello", "mod_version": "0.1.0", "protocol": 1}'
 MODEL = "groq:openai/gpt-oss-120b"
 
+PINNED_CHAIN = "groq:qwen/qwen3.8-27b,groq:openai/gpt-oss-120b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
+
 
 def _handle(event: DevModelEvent, state: State) -> None:
     # The handler is async so the socket loop never waits on it; a sync test just runs it to end.
@@ -141,6 +143,8 @@ def _client(*, dev_endpoints: bool) -> TestClient:
         bridge_token=SecretStr(TOKEN),
         dev_endpoints=dev_endpoints,
         groq_api_key="fake-key-for-tests",
+        llm_chain=PINNED_CHAIN,
+        llm_chain_irritated=PINNED_CHAIN,
     )
     app = create_app(settings)
     app.dependency_overrides[get_settings] = lambda: settings

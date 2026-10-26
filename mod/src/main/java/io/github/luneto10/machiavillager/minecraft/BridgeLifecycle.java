@@ -3,6 +3,7 @@ package io.github.luneto10.machiavillager.minecraft;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
+import io.github.luneto10.machiavillager.domain.bridge.ModelLabel;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.NearChatCooldown;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
@@ -10,6 +11,7 @@ import io.github.luneto10.machiavillager.domain.bridge.ChatAddressing;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
+import io.github.luneto10.machiavillager.minecraft.bridge.ModelLine;
 import io.github.luneto10.machiavillager.minecraft.bridge.PlayerChatReporter;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -37,6 +39,8 @@ public final class BridgeLifecycle {
     private static volatile boolean requireName;
     // Limits overheard lines per player; set with the client, null when the bridge is off.
     private static volatile NearChatCooldown nearCooldown;
+    // The model label of the last reply, for the dev boss bar; a fresh one per start, null when the bridge is off.
+    private static volatile ModelLine modelLine;
 
     private BridgeLifecycle() {}
 
@@ -54,6 +58,12 @@ public final class BridgeLifecycle {
         return Optional.ofNullable(client);
     }
 
+    /** Dev: the model label the boss bar shows. Back to "no reply yet" when the bridge is off or restarted. */
+    public static String aiLineText() {
+        ModelLine line = modelLine;
+        return line == null ? ModelLabel.NO_REPLY_YET : line.text();
+    }
+
     private static void start(MinecraftServer server) {
         BridgeConfig config;
         try {
@@ -68,8 +78,11 @@ public final class BridgeLifecycle {
         requireName = ChatAddressing.requireName(System.getenv());
         // Built per start too, so a restart starts with no recorded waits and picks up a changed value.
         nearCooldown = new NearChatCooldown(NearChatCooldown.cooldownTicks(System.getenv()));
+        // Fresh per start, so a restart shows "no reply yet" again until the next reply.
+        ModelLine line = new ModelLine();
+        modelLine = line;
         // The executor is in place before the socket starts, so the first action finds it.
-        executor = new ActionExecutor(server, started, SpeechRules.unpromptedCooldown(System.getenv()));
+        executor = new ActionExecutor(server, started, SpeechRules.unpromptedCooldown(System.getenv()), line);
         client = started;
         started.start();
     }
@@ -79,6 +92,7 @@ public final class BridgeLifecycle {
         client = null;
         executor = null;
         nearCooldown = null;
+        modelLine = null;
         if (running != null) {
             running.stop();
         }

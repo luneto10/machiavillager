@@ -2,6 +2,7 @@ package io.github.luneto10.machiavillager.domain.bridge;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Optional;
 import java.util.OptionalInt;
 import org.junit.jupiter.api.Test;
 
@@ -28,5 +29,21 @@ class ModelLabelTest {
     @Test
     void format_returnsAMalformedModelAsItCame() {
         assertEquals("AI: no-colon-here", ModelLabel.format("no-colon-here", OptionalInt.empty()));
+    }
+
+    @Test
+    void forReply_showsTheModelWhenOneAnswered() {
+        assertEquals("AI: groq · qwen3.8-27b · 480 ms",
+                ModelLabel.forReply(Optional.of("groq:qwen/qwen3.8-27b"), OptionalInt.of(480)));
+    }
+
+    @Test
+    void forReply_showsACannedLineWhenNoModelCameWithIt() {
+        assertEquals("AI: canned line", ModelLabel.forReply(Optional.empty(), OptionalInt.empty()));
+    }
+
+    @Test
+    void noReplyYet_isTheTextBeforeAnyReply() {
+        assertEquals("AI: no reply yet", ModelLabel.NO_REPLY_YET);
     }
 }

@@ -20,6 +20,8 @@ from machiavillager.infrastructure.settings import Settings
 
 PLAYER_LINE = '<player_line from="luneto10">hey machi</player_line>'
 
+PINNED_CHAIN = "groq:qwen/qwen3.8-27b,groq:openai/gpt-oss-120b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
+
 
 def _speak(*lines: str) -> ModelResponse:
     """A model reply that calls the speak tool with these lines."""
@@ -275,7 +277,14 @@ def test_canned_line_has_no_model_and_no_latency():
 
 
 def test_available_models_lists_chain_pairs_that_have_a_key_once():
-    writer = LlmLineWriter.from_settings(Settings(groq_api_key="x", _env_file=None))
+    writer = LlmLineWriter.from_settings(
+        Settings(
+            groq_api_key="x",
+            llm_chain=PINNED_CHAIN,
+            llm_chain_irritated=PINNED_CHAIN,
+            _env_file=None,
+        )
+    )
 
     assert writer.available_models() == [
         "groq:qwen/qwen3.8-27b",
@@ -284,7 +293,13 @@ def test_available_models_lists_chain_pairs_that_have_a_key_once():
 
 
 def test_use_model_puts_the_pair_first_and_the_chain_after_it():
-    settings = Settings(groq_api_key="x", nvidia_api_key="y", _env_file=None)
+    settings = Settings(
+        groq_api_key="x",
+        nvidia_api_key="y",
+        llm_chain=PINNED_CHAIN,
+        llm_chain_irritated=PINNED_CHAIN,
+        _env_file=None,
+    )
     writer = LlmLineWriter.from_settings(settings)
 
     writer.use_model("groq:openai/gpt-oss-120b")
@@ -299,7 +314,13 @@ def test_use_model_puts_the_pair_first_and_the_chain_after_it():
 
 
 def test_use_model_none_restores_the_chain_from_settings():
-    settings = Settings(groq_api_key="x", nvidia_api_key="y", _env_file=None)
+    settings = Settings(
+        groq_api_key="x",
+        nvidia_api_key="y",
+        llm_chain=PINNED_CHAIN,
+        llm_chain_irritated=PINNED_CHAIN,
+        _env_file=None,
+    )
     writer = LlmLineWriter.from_settings(settings)
     writer.use_model("groq:openai/gpt-oss-120b")
 

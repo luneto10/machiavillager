@@ -1,6 +1,7 @@
 package io.github.luneto10.machiavillager.domain.bridge;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
@@ -14,6 +15,11 @@ public final class ModelLabel {
     private static final char PROVIDER_SEPARATOR = ':';
     private static final char NAME_SEPARATOR = '/';
 
+    /** Shown on the dev boss bar before any reply has arrived. */
+    public static final String NO_REPLY_YET = "AI: no reply yet";
+    /** Shown when the last reply was a canned line, which no model wrote. */
+    public static final String CANNED_LINE = "AI: canned line";
+
     private ModelLabel() {}
 
     /** The full action bar text: the provider, the model name, and the latency when the backend sent one. */
@@ -22,6 +28,13 @@ public final class ModelLabel {
         Objects.requireNonNull(latencyMs, "latencyMs");
         String label = PREFIX + shortName(model);
         return latencyMs.isPresent() ? label + SEPARATOR + latencyMs.getAsInt() + MS_SUFFIX : label;
+    }
+
+    /** The label for a reply: the model when one wrote it, otherwise the canned-line text. */
+    public static String forReply(Optional<String> model, OptionalInt latencyMs) {
+        Objects.requireNonNull(model, "model");
+        // A canned line has no model, so there is no provider or latency to show.
+        return model.isPresent() ? format(model.get(), latencyMs) : CANNED_LINE;
     }
 
     // Provider first, then the model name after the last slash. A value with no colon is returned as it is.

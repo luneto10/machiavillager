@@ -53,20 +53,6 @@ public final class NpcSpeech {
         send(player, whisper);
     }
 
-    /** Server side only. Shows the text on the action bar, above the hotbar, to players who can hear him. Dev only. */
-    public static void showOverlayNear(Entity speaker, String text) {
-        if (!(speaker.level() instanceof ServerLevel level)) {
-            return;
-        }
-        Component line = Component.literal(text);
-        for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(speaker) <= HEARING_RADIUS_SQR) {
-                // The action bar is the bar above the hotbar, not chat: the same players hear him, nobody else sees it.
-                player.sendOverlayMessage(line);
-            }
-        }
-    }
-
     // One loop for every kind of nearby speech: only the range and the line differ.
     private static void sendWithin(Entity speaker, double radiusSqr, Component line) {
         if (!(speaker.level() instanceof ServerLevel level)) {

@@ -59,14 +59,15 @@ class Settings(BaseSettings):
     nvidia_api_key: SecretStr | None = None
     xai_api_key: SecretStr | None = None
 
-    # Ordered provider:model pairs, tried left to right. Qwen is the best character (ADR 0005).
+    # Ordered provider:model pairs, tried left to right. gpt-oss-120b leads: cleaner Portuguese than
+    # qwen, and cheaper per call (ADR 0005).
     # Its base URL comes from LLM_BASE_URLS; pairs whose provider has no key are skipped.
     llm_chain: str = (
-        "groq:qwen/qwen3.8-27b,groq:openai/gpt-oss-120b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
+        "groq:openai/gpt-oss-120b,groq:qwen/qwen3.8-27b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
     )
 
-    # Used when he is irritated: gpt-oss-120b curses harder, so it leads. NVIDIA bolt is the slow
-    # last fallback and has its own request budget.
+    # Used when he is irritated. Same order for now; gpt-oss-120b also curses hardest. NVIDIA bolt
+    # is the slow last fallback and has its own request budget.
     llm_chain_irritated: str = (
         "groq:openai/gpt-oss-120b,groq:qwen/qwen3.8-27b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
     )
