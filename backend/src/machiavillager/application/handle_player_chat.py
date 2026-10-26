@@ -101,28 +101,29 @@ class HandlePlayerChat:
         # Dev only: when on, a reply says which model wrote it and how long it took.
         self._show_model = show_model
         self._in_flight: set[str] = set()
-        # One newest pending event per player; an older pending one is replaced by a newer one.
-        self._pending: dict[str, PlayerChatEvent] = {}
+        # Lines held during a reply, per player, in arrival order; they join the thread after it.
+        self._pending: dict[str, list[PlayerChatEvent]] = {}
 
     async def __call__(self, event: PlayerChatEvent) -> None:
         player = event.data.player_uuid
-
-        # Every line is kept as it arrives, so the next reply reads the whole thread.
-        self._store_line(event)
 
         # A spamming player cannot burn the model budget: one reply per player at a time.
         if player in self._in_flight:
             self._park(event)
             return
 
+        # Stored now because no reply is running, so the thread stays in arrival order.
+        self._store_line(event)
         self._in_flight.add(player)
         try:
-            # Lines that arrived during a reply are answered in turn, one reply to the newest.
+            # Lines held during a reply join the thread in order, then one reply answers the newest.
             current: PlayerChatEvent | None = event
             while current is not None:
                 await self._reply(current)
-                current = self._pending.pop(player, None)
+                current = self._take_pending(player)
         finally:
+            # If a reply failed, held lines still join the thread, so none is lost or left stale.
+            self._take_pending(player)
             self._in_flight.discard(player)
 
     def _store_line(self, event: PlayerChatEvent) -> None:
@@ -133,15 +134,29 @@ class HandlePlayerChat:
         self._store.add(conversation_key(event), player_line, self._clock())
 
     def _park(self, event: PlayerChatEvent) -> None:
-        """Hold a line that arrived mid-reply; only the newest held line gets a reply."""
+        """Hold a line that arrived mid-reply; it joins the thread after his reply, in order."""
 
-        # The replaced line stays in the thread, so the coalesced reply still sees it.
+        # Not stored yet: storing it now would put it before his reply to the line in flight.
         player = event.data.player_uuid
-        older = self._pending.get(player)
-        if older is not None:
-            logger.info("reply superseded event_id=%s", older.event_id)
-        self._pending[player] = event
+        self._pending.setdefault(player, []).append(event)
         logger.info("reply queued event_id=%s", event.event_id)
+
+    def _take_pending(self, player: str) -> PlayerChatEvent | None:
+        """Store the lines held during the last reply in order; return the newest to answer."""
+
+        # Nothing held means no reply is due and the player is free for the next line.
+        parked = self._pending.pop(player, [])
+        if not parked:
+            return None
+
+        # Each held line joins the thread now, after his reply, so the prompt keeps arrival order.
+        for event in parked:
+            self._store_line(event)
+
+        # Only the newest held line gets a reply; the older ones are read from the thread.
+        for event in parked[:-1]:
+            logger.info("reply superseded event_id=%s", event.event_id)
+        return parked[-1]
 
     async def _reply(self, event: PlayerChatEvent) -> None:
         key = conversation_key(event)

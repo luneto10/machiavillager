@@ -20,7 +20,8 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 |---|---|---|
 | 1 | Provider | Groq: the same model runs about 6 times faster there than on NVIDIA Build |
 | 2 | Main model | `openai/gpt-oss-120b` on Groq: the cleanest Portuguese of the group, no refusals, 0.4 s, and 17% fewer tokens per call than qwen |
-| 3 | Second model | `qwen/qwen3.8-27b` on Groq: livelier jokes but it often writes wrong Portuguese; a preview model that may be retired |
+| 3 | Second model | `nvidia/nemotron-3.5-bolt-e4b`: good Portuguese in play tests, its own budget, about 1 to 2 s |
+| 3b | Last model | `qwen/qwen3.8-27b` on Groq: livelier jokes but it often writes wrong Portuguese; a preview model that may be retired |
 | 4 | NVIDIA Build | `nemotron-3.5-bolt-e4b`: the last, slower fallback, with a budget separate from Groq |
 | 5 | Configuration | One key per provider plus two ordered model chains, all env vars |
 | 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm is dodged in character |
@@ -170,7 +171,9 @@ Adding one is a URL in `LLM_BASE_URLS`, a key setting and pairs in the chains.
 
 - #64 builds the model adapter on the two chains (PydanticAI `FallbackModel`): any provider error or
   a reply slower than 4 s moves to the next model; when every model fails he says a canned line.
-  - both chains today: groq `gpt-oss-120b` → groq `qwen3.8-27b` → nvidia `nemotron-3.5-bolt-e4b`.
+  - both chains today: groq `gpt-oss-120b` → nvidia `nemotron-3.5-bolt-e4b` → groq `qwen3.8-27b`.
+  - A model that answers without a valid `speak` call counts as a failure and the next one is tried,
+    the same as a rate limit or a timeout.
 - He answers in one or two short lines by default and goes up to 8 for drama (decrees, proposals,
   betrayals, plot reveals, rants).
 - When a model is retired or a new one appears, rerun `compare_models.py` and update this record.

@@ -1,6 +1,8 @@
 import asyncio
+import contextlib
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -169,6 +171,22 @@ def _npc_texts(store: ConversationStore, key: str) -> list[str]:
     return [line.text for line in store.recent(key, NOW) if line.from_npc]
 
 
+def _dialogue(messages: list[PromptMessage]) -> list[tuple[str, str]]:
+    """The dialogue as (role, text): system rules left out, player tags stripped from the text."""
+
+    dialogue: list[tuple[str, str]] = []
+    for message in messages:
+        if message.role == "system":
+            continue
+        # Player lines are wrapped in a tag for the model; the test compares the words inside it.
+        match = re.fullmatch(
+            r'<player_line from="[^"]*">(.*)</player_line>', message.content, re.DOTALL
+        )
+        text = match.group(1) if match else message.content
+        dialogue.append((message.role, text))
+    return dialogue
+
+
 def test_history_reaches_the_prompt_on_the_second_line():
     writer = FakeWriter(("Hello.",))
     handler = _handler(writer, FakeBridge(_succeeded()))
@@ -315,20 +333,46 @@ def test_name_chat_is_not_marked_as_overheard():
     assert "Overheard" not in system_text
 
 
-def test_events_during_a_reply_coalesce_into_one_reply_to_the_newest(caplog):
+def test_a_line_held_during_a_reply_joins_the_thread_after_that_reply():
     gate = asyncio.Event()
     writer = FakeWriter(gate=gate)
     bridge = FakeBridge(_succeeded())
     handler = _handler(writer, bridge)
 
     async def scenario() -> None:
-        first = asyncio.create_task(
-            handler(_chat_event(text="first line", event_id="evt_test00000001"))
-        )
+        first = asyncio.create_task(handler(_chat_event(text="A", event_id="evt_test00000001")))
         # One turn lets the first call reach the writer and hold there.
         await asyncio.sleep(0)
-        await handler(_chat_event(text="second line", event_id="evt_test00000002"))
-        await handler(_chat_event(text="third line", event_id="evt_test00000003"))
+        await handler(_chat_event(text="B", event_id="evt_test00000002"))
+        gate.set()
+        await first
+
+    asyncio.run(scenario())
+
+    # His reply to A sits between A and B, so the prompt for B reads in the order it was said.
+    assert _dialogue(writer.calls[1][0]) == [
+        ("user", "A"),
+        ("assistant", "Hello."),
+        ("user", "B"),
+    ]
+    assert [action.in_reply_to for action in bridge.actions] == [
+        "evt_test00000001",
+        "evt_test00000002",
+    ]
+
+
+def test_held_lines_join_the_thread_in_order_and_one_reply_answers_the_newest(caplog):
+    gate = asyncio.Event()
+    writer = FakeWriter(gate=gate)
+    bridge = FakeBridge(_succeeded())
+    handler = _handler(writer, bridge)
+
+    async def scenario() -> None:
+        first = asyncio.create_task(handler(_chat_event(text="A", event_id="evt_test00000001")))
+        # One turn lets the first call reach the writer and hold there.
+        await asyncio.sleep(0)
+        await handler(_chat_event(text="B1", event_id="evt_test00000002"))
+        await handler(_chat_event(text="B2", event_id="evt_test00000003"))
         gate.set()
         await first
 
@@ -340,12 +384,39 @@ def test_events_during_a_reply_coalesce_into_one_reply_to_the_newest(caplog):
         "evt_test00000001",
         "evt_test00000003",
     ]
-    # Both parked lines reach the newest reply's history, each exactly once.
-    user_texts = [m.content for m in writer.calls[1][0] if m.role == "user"]
-    assert sum("second line" in text for text in user_texts) == 1
-    assert sum("third line" in text for text in user_texts) == 1
+    # Each held line appears once, in arrival order, after his reply to A.
+    assert _dialogue(writer.calls[1][0]) == [
+        ("user", "A"),
+        ("assistant", "Hello."),
+        ("user", "B1"),
+        ("user", "B2"),
+    ]
     assert "reply queued event_id=evt_test00000002" in caplog.text
+    assert "reply queued event_id=evt_test00000003" in caplog.text
     assert "reply superseded event_id=evt_test00000002" in caplog.text
+    assert "reply superseded event_id=evt_test00000003" not in caplog.text
+
+
+def test_a_reply_cut_off_by_a_held_line_is_remembered_cut_off_before_that_line():
+    gate = asyncio.Event()
+    writer = FakeWriter(("one", "two"), gate=gate)
+    handler = _handler(writer, FakeBridge(_interrupted(spoken=1, of=2)))
+
+    async def scenario() -> None:
+        first = asyncio.create_task(handler(_chat_event(text="A", event_id="evt_test00000001")))
+        # One turn lets the first call reach the writer and hold there.
+        await asyncio.sleep(0)
+        await handler(_chat_event(text="B", event_id="evt_test00000002"))
+        gate.set()
+        await first
+
+    asyncio.run(scenario())
+
+    assert _dialogue(writer.calls[1][0]) == [
+        ("user", "A"),
+        ("assistant", "one (cut off)"),
+        ("user", "B"),
+    ]
 
 
 def test_a_finished_reply_frees_the_player_for_the_next_one():
@@ -398,3 +469,28 @@ def test_model_and_latency_are_sent_only_when_show_model_is_on():
         action = bridge.actions[0]
         assert action.model == ("groq:qwen/qwen3.8-27b" if show_model else None)
         assert action.latency_ms == (480 if show_model else None)
+
+
+def test_held_lines_join_the_thread_even_when_the_reply_fails():
+    store = ConversationStore()
+    gate = asyncio.Event()
+
+    class ExplodingWriter(FakeWriter):
+        async def write_reply(self, messages, *, irritated):
+            await gate.wait()
+            raise RuntimeError("provider down")
+
+    handler = _handler(ExplodingWriter(), FakeBridge(_succeeded()), store)
+
+    async def scenario() -> None:
+        first = asyncio.create_task(handler(_chat_event(text="first", event_id="evt_test00000001")))
+        await asyncio.sleep(0)
+        await handler(_chat_event(text="held", event_id="evt_test00000002"))
+        gate.set()
+        with contextlib.suppress(RuntimeError):
+            await first
+
+    asyncio.run(scenario())
+
+    texts = [line.text for line in store.recent(f"player:{PLAYER_UUID}", NOW)]
+    assert texts == ["first", "held"]

@@ -3,9 +3,8 @@ import logging
 
 import pytest
 from pydantic_ai.exceptions import ModelHTTPError, ModelTimeoutError
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models import Model
-from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
@@ -14,6 +13,7 @@ from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LIN
 from machiavillager.infrastructure.llm_writer import (
     CANNED_LINES,
     LlmLineWriter,
+    Pair,
     _split_messages,
 )
 from machiavillager.infrastructure.settings import Settings
@@ -59,11 +59,22 @@ def _times_out() -> FunctionModel:
     return FunctionModel(reply, model_name="fake-slow")
 
 
-def _chain(*models: Model) -> FallbackModel:
-    return FallbackModel(*models)
+def _plain_text() -> FunctionModel:
+    """A fake model that answers in plain text, so the speak tool is never called."""
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[TextPart(content="no tool call here")], model_name="fake-text")
+
+    return FunctionModel(reply, model_name="fake-text")
 
 
-def _writer(calm: Model, irritated: Model | None = None) -> LlmLineWriter:
+def _chain(*models: Model) -> list[Pair]:
+    """Each model labelled by its own name, which is the label the fakes answer under."""
+
+    return [(model.model_name, model) for model in models]
+
+
+def _writer(calm: list[Pair], irritated: list[Pair] | None = None) -> LlmLineWriter:
     return LlmLineWriter(calm, irritated or calm, timeout_seconds=4.0)
 
 
@@ -102,8 +113,19 @@ def test_timeout_falls_through_to_the_next_model():
     assert _reply(writer) == ["second"]
 
 
+def test_bad_answer_without_a_speak_call_falls_through_to_the_next_model(caplog):
+    writer = _writer([("groq:fake-text", _plain_text()), ("groq:fake-ok", _answers("second"))])
+
+    with caplog.at_level(logging.INFO):
+        reply = asyncio.run(writer.write_reply(_prompt(), irritated=False))
+
+    assert reply.lines == ["second"]
+    assert reply.model == "groq:fake-ok"
+    assert "LLM groq:fake-text failed (UnexpectedModelBehavior), trying the next" in caplog.text
+
+
 def test_every_model_failing_speaks_a_canned_line(caplog):
-    writer = _writer(_chain(_fails_with_429(), _times_out()))
+    writer = _writer(_chain(_fails_with_429(), _plain_text(), _times_out()))
 
     with caplog.at_level(logging.WARNING):
         lines = _reply(writer)
@@ -111,7 +133,11 @@ def test_every_model_failing_speaks_a_canned_line(caplog):
     assert len(lines) == 1
     assert lines[0] in CANNED_LINES
     assert "ModelHTTPError" in caplog.text
+    assert "UnexpectedModelBehavior" in caplog.text
     assert "ModelTimeoutError" in caplog.text
+    # The error texts (provider body, timeout message) never reach the log.
+    assert "rate" not in caplog.text
+    assert "timed out" not in caplog.text
 
 
 def test_overlong_output_is_fitted_before_it_is_returned():
@@ -164,8 +190,8 @@ def test_pair_without_a_key_is_skipped_by_from_settings(caplog):
     with caplog.at_level(logging.INFO):
         writer = LlmLineWriter.from_settings(settings)
 
-    calm = writer._calm_agent.model
-    assert [model.model_name for model in calm.models] == ["nvidia/nemotron-3.5-bolt-e4b"]
+    names = [agent.model.model_name for _, agent in writer._calm_routes]
+    assert names == ["nvidia/nemotron-3.5-bolt-e4b"]
     assert "groq:qwen/qwen3.8-27b" in caplog.text
 
 
@@ -174,9 +200,9 @@ def test_gpt_oss_gets_low_reasoning_effort():
 
     writer = LlmLineWriter.from_settings(settings)
 
-    gpt_oss = writer._irritated_agent.model.models[0]
-    assert gpt_oss.model_name == "openai/gpt-oss-120b"
-    assert gpt_oss.settings == {"openai_reasoning_effort": "low"}
+    _, gpt_oss_agent = writer._irritated_routes[0]
+    assert gpt_oss_agent.model.model_name == "openai/gpt-oss-120b"
+    assert gpt_oss_agent.model.settings == {"openai_reasoning_effort": "low"}
 
 
 def test_no_keys_at_all_speaks_a_canned_line():
@@ -184,6 +210,7 @@ def test_no_keys_at_all_speaks_a_canned_line():
 
     writer = LlmLineWriter.from_settings(settings)
 
+    assert not writer.has_models
     assert _is_one_canned_line(_reply(writer))
 
 
@@ -245,18 +272,13 @@ def test_max_tokens_setting_reaches_the_writer():
     assert writer._request_settings["max_tokens"] == 123
 
 
-def _labelled_writer(calm: Model, irritated: Model | None = None) -> LlmLineWriter:
-    # The label map turns the fake's model id into the provider:model form the mod shows.
-    return LlmLineWriter(
-        calm,
-        irritated or calm,
-        timeout_seconds=4.0,
-        labels={"fake-ok": "groq:fake-ok"},
-    )
+def _labelled_writer(calm: Model) -> LlmLineWriter:
+    # The pair label is the provider:model form the mod shows.
+    return _writer([("groq:fake-ok", calm)])
 
 
 def test_reply_reports_the_model_and_latency_that_answered():
-    writer = _labelled_writer(_chain(_answers("Hello.")))
+    writer = _labelled_writer(_answers("Hello."))
 
     reply = asyncio.run(writer.write_reply(_prompt(), irritated=False))
 
@@ -267,7 +289,7 @@ def test_reply_reports_the_model_and_latency_that_answered():
 
 
 def test_canned_line_has_no_model_and_no_latency():
-    writer = _labelled_writer(_chain(_fails_with_429()))
+    writer = _labelled_writer(_fails_with_429())
 
     reply = asyncio.run(writer.write_reply(_prompt(), irritated=False))
 
@@ -304,7 +326,7 @@ def test_use_model_puts_the_pair_first_and_the_chain_after_it():
 
     writer.use_model("groq:openai/gpt-oss-120b")
 
-    names = [model.model_name for model in writer._calm_agent.model.models]
+    names = [agent.model.model_name for _, agent in writer._calm_routes]
     assert names == [
         "openai/gpt-oss-120b",
         "qwen/qwen3.8-27b",
@@ -326,7 +348,7 @@ def test_use_model_none_restores_the_chain_from_settings():
 
     writer.use_model(None)
 
-    names = [model.model_name for model in writer._calm_agent.model.models]
+    names = [agent.model.model_name for _, agent in writer._calm_routes]
     assert names == [
         "qwen/qwen3.8-27b",
         "openai/gpt-oss-120b",
