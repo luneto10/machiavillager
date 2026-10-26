@@ -221,6 +221,68 @@
       "title": "Interrupted",
       "type": "object"
     },
+    "NpcSnapshot": {
+      "additionalProperties": false,
+      "description": "His state when a player spoke. Sent by the mod so the backend can answer in character.",
+      "properties": {
+        "phase": {
+          "description": "Which stage of his plan he is in. Set by the mod from its Phase enum, lowercased. Example: \"seeds\".",
+          "enum": [
+            "partner",
+            "seeds",
+            "proposal",
+            "regime",
+            "war"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "mood": {
+          "description": "How he feels right now. Set by the mod from its Mood enum, lowercased. Example: \"bored\".",
+          "enum": [
+            "calm",
+            "bored",
+            "irritated"
+          ],
+          "title": "Mood",
+          "type": "string"
+        },
+        "affinity": {
+          "description": "How much he likes the player who spoke, from 0 (despises) to 100 (adores). Set by the mod. Example: 37.",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Affinity",
+          "type": "integer"
+        },
+        "independence": {
+          "description": "How far he has broken away from his loyal partner role, from 0 (loyal) to 100 (answers to no one). Set by the mod. Example: 63.",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Independence",
+          "type": "integer"
+        },
+        "nearby_players": {
+          "description": "Names of the players within reach of him, up to 16. Empty when nobody is near. Set by the mod. Example: [\"Luciano\", \"Ana\"].",
+          "items": {
+            "maxLength": 16,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_]+$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Nearby Players",
+          "type": "array"
+        }
+      },
+      "required": [
+        "phase",
+        "mood",
+        "affinity",
+        "independence"
+      ],
+      "title": "NpcSnapshot",
+      "type": "object"
+    },
     "PlayerChatData": {
       "additionalProperties": false,
       "description": "Payload for player_chat: a player said something the mod chose to forward.",
@@ -236,6 +298,7 @@
           "description": "The player's in-game name, 1 to 16 characters. Example: \"Luciano\".",
           "maxLength": 16,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9_]+$",
           "title": "Player Name",
           "type": "string"
         },
@@ -257,6 +320,10 @@
           ],
           "title": "Addressed",
           "type": "string"
+        },
+        "npc": {
+          "$ref": "#/$defs/NpcSnapshot",
+          "description": "His state when the player spoke. Set by the mod. Optional: without it the backend answers without game state."
         }
       },
       "required": [

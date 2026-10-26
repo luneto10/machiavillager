@@ -44,7 +44,7 @@ from machiavillager.domain.protocol.common import (
     WireVersion,
 )
 from machiavillager.domain.protocol.errors import Error
-from machiavillager.domain.protocol.events import PlayerChatData, PlayerChatEvent
+from machiavillager.domain.protocol.events import NpcSnapshot, PlayerChatData, PlayerChatEvent
 from machiavillager.domain.protocol.handshake import Hello, Welcome
 from machiavillager.domain.protocol.statuses import (
     TERMINAL_STATUS_TYPES,
@@ -91,6 +91,7 @@ __all__ = [
     "Hello",
     "Interrupted",
     "Message",
+    "NpcSnapshot",
     "PlayerChatData",
     "PlayerChatEvent",
     "PlayerUuid",
