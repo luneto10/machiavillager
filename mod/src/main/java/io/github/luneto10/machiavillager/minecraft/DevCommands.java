@@ -55,6 +55,8 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code brain nudge <-10..10>}: apply an affinity nudge for you, through the same limits as the AI (dev).</li>
  *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
+ *   <li>{@code brain set affinity <0-100>}: set your own affinity exactly, no limits (dev).</li>
+
  *   <li>{@code brain set phase <partner|seeds|proposal|regime|war>}: put him in a phase, resetting the ratchet (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
  *   <li>{@code ai models}: list the models the backend offered in its welcome (dev, operators).</li>
@@ -297,7 +299,8 @@ public final class DevCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> set() {
         var set = Commands.literal("set")
                 .then(Commands.literal("ambition").then(valueArgument(DevCommands::runSetAmbition)))
-                .then(Commands.literal("independence").then(valueArgument(DevCommands::runSetIndependence)));
+                .then(Commands.literal("independence").then(valueArgument(DevCommands::runSetIndependence)))
+                .then(Commands.literal("affinity").then(valueArgument(DevCommands::runSetAffinity)));
 
         // One literal per mood, named in lower case: "brain set mood calm".
         var mood = Commands.literal("mood");
@@ -338,6 +341,20 @@ public final class DevCommands {
         data.setIndependence(IntegerArgumentType.getInteger(context, VALUE_ARG));
         String message = "Independence is now " + data.relationships().independence() + ".";
         context.getSource().sendSuccess(() -> Component.literal(message), false);
+        return 1;
+    }
+
+    // Sets the typing player's affinity exactly, skipping the AI limits, so testing can jump to any value.
+    private static int runSetAffinity(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        UUID playerId = source.getPlayerOrException().getUUID();
+        StoryData data = StoryData.get(source.getServer());
+        int value = IntegerArgumentType.getInteger(context, VALUE_ARG);
+
+        // Written straight to the saved relationships, not through the nudger, so no cap applies.
+        data.setRelationships(data.relationships().withAffinity(playerId, value));
+        String message = "Affinity is now " + data.relationships().affinityOf(playerId) + ".";
+        source.sendSuccess(() -> Component.literal(message), false);
         return 1;
     }
 
