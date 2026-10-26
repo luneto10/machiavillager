@@ -52,4 +52,5 @@ by `python scripts/sync_skills.py`. Use them:
 - `bridge-protocol` — adding a game action or event across Java and Python.
 - `npc-agent-tools` — adding a PydanticAI tool / persona / memory behavior.
 - `prompt-engineering` — designing, testing and hardening a prompt (vendored, MIT).
+- `verity-reference` — how the Verity mod built tools, memory and prompts; check before building an NPC AI feature.
 - `checkpoint-workflow` — running a checkpoint end to end.

@@ -33,6 +33,10 @@ MAX_DETAIL_LENGTH: Final = 500
 MAX_PLAYER_NAME_LENGTH: Final = 16
 MAX_CHAT_TEXT_LENGTH: Final = 256
 MAX_NEARBY_PLAYERS: Final = 16
+# Dev info only: the model that wrote a reply, and the models the backend can switch to.
+MAX_MODEL_NAME_LENGTH: Final = 80
+MAX_MODELS: Final = 16
+MAX_LATENCY_MS: Final = 600_000
 # Affinity and independence share the mod's 0..100 scale.
 MIN_RELATIONSHIP_SCORE: Final = 0
 MAX_RELATIONSHIP_SCORE: Final = 100
@@ -58,6 +62,8 @@ NpcPhase = Literal["partner", "seeds", "proposal", "regime", "war"]
 NpcMood = Literal["calm", "bored", "irritated"]
 # Minecraft names use letters, digits and underscore only. The pattern also keeps a name from
 # carrying markup into the prompt, where it is written unescaped.
+# provider:model, e.g. groq:qwen/qwen3.8-27b. Only the length is checked: ids are free text.
+ModelName = Annotated[str, StringConstraints(min_length=1, max_length=MAX_MODEL_NAME_LENGTH)]
 PlayerName = Annotated[
     str,
     StringConstraints(min_length=1, max_length=MAX_PLAYER_NAME_LENGTH, pattern=r"^[A-Za-z0-9_]+$"),

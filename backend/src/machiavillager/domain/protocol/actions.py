@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from machiavillager.domain.protocol.common import (
+    MAX_LATENCY_MS,
     MAX_SPEAK_LINES,
     MAX_TIMEOUT_MS,
     MIN_TIMEOUT_MS,
@@ -16,6 +17,7 @@ from machiavillager.domain.protocol.common import (
     ConversationId,
     EnvelopeModel,
     EventId,
+    ModelName,
     PlayerUuid,
     SpeakLine,
 )
@@ -89,5 +91,24 @@ class SpeakAction(EnvelopeModel):
             "not count the speech as unprompted: replies skip the unprompted-speech cooldown. "
             "Omit it for speech the backend starts on its own. Explicit null is rejected. "
             "Example: evt_01HZX8K2M9."
+        ),
+    )  # type: ignore[assignment]
+
+    # Dev info only, optional. Same rule as the fields above: explicit null is refused.
+    model: ModelName = Field(
+        default=None,
+        description=(
+            "Dev info: the model that wrote the lines, as provider:model, e.g. "
+            "groq:qwen/qwen3.8-27b. The mod may show it. Omitted when no model wrote them, for "
+            "example a canned line. Explicit null is rejected."
+        ),
+    )  # type: ignore[assignment]
+
+    # Dev info only: how long the model took, so the dev HUD can show speed. Explicit null refused.
+    latency_ms: Annotated[int, Field(ge=0, le=MAX_LATENCY_MS)] = Field(
+        default=None,
+        description=(
+            "Dev info: how long the model took to answer, in milliseconds. Set together with "
+            "model. Omitted when no model wrote the lines. Explicit null is rejected. Example: 480."
         ),
     )  # type: ignore[assignment]

@@ -17,6 +17,7 @@ import io.github.luneto10.machiavillager.domain.meeting.RetrySchedule;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.domain.time.PerPlayerCooldown;
+import io.github.luneto10.machiavillager.minecraft.BridgeLifecycle;
 import io.github.luneto10.machiavillager.minecraft.meeting.Meeting;
 import io.github.luneto10.machiavillager.minecraft.meeting.SummonFacts;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
@@ -122,7 +123,8 @@ public final class NpcBrain {
                 MAX_DECISION_TICKS,
                 data.progress(),
                 data.relationships(),
-                meeting == null ? null : nameOf(meeting.target(), level));
+                meeting == null ? null : nameOf(meeting.target(), level),
+                BridgeLifecycle::aiLineText);
     }
 
     /** Called when he is removed from the world (dead, or his chunk unloaded): his dev bars go with him. */
@@ -248,6 +250,11 @@ public final class NpcBrain {
 
         // Act right away instead of waiting for the next tick.
         act(npc, level);
+    }
+
+    /** His current temperament. Server thread only. */
+    public Mood mood() {
+        return mood;
     }
 
     /** Dev: changes his mood now. The next decision already uses it. */

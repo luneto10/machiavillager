@@ -15,6 +15,7 @@ import java.util.UUID;
  * @param text what was said
  * @param addressed why the mod forwarded the line
  * @param conversationId optional conversation this message belongs to
+ * @param npc his state when the player spoke, when the mod sends it
  */
 public record PlayerChatEvent(
         String eventId,
@@ -23,7 +24,8 @@ public record PlayerChatEvent(
         String playerName,
         String text,
         Addressed addressed,
-        Optional<String> conversationId) implements BridgeMessage {
+        Optional<String> conversationId,
+        Optional<NpcSnapshot> npc) implements BridgeMessage {
 
     /** Null checks only; the limits are enforced by the schema. */
     public PlayerChatEvent {
@@ -34,5 +36,6 @@ public record PlayerChatEvent(
         Objects.requireNonNull(text, "text");
         Objects.requireNonNull(addressed, "addressed");
         Objects.requireNonNull(conversationId, "conversation_id");
+        Objects.requireNonNull(npc, "npc");
     }
 }

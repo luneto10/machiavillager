@@ -7,7 +7,13 @@ from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints
 
-from machiavillager.domain.protocol.common import MAX_MOD_VERSION_LENGTH, EnvelopeModel, WireVersion
+from machiavillager.domain.protocol.common import (
+    MAX_MOD_VERSION_LENGTH,
+    MAX_MODELS,
+    EnvelopeModel,
+    ModelName,
+    WireVersion,
+)
 
 
 class Hello(EnvelopeModel):
@@ -31,3 +37,14 @@ class Welcome(EnvelopeModel):
     protocol: WireVersion = Field(
         description="Protocol version the backend agreed to speak. Always 1 today."
     )
+
+    # Not Optional on purpose: an explicit null must be rejected, and the default None still
+    # applies when the key is absent.
+    models: Annotated[list[ModelName], Field(max_length=MAX_MODELS)] = Field(
+        default=None,
+        description=(
+            "Dev info: the models the backend can use, as provider:model, for the mod's command "
+            "suggestions. Omitted unless the backend runs dev endpoints. Explicit null is "
+            'rejected. Example: ["groq:qwen/qwen3.8-27b"].'
+        ),
+    )  # type: ignore[assignment]

@@ -23,8 +23,11 @@ from machiavillager.domain.protocol.common import (
     JSON_SCHEMA_DIALECT,
     MAX_CHAT_TEXT_LENGTH,
     MAX_DETAIL_LENGTH,
+    MAX_LATENCY_MS,
     MAX_LINE_LENGTH,
     MAX_MOD_VERSION_LENGTH,
+    MAX_MODEL_NAME_LENGTH,
+    MAX_MODELS,
     MAX_PLAYER_NAME_LENGTH,
     MAX_REASON_LENGTH,
     MAX_SPEAK_LINES,
@@ -44,7 +47,14 @@ from machiavillager.domain.protocol.common import (
     WireVersion,
 )
 from machiavillager.domain.protocol.errors import Error
-from machiavillager.domain.protocol.events import NpcSnapshot, PlayerChatData, PlayerChatEvent
+from machiavillager.domain.protocol.events import (
+    DevModelData,
+    DevModelEvent,
+    ModEvent,
+    NpcSnapshot,
+    PlayerChatData,
+    PlayerChatEvent,
+)
 from machiavillager.domain.protocol.handshake import Hello, Welcome
 from machiavillager.domain.protocol.statuses import (
     TERMINAL_STATUS_TYPES,
@@ -63,11 +73,16 @@ __all__ = [
     "ACTION_ID_PATTERN",
     "CANONICAL_UUID_PATTERN",
     "CONVERSATION_ID_PATTERN",
+    "DevModelData",
+    "DevModelEvent",
     "EVENT_ID_PATTERN",
     "JSON_SCHEMA_DIALECT",
     "MAX_CHAT_TEXT_LENGTH",
     "MAX_DETAIL_LENGTH",
+    "MAX_LATENCY_MS",
     "MAX_LINE_LENGTH",
+    "MAX_MODEL_NAME_LENGTH",
+    "MAX_MODELS",
     "MAX_MOD_VERSION_LENGTH",
     "MAX_PLAYER_NAME_LENGTH",
     "MAX_REASON_LENGTH",
@@ -91,6 +106,7 @@ __all__ = [
     "Hello",
     "Interrupted",
     "Message",
+    "ModEvent",
     "NpcSnapshot",
     "PlayerChatData",
     "PlayerChatEvent",
@@ -111,7 +127,7 @@ __all__ = [
 ]
 
 Message = Annotated[
-    Hello | Welcome | SpeakAction | ActionStatus | PlayerChatEvent | Error,
+    Hello | Welcome | SpeakAction | ActionStatus | ModEvent | Error,
     Field(discriminator="type"),
 ]
 

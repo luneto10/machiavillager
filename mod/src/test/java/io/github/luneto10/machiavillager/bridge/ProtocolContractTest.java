@@ -8,13 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.luneto10.machiavillager.domain.behavior.Mood;
+import io.github.luneto10.machiavillager.domain.bridge.Addressed;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
+import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
+import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -76,6 +86,36 @@ class ProtocolContractTest {
     }
 
     // Each case is named <Model>.<field>.<rule>, so a failure names the message type and the broken rule.
+    // A player_chat the mod sends with his state must pass the same schema the backend's examples pass.
+    @Test
+    void encodedPlayerChat_withNpcSnapshot_validatesSchema() {
+        PlayerChatEvent event = new PlayerChatEvent(
+                "evt_01HZX8K2M9",
+                Instant.parse("2026-10-18T12:00:00Z"),
+                UUID.fromString("7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69"),
+                "Luciano",
+                "hi",
+                Addressed.NAME,
+                Optional.empty(),
+                Optional.of(new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"))));
+
+        List<String> errors = SCHEMA.errors(MessageCodec.encode(event));
+
+        assertTrue(errors.isEmpty(), () -> "encoded player_chat with npc should be valid: " + errors);
+    }
+
+    // The dev_model events the mod sends must pass the same schema the backend's examples pass.
+    @Test
+    void encodedDevModel_setAndReset_validateSchema() {
+        DevModelEvent set = new DevModelEvent("evt_01HZX8K2M9", Instant.parse("2026-10-18T12:00:00Z"),
+                DevModelOp.SET, Optional.of("groq:openai/gpt-oss-120b"));
+        DevModelEvent reset = new DevModelEvent("evt_01HZX8K2N0", Instant.parse("2026-10-18T12:00:05Z"),
+                DevModelOp.RESET, Optional.empty());
+
+        assertTrue(SCHEMA.errors(MessageCodec.encode(set)).isEmpty());
+        assertTrue(SCHEMA.errors(MessageCodec.encode(reset)).isEmpty());
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidCases")
     void invalidCase_failsSchema(String name, String message) {

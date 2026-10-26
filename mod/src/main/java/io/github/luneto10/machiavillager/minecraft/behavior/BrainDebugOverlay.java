@@ -21,9 +21,9 @@ import net.minecraft.world.BossEvent;
 import net.minecraft.world.entity.PathfinderMob;
 
 /**
- * Dev only: shows what the brain is doing as boss bars at the top of the screen. Three bars: the decision
- * countdown and the story (shared by everyone), and one relationship bar per player. Does nothing in a normal
- * game. Owned by one brain, so each Machiavillager has its own bars.
+ * Dev only: shows what the brain is doing as boss bars at the top of the screen. Four bars: the decision
+ * countdown, the story and the AI model line (shared by everyone), and one relationship bar per player.
+ * Does nothing in a normal game. Owned by one brain, so each Machiavillager has its own bars.
  */
 final class BrainDebugOverlay {
     private static final boolean ENABLED = FabricLoader.getInstance().isDevelopmentEnvironment();
@@ -37,6 +37,8 @@ final class BrainDebugOverlay {
     private final ServerBossEvent decisionBar = newBar(BossEvent.BossBarColor.WHITE, BossEvent.BossBarOverlay.PROGRESS);
     private final ServerBossEvent storyBar =
             newBar(BossEvent.BossBarColor.GREEN, BossEvent.BossBarOverlay.NOTCHED_10);
+    // White, the neutral color: it shows which model answered, not a value that moves.
+    private final ServerBossEvent aiBar = newBar(BossEvent.BossBarColor.WHITE, BossEvent.BossBarOverlay.PROGRESS);
     private final Map<UUID, ServerBossEvent> relationshipBars = new HashMap<>();
 
     /** Updates the bars and their viewers. Only refreshes every few ticks, and only in dev. */
@@ -49,7 +51,8 @@ final class BrainDebugOverlay {
             int maxDecisionTicks,
             StoryProgress progress,
             Relationships relationships,
-            String meetingWith) {
+            String meetingWith,
+            Supplier<String> aiLine) {
         // Dev only, and only on the refresh tick.
         if (!ENABLED || npc.tickCount % REFRESH_INTERVAL_TICKS != 0) {
             return;
@@ -63,6 +66,7 @@ final class BrainDebugOverlay {
             updateDecisionBar(actionText.get(), mood, ticksUntilNextDecision, maxDecisionTicks);
         }
         updateStoryBar(progress);
+        updateAiBar(aiLine.get());
 
         // Sync who sees the shared bars: new players join, players who left are removed.
         syncViewers(level);
@@ -77,6 +81,7 @@ final class BrainDebugOverlay {
     void hideAll() {
         decisionBar.removeAllPlayers();
         storyBar.removeAllPlayers();
+        aiBar.removeAllPlayers();
         relationshipBars.values().forEach(ServerBossEvent::removeAllPlayers);
         relationshipBars.clear();
     }
@@ -104,6 +109,12 @@ final class BrainDebugOverlay {
         storyBar.setColor(colorOf(progress.phase()));
     }
 
+    // Text only, so the bar stays full: a progress value would mean nothing here.
+    private void updateAiBar(String text) {
+        aiBar.setName(Component.literal(text));
+        aiBar.setProgress(1.0f);
+    }
+
     // Exhaustive on purpose: a new phase must pick a bar color before this compiles.
     private static BossEvent.BossBarColor colorOf(Phase phase) {
         return switch (phase) {
@@ -120,9 +131,11 @@ final class BrainDebugOverlay {
         for (ServerPlayer player : present) {
             decisionBar.addPlayer(player);
             storyBar.addPlayer(player);
+            aiBar.addPlayer(player);
         }
         removeAbsent(decisionBar, present);
         removeAbsent(storyBar, present);
+        removeAbsent(aiBar, present);
 
         // A relationship bar belongs to one player: drop it once that player is gone.
         Set<UUID> presentIds = new HashSet<>();

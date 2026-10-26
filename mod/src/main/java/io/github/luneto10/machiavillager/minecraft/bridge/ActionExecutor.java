@@ -1,5 +1,6 @@
 package io.github.luneto10.machiavillager.minecraft.bridge;
 
+import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
@@ -29,13 +30,17 @@ public final class ActionExecutor {
     private final BridgeClient bridge;
     // Empty when the wait is zero, which means no limit.
     private final Optional<Cooldown> unpromptedCooldown;
+    // Holds the model label of the last accepted reply, for the dev boss bar.
+    private final ModelLine lastReply;
     // The speech in progress, or null while he is silent.
     private ActiveSpeech speech;
 
     /** Creates the executor for one server session. The wait is the minimum gap between unprompted speeches. */
-    public ActionExecutor(MinecraftServer server, BridgeClient bridge, Duration unpromptedWait) {
+    public ActionExecutor(
+            MinecraftServer server, BridgeClient bridge, Duration unpromptedWait, ModelLine lastReply) {
         this.server = Objects.requireNonNull(server, "server");
         this.bridge = Objects.requireNonNull(bridge, "bridge");
+        this.lastReply = Objects.requireNonNull(lastReply, "lastReply");
         long ticks = SpeechRules.toTicks(Objects.requireNonNull(unpromptedWait, "unpromptedWait"));
         this.unpromptedCooldown = ticks > 0 ? Optional.of(new Cooldown(ticks)) : Optional.empty();
     }
@@ -69,6 +74,8 @@ public final class ActionExecutor {
 
         bridge.send(new ActionStatus.Accepted(id));
         bridge.send(new ActionStatus.Running(id));
+        // Dev only: the boss bar shows the model of the last reply. A canned line has no model, so it says so.
+        lastReply.record(action.model(), action.latencyMs());
         npc.get().setSpeaking(true);
         Optional<ServerPlayer> recipient = action.to().map(server.getPlayerList()::getPlayer);
         speech = new ActiveSpeech(id, npc.get(), new SpeechQueue(action.lines()), recipient);
@@ -147,7 +154,9 @@ public final class ActionExecutor {
         return unpromptedCooldown.map(cooldown -> cooldown.tryUse(now)).orElse(true);
     }
 
+    // Logs the refusal reason (never the chat text), so a missing reply can be found in the game log.
     private void reject(String requestId, String reason) {
+        Machiavillager.LOGGER.info("speak {} rejected: {}", requestId, reason);
         bridge.send(new ActionStatus.Rejected(requestId, reason));
     }
 }

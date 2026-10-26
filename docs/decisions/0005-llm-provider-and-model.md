@@ -19,8 +19,9 @@ character to refuse ("Sorry, I can't help with that") is also a failure. We want
 | # | Decision | In one line |
 |---|---|---|
 | 1 | Provider | Groq: the same model runs about 6 times faster there than on NVIDIA Build |
-| 2 | Main model | `qwen/qwen3.8-27b` on Groq: best character, no refusals, 0.4 s |
-| 3 | Fallback and irritated voice | `openai/gpt-oss-120b` on Groq: production model, curses hardest with a plan, 0.4 s; leads the chain when he is irritated |
+| 2 | Main model | `openai/gpt-oss-120b` on Groq: the cleanest Portuguese of the group, no refusals, 0.4 s, and 17% fewer tokens per call than qwen |
+| 3 | Second model | `nvidia/nemotron-3.5-bolt-e4b`: good Portuguese in play tests, its own budget, about 1 to 2 s |
+| 3b | Last model | `qwen/qwen3.8-27b` on Groq: livelier jokes but it often writes wrong Portuguese; a preview model that may be retired |
 | 4 | NVIDIA Build | `nemotron-3.5-bolt-e4b`: the last, slower fallback, with a budget separate from Groq |
 | 5 | Configuration | One key per provider plus two ordered model chains, all env vars |
 | 6 | Persona limits | Swearing and roasting players by name are allowed; real-world harm is dodged in character |
@@ -89,21 +90,28 @@ What the numbers do not show:
   so about 5 to 10 replies a minute per model. Limits are per model, so falling back to another model
   on a 429 adds capacity without another account.
 
-### 2. Main model: `qwen/qwen3.8-27b`
+### 2. Main model: `openai/gpt-oss-120b`
 
-- **Decision:** first in `MACHIAVILLAGER_LLM_CHAIN`, the normal chain.
-- **Why:** the best character of the group, no refusals, valid `speak` every time, 0.4 s.
-- **Risk:** it is a *preview* model on Groq and may be retired without notice. Hence decision 3.
+- **Decision:** first in both chains (`MACHIAVILLAGER_LLM_CHAIN`, `..._IRRITATED`).
+- **Why:** the first draft of this record picked `qwen/qwen3.8-27b` for its jokes and plots, from a small
+  sample judged on character. Playing with it showed that qwen writes wrong Portuguese too often
+  ("sem cerimônia algum", "me chamando de capeta sem motivo", invented words), and it also made up a
+  past that never happened. In a side-by-side run of six Partner prompts, `gpt-oss-120b` wrote
+  grammatical Portuguese, still curses hard with the `full` profanity level, and costs about 17% fewer
+  tokens per call (928 against 1,116 for the same prompt). It is a production model.
+- **Known flaws:** blander and more repetitive jokes, and it sometimes says "tu" despite the persona
+  rule. The persona prompt keeps pushing on both.
+- **Cache:** Groq caches prompts for the gpt-oss models and cached tokens do not count against the
+  per-minute limit; a first measurement showed no `cached_tokens`, so it is a possible bonus, not a
+  plan.
 
-### 3. `openai/gpt-oss-120b`: fallback and irritated voice
+### 3. Second model: `qwen/qwen3.8-27b`
 
-- **Decision:** second in the normal chain, and first when his mood is irritated.
-- **Why:** a production model (it will not vanish), no refusals, 0.4 s. With the persona and
-  `PROFANITY=full` it curses harder than qwen and still threatens with a plan ("you'll end up on the
-  bonfire in my new square"); qwen jokes more than it curses. Both live on Groq with separate
-  per-model limits, so splitting by mood also spreads the load.
-- **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character, switches language and writes
-  sentences that make no sense.
+- **Decision:** next when the first is rate limited or fails.
+- **Why:** best at jokes and scheming in the first tests, and a separate per-model limit.
+- **Risk:** it is a *preview* model on Groq and may be retired without notice; its Portuguese needs
+  watching. Switch to it any time with `/machiavillager ai model groq:qwen/qwen3.8-27b`.
+- **Rejected:** `openai/gpt-oss-20b`, fastest but breaks character and switches language.
 
 ### 4. NVIDIA Build: last fallback
 
@@ -163,8 +171,13 @@ Adding one is a URL in `LLM_BASE_URLS`, a key setting and pairs in the chains.
 
 - #64 builds the model adapter on the two chains (PydanticAI `FallbackModel`): any provider error or
   a reply slower than 4 s moves to the next model; when every model fails he says a canned line.
-  - default: groq `qwen3.8-27b` → groq `gpt-oss-120b` → nvidia `nemotron-3.5-bolt-e4b`;
-  - irritated: groq `gpt-oss-120b` → groq `qwen3.8-27b` → nvidia `nemotron-3.5-bolt-e4b`.
+  - both chains today: groq `gpt-oss-120b` → nvidia `nemotron-3.5-bolt-e4b` → groq `qwen3.8-27b`.
+  - A model that answers without a valid `speak` call counts as a failure and the next one is tried,
+    the same as a rate limit or a timeout.
 - He answers in one or two short lines by default and goes up to 8 for drama (decrees, proposals,
   betrayals, plot reveals, rants).
+- Prompt size, measured on `gpt-oss-120b` for a Partner reply: 1,024 tokens, then 825 after trimming the
+  persona, the fixed rules and the `full` profanity text (about 20% less). The dialogue sent is capped
+  at about 450 estimated tokens (`history_budget.py`) even though 20 lines are stored, so a long
+  conversation does not grow the cost of every reply without limit.
 - When a model is retired or a new one appears, rerun `compare_models.py` and update this record.
