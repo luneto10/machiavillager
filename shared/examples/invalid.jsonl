@@ -8,6 +8,24 @@
 {"name":"Accepted.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
 {"name":"Accepted.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
 {"name":"Accepted.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"accepted"}}
+{"name":"DevModelEvent.data.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z"}}
+{"name":"DevModelEvent.data.model.null_optional","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset","model":null}}}
+{"name":"DevModelEvent.data.model.too_long","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"dev_model","occurred_at":"2026-10-18T12:00:00Z","data":{"op":"set","model":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}
+{"name":"DevModelEvent.data.model.too_short","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2M9","event":"dev_model","occurred_at":"2026-10-18T12:00:00Z","data":{"op":"set","model":""}}}
+{"name":"DevModelEvent.data.op.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{}}}
+{"name":"DevModelEvent.data.op.unknown_value","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"not_a_known_value"}}}
+{"name":"DevModelEvent.data.unknown_field","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset","unexpected_field":true}}}
+{"name":"DevModelEvent.event.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.event.unknown_value","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"not_a_known_value","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.event_id.drop_required","message":{"v":1,"type":"event","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.event_id.pattern","message":{"v":1,"type":"event","event_id":"!!","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.occurred_at.drop_required","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","data":{"op":"reset"}}}
+{"name":"DevModelEvent.root.unknown_field","message":{"v":1,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"},"unexpected_field":true}}
+{"name":"DevModelEvent.type.drop_required","message":{"v":1,"event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.type.type_not_a_type","message":{"v":1,"type":"not_a_type","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.v.drop_required","message":{"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.v.v_is_2","message":{"v":2,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
+{"name":"DevModelEvent.v.v_is_true","message":{"v":true,"type":"event","event_id":"evt_01HZX8K2N0","event":"dev_model","occurred_at":"2026-10-18T12:00:05Z","data":{"op":"reset"}}}
 {"name":"Error.code.drop_required","message":{"v":1,"type":"error","detail":"action args do not match the speak schema"}}
 {"name":"Error.code.unknown_value","message":{"v":1,"type":"error","code":"not_a_known_value","detail":"action args do not match the speak schema"}}
 {"name":"Error.detail.drop_required","message":{"v":1,"type":"error","code":"bad_message"}}
@@ -137,6 +155,12 @@
 {"name":"SpeakAction.conversation_id.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Luciano, a word.","I have been thinking about the harvest.","Come find me at the well."]},"timeout_ms":30000,"conversation_id":"!!"}}
 {"name":"SpeakAction.in_reply_to.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"in_reply_to":null}}
 {"name":"SpeakAction.in_reply_to.pattern","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"!!"}}
+{"name":"SpeakAction.latency_ms.above_maximum","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"evt_01HZX8K2M9","model":"groq:qwen/qwen3.8-27b","latency_ms":600001}}
+{"name":"SpeakAction.latency_ms.below_minimum","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"evt_01HZX8K2M9","model":"groq:qwen/qwen3.8-27b","latency_ms":-1}}
+{"name":"SpeakAction.latency_ms.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"latency_ms":null}}
+{"name":"SpeakAction.model.null_optional","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"model":null}}
+{"name":"SpeakAction.model.too_long","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"evt_01HZX8K2M9","model":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","latency_ms":480}}
+{"name":"SpeakAction.model.too_short","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Aye, the harvest is short this year."]},"timeout_ms":30000,"in_reply_to":"evt_01HZX8K2M9","model":"","latency_ms":480}}
 {"name":"SpeakAction.request_id.drop_required","message":{"v":1,"type":"action","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
 {"name":"SpeakAction.request_id.pattern","message":{"v":1,"type":"action","request_id":"!!","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000}}
 {"name":"SpeakAction.root.unknown_field","message":{"v":1,"type":"action","request_id":"act_01HZX8K2M9","action":"speak","args":{"lines":["Hello there, traveller."]},"timeout_ms":30000,"unexpected_field":true}}
@@ -158,6 +182,10 @@
 {"name":"Succeeded.v.drop_required","message":{"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
 {"name":"Succeeded.v.v_is_2","message":{"v":2,"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
 {"name":"Succeeded.v.v_is_true","message":{"v":true,"type":"action_status","request_id":"act_01HZX8K2M9","status":"succeeded"}}
+{"name":"Welcome.models.*.too_long","message":{"v":1,"type":"welcome","protocol":1,"models":["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","groq:openai/gpt-oss-120b","nvidia:nvidia/nemotron-3.5-bolt-e4b"]}}
+{"name":"Welcome.models.*.too_short","message":{"v":1,"type":"welcome","protocol":1,"models":["","groq:openai/gpt-oss-120b","nvidia:nvidia/nemotron-3.5-bolt-e4b"]}}
+{"name":"Welcome.models.null_optional","message":{"v":1,"type":"welcome","protocol":1,"models":null}}
+{"name":"Welcome.models.too_many_items","message":{"v":1,"type":"welcome","protocol":1,"models":["groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b","groq:qwen/qwen3.8-27b"]}}
 {"name":"Welcome.protocol.drop_required","message":{"v":1,"type":"welcome"}}
 {"name":"Welcome.protocol.protocol_is_2","message":{"v":1,"type":"welcome","protocol":2}}
 {"name":"Welcome.protocol.protocol_is_true","message":{"v":1,"type":"welcome","protocol":true}}

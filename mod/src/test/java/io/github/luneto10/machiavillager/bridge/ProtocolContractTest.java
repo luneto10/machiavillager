@@ -10,6 +10,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.story.Phase;
@@ -100,6 +102,18 @@ class ProtocolContractTest {
         List<String> errors = SCHEMA.errors(MessageCodec.encode(event));
 
         assertTrue(errors.isEmpty(), () -> "encoded player_chat with npc should be valid: " + errors);
+    }
+
+    // The dev_model events the mod sends must pass the same schema the backend's examples pass.
+    @Test
+    void encodedDevModel_setAndReset_validateSchema() {
+        DevModelEvent set = new DevModelEvent("evt_01HZX8K2M9", Instant.parse("2026-10-18T12:00:00Z"),
+                DevModelOp.SET, Optional.of("groq:openai/gpt-oss-120b"));
+        DevModelEvent reset = new DevModelEvent("evt_01HZX8K2N0", Instant.parse("2026-10-18T12:00:05Z"),
+                DevModelOp.RESET, Optional.empty());
+
+        assertTrue(SCHEMA.errors(MessageCodec.encode(set)).isEmpty());
+        assertTrue(SCHEMA.errors(MessageCodec.encode(reset)).isEmpty());
     }
 
     @ParameterizedTest(name = "{0}")

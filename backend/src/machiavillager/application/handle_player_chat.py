@@ -39,7 +39,14 @@ def conversation_key(event: PlayerChatEvent) -> str:
     return f"player:{event.data.player_uuid}"
 
 
-def reply_action(event: PlayerChatEvent, lines: list[str], request_id: str) -> SpeakAction:
+def reply_action(
+    event: PlayerChatEvent,
+    lines: list[str],
+    request_id: str,
+    *,
+    model: str | None = None,
+    latency_ms: int | None = None,
+) -> SpeakAction:
     """Build the speak action that answers a chat line. The AI reply and the dev echo share it."""
 
     # Optional fields are left out instead of passed as None: the models are strict, and an
@@ -50,6 +57,11 @@ def reply_action(event: PlayerChatEvent, lines: list[str], request_id: str) -> S
     action_fields: dict[str, Any] = {}
     if event.conversation_id is not None:
         action_fields["conversation_id"] = event.conversation_id
+    # Dev info: only the echo and dev-mode replies carry it; the echo passes neither.
+    if model is not None:
+        action_fields["model"] = model
+    if latency_ms is not None:
+        action_fields["latency_ms"] = latency_ms
 
     # The reply answers the chat line, so the mod does not count it as unprompted speech.
     return SpeakAction(
@@ -76,6 +88,8 @@ class HandlePlayerChat:
         profanity: ProfanityLevel,
         new_request_id: Callable[[], str],
         clock: Callable[[], float],
+        *,
+        show_model: bool = False,
     ) -> None:
         self._writer = writer
         self._bridge = bridge
@@ -84,6 +98,8 @@ class HandlePlayerChat:
         self._profanity = profanity
         self._new_request_id = new_request_id
         self._clock = clock
+        # Dev only: when on, a reply says which model wrote it and how long it took.
+        self._show_model = show_model
         self._in_flight: set[str] = set()
         # One newest pending event per player; an older pending one is replaced by a newer one.
         self._pending: dict[str, PlayerChatEvent] = {}
@@ -143,21 +159,28 @@ class HandlePlayerChat:
             addressed=event.data.addressed,
         )
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
-        lines = await self._writer.write_reply(messages, irritated=irritated)
+        reply = await self._writer.write_reply(messages, irritated=irritated)
 
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
-        if not lines:
+        if not reply.lines:
             logger.info("stayed silent event_id=%s", event.event_id)
             return
 
-        action = reply_action(event, lines, self._new_request_id())
+        # Model and latency are only sent in dev mode; reply_action leaves out a None.
+        action = reply_action(
+            event,
+            reply.lines,
+            self._new_request_id(),
+            model=reply.model if self._show_model else None,
+            latency_ms=reply.latency_ms if self._show_model else None,
+        )
         try:
             status = await self._bridge.request(action)
         except BridgeUnavailable:
             logger.info("reply %s not sent: no mod is connected", action.request_id)
             return
 
-        self._remember(key, lines, status)
+        self._remember(key, reply.lines, status)
         logger.info("reply %s finished: %s", action.request_id, status.status)
 
     def _remember(self, key: str, lines: list[str], status: TerminalStatus) -> None:

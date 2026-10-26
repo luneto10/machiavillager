@@ -86,10 +86,16 @@ server tick and without giving the AI any power beyond an allowlist.
 | `welcome` | backend → mod | Handshake accepted |
 | `action` | backend → mod | Request an allowlisted action |
 | `action_status` | mod → backend | Progress of a request (may be sent several times) |
-| `event` | mod → backend | Something happened in the world; no reply |
+| `event` | mod → backend | Something happened in the world; no reply. Events: `player_chat`, and the dev-only `dev_model` |
 | `error` | both | A message could not be accepted |
 
 Unknown fields are rejected, never silently ignored.
+
+**Dev-only fields and events** (on when `MACHIAVILLAGER_DEV_ENDPOINTS` is on, nothing else changes):
+
+- `welcome.models` (optional list of `provider:model`, max 16): the models the mod may suggest in commands. Omitted unless dev endpoints are on.
+- `action.model` (optional `provider:model`) and `action.latency_ms` (optional int, 0..600000): which model wrote a `speak` and how long it took, for the HUD. Omitted for canned lines and dev echo.
+- `event` `dev_model` with `data.op` `set` (needs `data.model`) or `reset` (no `model`): switches the model that answers, or goes back to the chain from the environment. Ignored with a log line when dev endpoints are off; no reply is sent.
 
 ### 7. Speech is multi-line
 

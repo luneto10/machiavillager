@@ -23,8 +23,10 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
+from machiavillager.application.ports import Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
+from machiavillager.domain.protocol.common import MAX_MODELS
 from machiavillager.infrastructure.settings import (
     LLM_BASE_URLS,
     Settings,
@@ -70,9 +72,17 @@ class LlmLineWriter:
         timeout_seconds: float,
         max_tokens: int = 800,
         labels: dict[str, str] | None = None,
+        settings: Settings | None = None,
+        available: list[str] | None = None,
     ) -> None:
         self._calm_agent = _build_agent(calm)
         self._irritated_agent = _build_agent(irritated)
+        # The chains from settings, kept so use_model(None) can put them back.
+        self._calm_default = calm
+        self._irritated_default = irritated
+        # Keys for building an override model; without settings no provider has a key.
+        self._settings = settings
+        self._available = list(available or [])
 
         # No client retries: a 429 or timeout should fall through to the next model at once.
         # max_tokens caps a runaway reply's cost and latency.
@@ -96,8 +106,9 @@ class LlmLineWriter:
         # One set for both chains, so a pair listed twice is reported once.
         skipped: set[str] = set()
         labels: dict[str, str] = {}
-        calm = _build_chain(settings, settings.llm_chain, skipped, labels)
-        irritated = _build_chain(settings, settings.llm_chain_irritated, skipped, labels)
+        available: list[str] = []
+        calm = _build_chain(settings, settings.llm_chain, skipped, labels, available)
+        irritated = _build_chain(settings, settings.llm_chain_irritated, skipped, labels, available)
 
         # One INFO line names what was left out; keys are never printed.
         if skipped:
@@ -108,19 +119,55 @@ class LlmLineWriter:
             timeout_seconds=settings.llm_timeout_seconds,
             max_tokens=settings.llm_max_tokens,
             labels=labels,
+            settings=settings,
+            available=available,
         )
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
-        """Return 0-8 fitted lines; [] means he chose silence. Failures speak a canned line."""
+    def available_models(self) -> list[str]:
+        """Dev info: the provider:model pairs of both chains that have a key, at most 16."""
+
+        return self._available[:MAX_MODELS]
+
+    def use_model(self, pair: str | None) -> None:
+        """Dev only: answer with this provider:model first, or back to the chains when None.
+
+        The chain from settings stays as the fallback. Raises ValueError for an unknown provider
+        or a provider with no key; the message never holds the key.
+        """
+
+        # Swapping the two agent attributes is the whole switch: a reply already running keeps the
+        # agent it started with, and the next reply picks up the new one.
+        if pair is None:
+            self._calm_agent = _build_agent(self._calm_default)
+            self._irritated_agent = _build_agent(self._irritated_default)
+            logger.info("LLM model override cleared")
+            return
+
+        provider, model_id = parse_model_pair(pair)
+        key = self._settings.llm_key(provider) if self._settings is not None else None
+        if key is None:
+            raise ValueError(f"no key set for provider {provider!r}")
+
+        override = _build_model(provider, model_id, key)
+        self._labels[model_id] = pair
+        self._calm_agent = _build_agent(_with_override(override, self._calm_default))
+        self._irritated_agent = _build_agent(_with_override(override, self._irritated_default))
+        logger.info("LLM model override set to %s", pair)
+
+    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+        """Return the fitted lines with model and latency. No lines means he chose silence.
+
+        Failures speak a canned line, which has no model.
+        """
 
         try:
             return await self._answer(messages, irritated=irritated)
         except Exception as error:
             # Only type names are logged: the error text can hold player words or provider details.
             logger.warning("LLM reply failed, speaking a canned line: %s", _describe(error))
-            return [random.choice(CANNED_LINES)]
+            return Reply(lines=[random.choice(CANNED_LINES)])
 
-    async def _answer(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
+    async def _answer(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         """Run the chosen agent once and return the fitted lines."""
 
         agent = self._irritated_agent if irritated else self._calm_agent
@@ -145,17 +192,21 @@ class LlmLineWriter:
 
         # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
         outcome = "reply" if lines else "chose silence"
-        self._log_answer(outcome, result.response.model_name, result.usage, elapsed_ms)
-        return lines
+        model = self._provider_model(result.response.model_name)
+        self._log_answer(outcome, model or "unknown", result.usage, elapsed_ms)
+        return Reply(lines=lines, model=model, latency_ms=round(elapsed_ms))
 
-    def _log_answer(
-        self, outcome: str, model_name: str | None, usage: RunUsage, elapsed_ms: float
-    ) -> None:
-        """Log which model answered and what it cost. Never logs the text."""
+    def _provider_model(self, model_name: str | None) -> str | None:
+        """The provider:model label of the model id that answered, or the id when unlabelled."""
 
         # The response names the model id only; the label adds the provider when it is known.
-        name = model_name or "unknown"
-        label = self._labels.get(name, name)
+        if model_name is None:
+            return None
+        return self._labels.get(model_name, model_name)
+
+    def _log_answer(self, outcome: str, label: str, usage: RunUsage, elapsed_ms: float) -> None:
+        """Log which model answered and what it cost. Never logs the text."""
+
         logger.info(
             "LLM %s from %s in %.0f ms, tokens in=%s out=%s",
             outcome,
@@ -187,6 +238,7 @@ def _build_chain(
     chain_text: str,
     skipped: set[str],
     labels: dict[str, str],
+    available: list[str],
 ) -> FallbackModel | None:
     """One fallback model over the pairs that have a key, or None when none do."""
 
@@ -204,12 +256,34 @@ def _build_chain(
         models.append(_build_model(provider, model_id, key))
         labels[model_id] = f"{provider}:{model_id}"
 
+        # Listed once even when both chains name it, for the dev model suggestions.
+        pair = f"{provider}:{model_id}"
+        if pair not in available:
+            available.append(pair)
+
     if not models:
         return None
+    return _fallback(models)
 
-    # FallbackModel's default fallback_on is ModelAPIError, which covers HTTP errors such as 429
-    # and timeouts (ModelTimeoutError is a ModelAPIError), so those move on to the next model.
+
+def _fallback(models: list[Model]) -> FallbackModel:
+    """Try the models in order, moving on when one fails with an API error."""
+
+    # The default fallback_on is ModelAPIError, which covers HTTP errors such as 429 and timeouts
+    # (ModelTimeoutError is a ModelAPIError), so those move on to the next model.
     return FallbackModel(*models, fallback_on=(ModelAPIError,))
+
+
+def _with_override(override: Model, chain: Model | None) -> Model:
+    """The override model first, then the chain from settings as the fallback."""
+
+    # A chain is already a FallbackModel, so its models are taken out and kept in order.
+    fallbacks: list[Model] = []
+    if isinstance(chain, FallbackModel):
+        fallbacks = list(chain.models)
+    elif chain is not None:
+        fallbacks = [chain]
+    return _fallback([override, *fallbacks])
 
 
 def _build_model(provider: str, model_id: str, key: str) -> OpenAIChatModel:

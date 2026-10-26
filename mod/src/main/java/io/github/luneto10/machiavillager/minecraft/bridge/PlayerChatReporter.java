@@ -2,16 +2,15 @@ package io.github.luneto10.machiavillager.minecraft.bridge;
 
 import io.github.luneto10.machiavillager.domain.behavior.Hearing;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
+import io.github.luneto10.machiavillager.domain.bridge.EventIds;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,9 +25,6 @@ public final class PlayerChatReporter {
 
     // He hears as far as his voice carries, so a line he could not hear is never sent.
     private static final double REACH_SQR = Hearing.DISTANCE * Hearing.DISTANCE;
-    // Event ids are "evt_" plus 16 hex digits, so 8 random bytes.
-    private static final String EVENT_PREFIX = "evt_";
-    private static final int ID_BYTES = 8;
 
     private PlayerChatReporter() {}
 
@@ -50,7 +46,7 @@ public final class PlayerChatReporter {
 
         NpcSnapshot snapshot = snapshot(server, level, npc, sender);
         return Optional.of(new PlayerChatEvent(
-                newEventId(),
+                EventIds.newEventId(),
                 Instant.now(),
                 sender.getUUID(),
                 sender.getPlainTextName(),
@@ -80,12 +76,5 @@ public final class PlayerChatReporter {
                 .limit(MAX_NEARBY_PLAYERS)
                 .map(ServerPlayer::getPlainTextName)
                 .toList();
-    }
-
-    // Random rather than sequential: the backend only needs ids to be unique.
-    static String newEventId() {
-        byte[] bytes = new byte[ID_BYTES];
-        ThreadLocalRandom.current().nextBytes(bytes);
-        return EVENT_PREFIX + HexFormat.of().formatHex(bytes);
     }
 }

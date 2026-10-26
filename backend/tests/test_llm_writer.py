@@ -75,7 +75,7 @@ def _prompt() -> list[PromptMessage]:
 
 
 def _reply(writer: LlmLineWriter, *, irritated: bool = False) -> list[str]:
-    return asyncio.run(writer.write_reply(_prompt(), irritated=irritated))
+    return asyncio.run(writer.write_reply(_prompt(), irritated=irritated)).lines
 
 
 def _is_one_canned_line(lines: list[str]) -> bool:
@@ -241,3 +241,103 @@ def test_max_tokens_setting_reaches_the_writer():
     writer = LlmLineWriter.from_settings(settings)
 
     assert writer._request_settings["max_tokens"] == 123
+
+
+def _labelled_writer(calm: Model, irritated: Model | None = None) -> LlmLineWriter:
+    # The label map turns the fake's model id into the provider:model form the mod shows.
+    return LlmLineWriter(
+        calm,
+        irritated or calm,
+        timeout_seconds=4.0,
+        labels={"fake-ok": "groq:fake-ok"},
+    )
+
+
+def test_reply_reports_the_model_and_latency_that_answered():
+    writer = _labelled_writer(_chain(_answers("Hello.")))
+
+    reply = asyncio.run(writer.write_reply(_prompt(), irritated=False))
+
+    assert reply.lines == ["Hello."]
+    assert reply.model == "groq:fake-ok"
+    assert reply.latency_ms is not None
+    assert reply.latency_ms >= 0
+
+
+def test_canned_line_has_no_model_and_no_latency():
+    writer = _labelled_writer(_chain(_fails_with_429()))
+
+    reply = asyncio.run(writer.write_reply(_prompt(), irritated=False))
+
+    assert _is_one_canned_line(reply.lines)
+    assert reply.model is None
+    assert reply.latency_ms is None
+
+
+def test_available_models_lists_chain_pairs_that_have_a_key_once():
+    writer = LlmLineWriter.from_settings(Settings(groq_api_key="x", _env_file=None))
+
+    assert writer.available_models() == [
+        "groq:qwen/qwen3.8-27b",
+        "groq:openai/gpt-oss-120b",
+    ]
+
+
+def test_use_model_puts_the_pair_first_and_the_chain_after_it():
+    settings = Settings(groq_api_key="x", nvidia_api_key="y", _env_file=None)
+    writer = LlmLineWriter.from_settings(settings)
+
+    writer.use_model("groq:openai/gpt-oss-120b")
+
+    names = [model.model_name for model in writer._calm_agent.model.models]
+    assert names == [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "nvidia/nemotron-3.5-bolt-e4b",
+    ]
+
+
+def test_use_model_none_restores_the_chain_from_settings():
+    settings = Settings(groq_api_key="x", nvidia_api_key="y", _env_file=None)
+    writer = LlmLineWriter.from_settings(settings)
+    writer.use_model("groq:openai/gpt-oss-120b")
+
+    writer.use_model(None)
+
+    names = [model.model_name for model in writer._calm_agent.model.models]
+    assert names == [
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "nvidia/nemotron-3.5-bolt-e4b",
+    ]
+
+
+def test_use_model_logs_set_and_cleared_without_the_key(caplog):
+    settings = Settings(groq_api_key="sekret-key-123", _env_file=None)
+    writer = LlmLineWriter.from_settings(settings)
+
+    with caplog.at_level(logging.INFO):
+        writer.use_model("groq:openai/gpt-oss-120b")
+        writer.use_model(None)
+
+    assert "LLM model override set to groq:openai/gpt-oss-120b" in caplog.text
+    assert "LLM model override cleared" in caplog.text
+    assert "sekret-key-123" not in caplog.text
+
+
+def test_use_model_refuses_a_provider_without_a_key_and_hides_the_key():
+    settings = Settings(groq_api_key="sekret-key-123", _env_file=None)
+    writer = LlmLineWriter.from_settings(settings)
+
+    with pytest.raises(ValueError, match="no key set for provider 'nvidia'") as refused:
+        writer.use_model("nvidia:nvidia/nemotron-3.5-bolt-e4b")
+
+    assert "sekret-key-123" not in str(refused.value)
+
+
+def test_use_model_refuses_an_unknown_provider():
+    writer = LlmLineWriter.from_settings(Settings(groq_api_key="x", _env_file=None))
+
+    with pytest.raises(ValueError, match="unknown provider"):
+        writer.use_model("openai:gpt-4o")

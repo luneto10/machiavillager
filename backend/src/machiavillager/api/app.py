@@ -37,10 +37,11 @@ def _configure_logging() -> None:
     logger.propagate = False
 
 
-def _build_player_chat(settings: Settings, bridge: GameBridge) -> HandlePlayerChat | None:
+def _build_player_chat(
+    settings: Settings, bridge: GameBridge, writer: LlmLineWriter
+) -> HandlePlayerChat | None:
     """The AI reply to player chat, or None when no model has a key to write it."""
 
-    writer = LlmLineWriter.from_settings(settings)
     if not writer.has_models:
         logger.info("no LLM key set: player chat gets no AI reply")
         return None
@@ -52,6 +53,8 @@ def _build_player_chat(settings: Settings, bridge: GameBridge) -> HandlePlayerCh
         settings.profanity,
         new_request_id,
         time.monotonic,
+        # Dev only: replies say which model wrote them, and the dev routes are the only switch.
+        show_model=settings.dev_endpoints,
     )
 
 
@@ -69,8 +72,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.game_bridge = ModGameBridge(connections, pending)
     # Read by handle_event: when on, he repeats each player chat line back.
     app.state.dev_echo = effective.dev_echo
+    # Read by handle_event: dev_model switches the model on this writer, so it stays on state.
+    writer = LlmLineWriter.from_settings(effective)
+    app.state.llm_writer = writer
+    # Read by handle_event and the welcome: the dev-only model switch and suggestions need this.
+    app.state.dev_endpoints = effective.dev_endpoints
     # Read by handle_event: when set, a player's chat line gets his AI reply.
-    app.state.handle_player_chat = _build_player_chat(effective, app.state.game_bridge)
+    app.state.handle_player_chat = _build_player_chat(effective, app.state.game_bridge, writer)
     app.include_router(router)
 
     if effective.dev_endpoints:

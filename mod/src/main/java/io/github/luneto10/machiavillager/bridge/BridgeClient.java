@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -65,6 +66,8 @@ public final class BridgeClient {
     private volatile Instant connectedSince;
     private volatile Instant nextAttemptAt;
     private volatile boolean stopping;
+    // The model ids from the last welcome; empty until one arrives and again after the link drops.
+    private volatile List<String> models = List.of();
 
     // Bridge thread only: the live socket, the welcome timer, and the tail of the send queue.
     private WebSocket socket;
@@ -155,6 +158,11 @@ public final class BridgeClient {
         }
     }
 
+    /** The model ids the backend offered in its last welcome. Empty when the link is down. Safe from any thread. */
+    public List<String> models() {
+        return models;
+    }
+
     /** When the link last came up, or empty while it is down. */
     public Optional<Instant> connectedSince() {
         return Optional.ofNullable(connectedSince);
@@ -206,11 +214,12 @@ public final class BridgeClient {
     }
 
     // Bridge thread. Called by the listener. The backend accepted hello, so the backoff starts over.
-    void onWelcome(WebSocket from) {
+    void onWelcome(WebSocket from, List<String> offered) {
         if (from != socket) {
             return;
         }
         cancelWelcomeTimer();
+        models = offered;
         state = BridgeState.CONNECTED;
         connectedSince = Instant.now();
         nextAttemptAt = null;
@@ -220,8 +229,8 @@ public final class BridgeClient {
 
     // Bridge thread. Welcome and backend errors stay here; every other message goes to the game thread.
     void onFrame(WebSocket from, BridgeMessage message) {
-        if (message instanceof Welcome) {
-            onWelcome(from);
+        if (message instanceof Welcome welcome) {
+            onWelcome(from, welcome.models());
         } else if (message instanceof BridgeError error) {
             LOGGER.warn("Bridge: backend reported {}: {}", error.code().wireName(), error.detail());
         } else {
@@ -246,6 +255,7 @@ public final class BridgeClient {
         }
         socket = null;
         connectedSince = null;
+        models = List.of();
         cancelWelcomeTimer();
         scheduleReconnect();
     }

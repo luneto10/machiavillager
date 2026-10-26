@@ -17,6 +17,9 @@ from machiavillager.application.ports import BridgeUnavailable, GameBridge
 from machiavillager.domain.protocol import (
     MAX_LINE_LENGTH,
     MAX_TIMEOUT_MS,
+    DevModelData,
+    DevModelEvent,
+    ModEvent,
     PlayerChatEvent,
     SpeakAction,
 )
@@ -31,8 +34,13 @@ ECHO_TIMEOUT_MS: Final = MAX_TIMEOUT_MS
 _reply_tasks: set[asyncio.Task[None]] = set()
 
 
-async def handle_event(event: PlayerChatEvent, app_state: State) -> None:
+async def handle_event(event: ModEvent, app_state: State) -> None:
     """Handle one event from the mod. Returns at once, so the socket loop keeps reading."""
+
+    # The model switch needs no reply and never reaches the chat path, so it returns here.
+    if isinstance(event, DevModelEvent):
+        _apply_dev_model(event.data, app_state)
+        return
 
     # Ids and the address only: the chat text itself is never logged at INFO.
     logger.info("player_chat event_id=%s addressed=%s", event.event_id, event.data.addressed)
@@ -42,6 +50,22 @@ async def handle_event(event: PlayerChatEvent, app_state: State) -> None:
         _spawn(_answer_with_echo(event, app_state.game_bridge))
     elif app_state.handle_player_chat is not None:
         _spawn(_reply_to_chat(app_state.handle_player_chat, event))
+
+
+def _apply_dev_model(data: DevModelData, app_state: State) -> None:
+    """Dev only: switch the model that answers, or go back to the chain from the environment."""
+
+    # Off unless dev endpoints are on, so a normal run cannot be steered from the game.
+    if not app_state.dev_endpoints:
+        logger.info("dev_model ignored: dev endpoints are off")
+        return
+
+    pair = data.model if data.op == "set" else None
+    try:
+        app_state.llm_writer.use_model(pair)
+    except ValueError as error:
+        # The reason names the provider or the pair; the key itself is never in the message.
+        logger.info("dev_model %s refused: %s", data.op, error)
 
 
 def _spawn(work: Coroutine[Any, Any, None]) -> None:

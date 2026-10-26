@@ -9,6 +9,8 @@
   - [2.1. Property `Machiavillager bridge protocol > oneOf > Welcome > v`](#oneOf_i1_v)
   - [2.2. Property `Machiavillager bridge protocol > oneOf > Welcome > type`](#oneOf_i1_type)
   - [2.3. Property `Machiavillager bridge protocol > oneOf > Welcome > protocol`](#oneOf_i1_protocol)
+  - [2.4. Property `Machiavillager bridge protocol > oneOf > Welcome > models`](#oneOf_i1_models)
+    - [2.4.1. Machiavillager bridge protocol > oneOf > Welcome > models > models items](#oneOf_i1_models_items)
 - [3. Property `Machiavillager bridge protocol > oneOf > SpeakAction`](#oneOf_i2)
   - [3.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > v`](#oneOf_i2_v)
   - [3.2. Property `Machiavillager bridge protocol > oneOf > SpeakAction > type`](#oneOf_i2_type)
@@ -21,6 +23,8 @@
   - [3.6. Property `Machiavillager bridge protocol > oneOf > SpeakAction > timeout_ms`](#oneOf_i2_timeout_ms)
   - [3.7. Property `Machiavillager bridge protocol > oneOf > SpeakAction > conversation_id`](#oneOf_i2_conversation_id)
   - [3.8. Property `Machiavillager bridge protocol > oneOf > SpeakAction > in_reply_to`](#oneOf_i2_in_reply_to)
+  - [3.9. Property `Machiavillager bridge protocol > oneOf > SpeakAction > model`](#oneOf_i2_model)
+  - [3.10. Property `Machiavillager bridge protocol > oneOf > SpeakAction > latency_ms`](#oneOf_i2_latency_ms)
 - [4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`](#oneOf_i3)
   - [4.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted`](#oneOf_i3_oneOf_i0)
     - [4.1.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted > v`](#oneOf_i3_oneOf_i0_v)
@@ -56,25 +60,35 @@
     - [4.6.4. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Interrupted > status`](#oneOf_i3_oneOf_i5_status)
     - [4.6.5. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Interrupted > spoken`](#oneOf_i3_oneOf_i5_spoken)
     - [4.6.6. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Interrupted > of`](#oneOf_i3_oneOf_i5_of)
-- [5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent`](#oneOf_i4)
-  - [5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > v`](#oneOf_i4_v)
-  - [5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > type`](#oneOf_i4_type)
-  - [5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > event_id`](#oneOf_i4_event_id)
-  - [5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > event`](#oneOf_i4_event)
-  - [5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > occurred_at`](#oneOf_i4_occurred_at)
-  - [5.6. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data`](#oneOf_i4_data)
-    - [5.6.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_uuid`](#oneOf_i4_data_player_uuid)
-    - [5.6.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_name`](#oneOf_i4_data_player_name)
-    - [5.6.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > text`](#oneOf_i4_data_text)
-    - [5.6.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > addressed`](#oneOf_i4_data_addressed)
-    - [5.6.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc`](#oneOf_i4_data_npc)
-      - [5.6.5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > phase`](#oneOf_i4_data_npc_phase)
-      - [5.6.5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > mood`](#oneOf_i4_data_npc_mood)
-      - [5.6.5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > affinity`](#oneOf_i4_data_npc_affinity)
-      - [5.6.5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > independence`](#oneOf_i4_data_npc_independence)
-      - [5.6.5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players`](#oneOf_i4_data_npc_nearby_players)
-        - [5.6.5.5.1. Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items](#oneOf_i4_data_npc_nearby_players_items)
-  - [5.7. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > conversation_id`](#oneOf_i4_conversation_id)
+- [5. Property `Machiavillager bridge protocol > oneOf > item 4`](#oneOf_i4)
+  - [5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent`](#oneOf_i4_oneOf_i0)
+    - [5.1.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > v`](#oneOf_i4_oneOf_i0_v)
+    - [5.1.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > type`](#oneOf_i4_oneOf_i0_type)
+    - [5.1.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > event_id`](#oneOf_i4_oneOf_i0_event_id)
+    - [5.1.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > event`](#oneOf_i4_oneOf_i0_event)
+    - [5.1.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > occurred_at`](#oneOf_i4_oneOf_i0_occurred_at)
+    - [5.1.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data`](#oneOf_i4_oneOf_i0_data)
+      - [5.1.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > player_uuid`](#oneOf_i4_oneOf_i0_data_player_uuid)
+      - [5.1.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > player_name`](#oneOf_i4_oneOf_i0_data_player_name)
+      - [5.1.6.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > text`](#oneOf_i4_oneOf_i0_data_text)
+      - [5.1.6.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > addressed`](#oneOf_i4_oneOf_i0_data_addressed)
+      - [5.1.6.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc`](#oneOf_i4_oneOf_i0_data_npc)
+        - [5.1.6.5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > phase`](#oneOf_i4_oneOf_i0_data_npc_phase)
+        - [5.1.6.5.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > mood`](#oneOf_i4_oneOf_i0_data_npc_mood)
+        - [5.1.6.5.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > affinity`](#oneOf_i4_oneOf_i0_data_npc_affinity)
+        - [5.1.6.5.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > independence`](#oneOf_i4_oneOf_i0_data_npc_independence)
+        - [5.1.6.5.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players`](#oneOf_i4_oneOf_i0_data_npc_nearby_players)
+          - [5.1.6.5.5.1. Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items](#oneOf_i4_oneOf_i0_data_npc_nearby_players_items)
+    - [5.1.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > conversation_id`](#oneOf_i4_oneOf_i0_conversation_id)
+  - [5.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent`](#oneOf_i4_oneOf_i1)
+    - [5.2.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > v`](#oneOf_i4_oneOf_i1_v)
+    - [5.2.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > type`](#oneOf_i4_oneOf_i1_type)
+    - [5.2.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > event_id`](#oneOf_i4_oneOf_i1_event_id)
+    - [5.2.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > event`](#oneOf_i4_oneOf_i1_event)
+    - [5.2.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > occurred_at`](#oneOf_i4_oneOf_i1_occurred_at)
+    - [5.2.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data`](#oneOf_i4_oneOf_i1_data)
+      - [5.2.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > op`](#oneOf_i4_oneOf_i1_data_op)
+      - [5.2.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > model`](#oneOf_i4_oneOf_i1_data_model)
 - [6. Property `Machiavillager bridge protocol > oneOf > Error`](#oneOf_i5)
   - [6.1. Property `Machiavillager bridge protocol > oneOf > Error > v`](#oneOf_i5_v)
   - [6.2. Property `Machiavillager bridge protocol > oneOf > Error > type`](#oneOf_i5_type)
@@ -91,14 +105,14 @@
 
 **Description:** Messages exchanged between the Minecraft mod and the Python backend over one WebSocket. Every message is one JSON object with v and type. Design and wire rules: docs/decisions/0004-bridge-protocol.md.
 
-| One of(Option)               |
-| ---------------------------- |
-| [Hello](#oneOf_i0)           |
-| [Welcome](#oneOf_i1)         |
-| [SpeakAction](#oneOf_i2)     |
-| [ActionStatus](#oneOf_i3)    |
-| [PlayerChatEvent](#oneOf_i4) |
-| [Error](#oneOf_i5)           |
+| One of(Option)            |
+| ------------------------- |
+| [Hello](#oneOf_i0)        |
+| [Welcome](#oneOf_i1)      |
+| [SpeakAction](#oneOf_i2)  |
+| [ActionStatus](#oneOf_i3) |
+| [item 4](#oneOf_i4)       |
+| [Error](#oneOf_i5)        |
 
 ## <a name="oneOf_i0"></a>1. Property `Machiavillager bridge protocol > oneOf > Hello`
 
@@ -188,11 +202,12 @@ Specific value: `1`
 
 **Description:** Sent by the backend in answer to hello when the protocol version is supported.
 
-| Property                          | Pattern | Type  | Deprecated | Definition | Title/Description |
-| --------------------------------- | ------- | ----- | ---------- | ---------- | ----------------- |
-| + [v](#oneOf_i1_v )               | No      | const | No         | -          | V                 |
-| + [type](#oneOf_i1_type )         | No      | const | No         | -          | Type              |
-| + [protocol](#oneOf_i1_protocol ) | No      | const | No         | -          | Protocol          |
+| Property                          | Pattern | Type            | Deprecated | Definition | Title/Description |
+| --------------------------------- | ------- | --------------- | ---------- | ---------- | ----------------- |
+| + [v](#oneOf_i1_v )               | No      | const           | No         | -          | V                 |
+| + [type](#oneOf_i1_type )         | No      | const           | No         | -          | Type              |
+| + [protocol](#oneOf_i1_protocol ) | No      | const           | No         | -          | Protocol          |
+| - [models](#oneOf_i1_models )     | No      | array of string | No         | -          | Models            |
 
 ### <a name="oneOf_i1_v"></a>2.1. Property `Machiavillager bridge protocol > oneOf > Welcome > v`
 
@@ -233,6 +248,41 @@ Specific value: `"welcome"`
 
 Specific value: `1`
 
+### <a name="oneOf_i1_models"></a>2.4. Property `Machiavillager bridge protocol > oneOf > Welcome > models`
+
+**Title:** Models
+
+|              |                   |
+| ------------ | ----------------- |
+| **Type**     | `array of string` |
+| **Required** | No                |
+
+**Description:** Dev info: the models the backend can use, as provider:model, for the mod's command suggestions. Omitted unless the backend runs dev endpoints. Explicit null is rejected. Example: ["groq:qwen/qwen3.8-27b"].
+
+|                      | Array restrictions |
+| -------------------- | ------------------ |
+| **Min items**        | N/A                |
+| **Max items**        | 16                 |
+| **Items unicity**    | False              |
+| **Additional items** | False              |
+| **Tuple validation** | See below          |
+
+| Each item of this array must be        | Description |
+| -------------------------------------- | ----------- |
+| [models items](#oneOf_i1_models_items) | -           |
+
+#### <a name="oneOf_i1_models_items"></a>2.4.1. Machiavillager bridge protocol > oneOf > Welcome > models > models items
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+| Restrictions   |    |
+| -------------- | -- |
+| **Min length** | 1  |
+| **Max length** | 80 |
+
 ## <a name="oneOf_i2"></a>3. Property `Machiavillager bridge protocol > oneOf > SpeakAction`
 
 **Title:** SpeakAction
@@ -256,6 +306,8 @@ Specific value: `1`
 | + [timeout_ms](#oneOf_i2_timeout_ms )           | No      | integer | No         | -                    | Timeout Ms        |
 | - [conversation_id](#oneOf_i2_conversation_id ) | No      | string  | No         | -                    | Conversation Id   |
 | - [in_reply_to](#oneOf_i2_in_reply_to )         | No      | string  | No         | -                    | In Reply To       |
+| - [model](#oneOf_i2_model )                     | No      | string  | No         | -                    | Model             |
+| - [latency_ms](#oneOf_i2_latency_ms )           | No      | integer | No         | -                    | Latency Ms        |
 
 ### <a name="oneOf_i2_v"></a>3.1. Property `Machiavillager bridge protocol > oneOf > SpeakAction > v`
 
@@ -425,6 +477,38 @@ Specific value: `"speak"`
 | Restrictions                      |                                                                                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+### <a name="oneOf_i2_model"></a>3.9. Property `Machiavillager bridge protocol > oneOf > SpeakAction > model`
+
+**Title:** Model
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+**Description:** Dev info: the model that wrote the lines, as provider:model, e.g. groq:qwen/qwen3.8-27b. The mod may show it. Omitted when no model wrote them, for example a canned line. Explicit null is rejected.
+
+| Restrictions   |    |
+| -------------- | -- |
+| **Min length** | 1  |
+| **Max length** | 80 |
+
+### <a name="oneOf_i2_latency_ms"></a>3.10. Property `Machiavillager bridge protocol > oneOf > SpeakAction > latency_ms`
+
+**Title:** Latency Ms
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | No        |
+
+**Description:** Dev info: how long the model took to answer, in milliseconds. Set together with model. Omitted when no model wrote the lines. Explicit null is rejected. Example: 480.
+
+| Restrictions |             |
+| ------------ | ----------- |
+| **Minimum**  | &ge; 0      |
+| **Maximum**  | &le; 600000 |
 
 ## <a name="oneOf_i3"></a>4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`
 
@@ -956,7 +1040,20 @@ Specific value: `"interrupted"`
 | **Minimum**  | &ge; 1 |
 | **Maximum**  | &le; 8 |
 
-## <a name="oneOf_i4"></a>5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent`
+## <a name="oneOf_i4"></a>5. Property `Machiavillager bridge protocol > oneOf > item 4`
+
+|                           |                  |
+| ------------------------- | ---------------- |
+| **Type**                  | `combining`      |
+| **Required**              | No               |
+| **Additional properties** | Any type allowed |
+
+| One of(Option)                        |
+| ------------------------------------- |
+| [PlayerChatEvent](#oneOf_i4_oneOf_i0) |
+| [DevModelEvent](#oneOf_i4_oneOf_i1)   |
+
+### <a name="oneOf_i4_oneOf_i0"></a>5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent`
 
 **Title:** PlayerChatEvent
 
@@ -969,17 +1066,17 @@ Specific value: `"interrupted"`
 
 **Description:** Mod reports that a player spoke. No reply is expected; the backend decides whether to act.
 
-| Property                                        | Pattern | Type   | Deprecated | Definition                | Title/Description |
-| ----------------------------------------------- | ------- | ------ | ---------- | ------------------------- | ----------------- |
-| + [v](#oneOf_i4_v )                             | No      | const  | No         | -                         | V                 |
-| + [type](#oneOf_i4_type )                       | No      | const  | No         | -                         | Type              |
-| + [event_id](#oneOf_i4_event_id )               | No      | string | No         | -                         | Event Id          |
-| + [event](#oneOf_i4_event )                     | No      | const  | No         | -                         | Event             |
-| + [occurred_at](#oneOf_i4_occurred_at )         | No      | string | No         | -                         | Occurred At       |
-| + [data](#oneOf_i4_data )                       | No      | object | No         | In #/$defs/PlayerChatData | PlayerChatData    |
-| - [conversation_id](#oneOf_i4_conversation_id ) | No      | string | No         | -                         | Conversation Id   |
+| Property                                                 | Pattern | Type   | Deprecated | Definition                | Title/Description |
+| -------------------------------------------------------- | ------- | ------ | ---------- | ------------------------- | ----------------- |
+| + [v](#oneOf_i4_oneOf_i0_v )                             | No      | const  | No         | -                         | V                 |
+| + [type](#oneOf_i4_oneOf_i0_type )                       | No      | const  | No         | -                         | Type              |
+| + [event_id](#oneOf_i4_oneOf_i0_event_id )               | No      | string | No         | -                         | Event Id          |
+| + [event](#oneOf_i4_oneOf_i0_event )                     | No      | const  | No         | -                         | Event             |
+| + [occurred_at](#oneOf_i4_oneOf_i0_occurred_at )         | No      | string | No         | -                         | Occurred At       |
+| + [data](#oneOf_i4_oneOf_i0_data )                       | No      | object | No         | In #/$defs/PlayerChatData | PlayerChatData    |
+| - [conversation_id](#oneOf_i4_oneOf_i0_conversation_id ) | No      | string | No         | -                         | Conversation Id   |
 
-### <a name="oneOf_i4_v"></a>5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > v`
+#### <a name="oneOf_i4_oneOf_i0_v"></a>5.1.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > v`
 
 **Title:** V
 
@@ -992,7 +1089,7 @@ Specific value: `"interrupted"`
 
 Specific value: `1`
 
-### <a name="oneOf_i4_type"></a>5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > type`
+#### <a name="oneOf_i4_oneOf_i0_type"></a>5.1.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > type`
 
 **Title:** Type
 
@@ -1005,7 +1102,7 @@ Specific value: `1`
 
 Specific value: `"event"`
 
-### <a name="oneOf_i4_event_id"></a>5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > event_id`
+#### <a name="oneOf_i4_oneOf_i0_event_id"></a>5.1.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > event_id`
 
 **Title:** Event Id
 
@@ -1020,7 +1117,7 @@ Specific value: `"event"`
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
 
-### <a name="oneOf_i4_event"></a>5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > event`
+#### <a name="oneOf_i4_oneOf_i0_event"></a>5.1.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > event`
 
 **Title:** Event
 
@@ -1033,7 +1130,7 @@ Specific value: `"event"`
 
 Specific value: `"player_chat"`
 
-### <a name="oneOf_i4_occurred_at"></a>5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > occurred_at`
+#### <a name="oneOf_i4_oneOf_i0_occurred_at"></a>5.1.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > occurred_at`
 
 **Title:** Occurred At
 
@@ -1045,7 +1142,7 @@ Specific value: `"player_chat"`
 
 **Description:** When the mod saw the chat, from the mod's clock, in UTC with the Z suffix. Example: 2026-10-18T12:00:00Z.
 
-### <a name="oneOf_i4_data"></a>5.6. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data`
+#### <a name="oneOf_i4_oneOf_i0_data"></a>5.1.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data`
 
 **Title:** PlayerChatData
 
@@ -1058,15 +1155,15 @@ Specific value: `"player_chat"`
 
 **Description:** Who said what. See PlayerChatData.
 
-| Property                                     | Pattern | Type             | Deprecated | Definition             | Title/Description |
-| -------------------------------------------- | ------- | ---------------- | ---------- | ---------------------- | ----------------- |
-| + [player_uuid](#oneOf_i4_data_player_uuid ) | No      | string           | No         | -                      | Player Uuid       |
-| + [player_name](#oneOf_i4_data_player_name ) | No      | string           | No         | -                      | Player Name       |
-| + [text](#oneOf_i4_data_text )               | No      | string           | No         | -                      | Text              |
-| + [addressed](#oneOf_i4_data_addressed )     | No      | enum (of string) | No         | -                      | Addressed         |
-| - [npc](#oneOf_i4_data_npc )                 | No      | object           | No         | In #/$defs/NpcSnapshot | NpcSnapshot       |
+| Property                                              | Pattern | Type             | Deprecated | Definition             | Title/Description |
+| ----------------------------------------------------- | ------- | ---------------- | ---------- | ---------------------- | ----------------- |
+| + [player_uuid](#oneOf_i4_oneOf_i0_data_player_uuid ) | No      | string           | No         | -                      | Player Uuid       |
+| + [player_name](#oneOf_i4_oneOf_i0_data_player_name ) | No      | string           | No         | -                      | Player Name       |
+| + [text](#oneOf_i4_oneOf_i0_data_text )               | No      | string           | No         | -                      | Text              |
+| + [addressed](#oneOf_i4_oneOf_i0_data_addressed )     | No      | enum (of string) | No         | -                      | Addressed         |
+| - [npc](#oneOf_i4_oneOf_i0_data_npc )                 | No      | object           | No         | In #/$defs/NpcSnapshot | NpcSnapshot       |
 
-#### <a name="oneOf_i4_data_player_uuid"></a>5.6.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_uuid`
+##### <a name="oneOf_i4_oneOf_i0_data_player_uuid"></a>5.1.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > player_uuid`
 
 **Title:** Player Uuid
 
@@ -1082,7 +1179,7 @@ Specific value: `"player_chat"`
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$``` [Test](https://regex101.com/?regex=%5E%5B0-9a-fA-F%5D%7B8%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B12%7D%24) |
 
-#### <a name="oneOf_i4_data_player_name"></a>5.6.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > player_name`
+##### <a name="oneOf_i4_oneOf_i0_data_player_name"></a>5.1.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > player_name`
 
 **Title:** Player Name
 
@@ -1099,7 +1196,7 @@ Specific value: `"player_chat"`
 | **Max length**                    | 16                                                                                  |
 | **Must match regular expression** | ```^[A-Za-z0-9_]+$``` [Test](https://regex101.com/?regex=%5E%5BA-Za-z0-9_%5D%2B%24) |
 
-#### <a name="oneOf_i4_data_text"></a>5.6.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > text`
+##### <a name="oneOf_i4_oneOf_i0_data_text"></a>5.1.6.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > text`
 
 **Title:** Text
 
@@ -1115,7 +1212,7 @@ Specific value: `"player_chat"`
 | **Min length** | 1   |
 | **Max length** | 256 |
 
-#### <a name="oneOf_i4_data_addressed"></a>5.6.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > addressed`
+##### <a name="oneOf_i4_oneOf_i0_data_addressed"></a>5.1.6.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > addressed`
 
 **Title:** Addressed
 
@@ -1133,7 +1230,7 @@ Must be one of:
 * "butt_in"
 * "private"
 
-#### <a name="oneOf_i4_data_npc"></a>5.6.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc`
+##### <a name="oneOf_i4_oneOf_i0_data_npc"></a>5.1.6.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc`
 
 **Title:** NpcSnapshot
 
@@ -1146,15 +1243,15 @@ Must be one of:
 
 **Description:** His state when the player spoke. Set by the mod. Optional: without it the backend answers without game state.
 
-| Property                                               | Pattern | Type             | Deprecated | Definition | Title/Description |
-| ------------------------------------------------------ | ------- | ---------------- | ---------- | ---------- | ----------------- |
-| + [phase](#oneOf_i4_data_npc_phase )                   | No      | enum (of string) | No         | -          | Phase             |
-| + [mood](#oneOf_i4_data_npc_mood )                     | No      | enum (of string) | No         | -          | Mood              |
-| + [affinity](#oneOf_i4_data_npc_affinity )             | No      | integer          | No         | -          | Affinity          |
-| + [independence](#oneOf_i4_data_npc_independence )     | No      | integer          | No         | -          | Independence      |
-| - [nearby_players](#oneOf_i4_data_npc_nearby_players ) | No      | array of string  | No         | -          | Nearby Players    |
+| Property                                                        | Pattern | Type             | Deprecated | Definition | Title/Description |
+| --------------------------------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [phase](#oneOf_i4_oneOf_i0_data_npc_phase )                   | No      | enum (of string) | No         | -          | Phase             |
+| + [mood](#oneOf_i4_oneOf_i0_data_npc_mood )                     | No      | enum (of string) | No         | -          | Mood              |
+| + [affinity](#oneOf_i4_oneOf_i0_data_npc_affinity )             | No      | integer          | No         | -          | Affinity          |
+| + [independence](#oneOf_i4_oneOf_i0_data_npc_independence )     | No      | integer          | No         | -          | Independence      |
+| - [nearby_players](#oneOf_i4_oneOf_i0_data_npc_nearby_players ) | No      | array of string  | No         | -          | Nearby Players    |
 
-##### <a name="oneOf_i4_data_npc_phase"></a>5.6.5.1. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > phase`
+###### <a name="oneOf_i4_oneOf_i0_data_npc_phase"></a>5.1.6.5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > phase`
 
 **Title:** Phase
 
@@ -1172,7 +1269,7 @@ Must be one of:
 * "regime"
 * "war"
 
-##### <a name="oneOf_i4_data_npc_mood"></a>5.6.5.2. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > mood`
+###### <a name="oneOf_i4_oneOf_i0_data_npc_mood"></a>5.1.6.5.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > mood`
 
 **Title:** Mood
 
@@ -1188,7 +1285,7 @@ Must be one of:
 * "bored"
 * "irritated"
 
-##### <a name="oneOf_i4_data_npc_affinity"></a>5.6.5.3. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > affinity`
+###### <a name="oneOf_i4_oneOf_i0_data_npc_affinity"></a>5.1.6.5.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > affinity`
 
 **Title:** Affinity
 
@@ -1204,7 +1301,7 @@ Must be one of:
 | **Minimum**  | &ge; 0   |
 | **Maximum**  | &le; 100 |
 
-##### <a name="oneOf_i4_data_npc_independence"></a>5.6.5.4. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > independence`
+###### <a name="oneOf_i4_oneOf_i0_data_npc_independence"></a>5.1.6.5.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > independence`
 
 **Title:** Independence
 
@@ -1220,7 +1317,7 @@ Must be one of:
 | **Minimum**  | &ge; 0   |
 | **Maximum**  | &le; 100 |
 
-##### <a name="oneOf_i4_data_npc_nearby_players"></a>5.6.5.5. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players`
+###### <a name="oneOf_i4_oneOf_i0_data_npc_nearby_players"></a>5.1.6.5.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players`
 
 **Title:** Nearby Players
 
@@ -1239,11 +1336,11 @@ Must be one of:
 | **Additional items** | False              |
 | **Tuple validation** | See below          |
 
-| Each item of this array must be                                 | Description |
-| --------------------------------------------------------------- | ----------- |
-| [nearby_players items](#oneOf_i4_data_npc_nearby_players_items) | -           |
+| Each item of this array must be                                          | Description |
+| ------------------------------------------------------------------------ | ----------- |
+| [nearby_players items](#oneOf_i4_oneOf_i0_data_npc_nearby_players_items) | -           |
 
-###### <a name="oneOf_i4_data_npc_nearby_players_items"></a>5.6.5.5.1. Machiavillager bridge protocol > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items
+###### <a name="oneOf_i4_oneOf_i0_data_npc_nearby_players_items"></a>5.1.6.5.5.1. Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items
 
 |              |          |
 | ------------ | -------- |
@@ -1256,7 +1353,7 @@ Must be one of:
 | **Max length**                    | 16                                                                                  |
 | **Must match regular expression** | ```^[A-Za-z0-9_]+$``` [Test](https://regex101.com/?regex=%5E%5BA-Za-z0-9_%5D%2B%24) |
 
-### <a name="oneOf_i4_conversation_id"></a>5.7. Property `Machiavillager bridge protocol > oneOf > PlayerChatEvent > conversation_id`
+#### <a name="oneOf_i4_oneOf_i0_conversation_id"></a>5.1.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > conversation_id`
 
 **Title:** Conversation Id
 
@@ -1270,6 +1367,143 @@ Must be one of:
 | Restrictions                      |                                                                                                           |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^conv_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Econv_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+### <a name="oneOf_i4_oneOf_i1"></a>5.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent`
+
+**Title:** DevModelEvent
+
+|                           |                       |
+| ------------------------- | --------------------- |
+| **Type**                  | `object`              |
+| **Required**              | No                    |
+| **Additional properties** | Not allowed           |
+| **Defined in**            | #/$defs/DevModelEvent |
+
+**Description:** Dev only: the tester changed the model in game. No reply is expected.
+
+| Property                                         | Pattern | Type   | Deprecated | Definition              | Title/Description |
+| ------------------------------------------------ | ------- | ------ | ---------- | ----------------------- | ----------------- |
+| + [v](#oneOf_i4_oneOf_i1_v )                     | No      | const  | No         | -                       | V                 |
+| + [type](#oneOf_i4_oneOf_i1_type )               | No      | const  | No         | -                       | Type              |
+| + [event_id](#oneOf_i4_oneOf_i1_event_id )       | No      | string | No         | -                       | Event Id          |
+| + [event](#oneOf_i4_oneOf_i1_event )             | No      | const  | No         | -                       | Event             |
+| + [occurred_at](#oneOf_i4_oneOf_i1_occurred_at ) | No      | string | No         | -                       | Occurred At       |
+| + [data](#oneOf_i4_oneOf_i1_data )               | No      | object | No         | In #/$defs/DevModelData | DevModelData      |
+
+#### <a name="oneOf_i4_oneOf_i1_v"></a>5.2.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > v`
+
+**Title:** V
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Wire version of the message. Always 1. A breaking change bumps it.
+
+Specific value: `1`
+
+#### <a name="oneOf_i4_oneOf_i1_type"></a>5.2.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > type`
+
+**Title:** Type
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Message kind. Always "event".
+
+Specific value: `"event"`
+
+#### <a name="oneOf_i4_oneOf_i1_event_id"></a>5.2.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > event_id`
+
+**Title:** Event Id
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** Generated by the mod: evt_ followed by 8 to 32 letters or digits. Unique per event. Example: evt_01HZX8K2M9.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+#### <a name="oneOf_i4_oneOf_i1_event"></a>5.2.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > event`
+
+**Title:** Event
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Name of the event. "dev_model" is the dev-only model switch.
+
+Specific value: `"dev_model"`
+
+#### <a name="oneOf_i4_oneOf_i1_occurred_at"></a>5.2.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > occurred_at`
+
+**Title:** Occurred At
+
+|              |             |
+| ------------ | ----------- |
+| **Type**     | `string`    |
+| **Required** | Yes         |
+| **Format**   | `date-time` |
+
+**Description:** When the mod sent the event, from the mod's clock, in UTC with the Z suffix. Example: 2026-10-18T12:00:00Z.
+
+#### <a name="oneOf_i4_oneOf_i1_data"></a>5.2.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data`
+
+**Title:** DevModelData
+
+|                           |                      |
+| ------------------------- | -------------------- |
+| **Type**                  | `object`             |
+| **Required**              | Yes                  |
+| **Additional properties** | Not allowed          |
+| **Defined in**            | #/$defs/DevModelData |
+
+**Description:** The model switch. See DevModelData.
+
+| Property                                  | Pattern | Type             | Deprecated | Definition | Title/Description |
+| ----------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [op](#oneOf_i4_oneOf_i1_data_op )       | No      | enum (of string) | No         | -          | Op                |
+| - [model](#oneOf_i4_oneOf_i1_data_model ) | No      | string           | No         | -          | Model             |
+
+##### <a name="oneOf_i4_oneOf_i1_data_op"></a>5.2.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > op`
+
+**Title:** Op
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Dev info. "set": use the model in "model" from now on, until restart. "reset": back to the chain from the environment. Example: "set".
+
+Must be one of:
+* "set"
+* "reset"
+
+##### <a name="oneOf_i4_oneOf_i1_data_model"></a>5.2.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > model`
+
+**Title:** Model
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+**Description:** Dev info: the model to use, as provider:model, e.g. groq:qwen/qwen3.8-27b. Required when op is "set", and omitted when op is "reset". Explicit null is rejected.
+
+| Restrictions   |    |
+| -------------- | -- |
+| **Min length** | 1  |
+| **Max length** | 80 |
 
 ## <a name="oneOf_i5"></a>6. Property `Machiavillager bridge protocol > oneOf > Error`
 

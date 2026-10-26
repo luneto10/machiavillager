@@ -3,6 +3,7 @@ package io.github.luneto10.machiavillager.minecraft.bridge;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.bridge.ModelLabel;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechQueue;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
@@ -70,6 +71,9 @@ public final class ActionExecutor {
 
         bridge.send(new ActionStatus.Accepted(id));
         bridge.send(new ActionStatus.Running(id));
+        // Dev only: the action bar says which model wrote these lines. Absent on normal speech, so nothing shows.
+        action.model().ifPresent(name ->
+                NpcSpeech.showOverlayNear(npc.get(), ModelLabel.format(name, action.latencyMs())));
         npc.get().setSpeaking(true);
         Optional<ServerPlayer> recipient = action.to().map(server.getPlayerList()::getPlayer);
         speech = new ActiveSpeech(id, npc.get(), new SpeechQueue(action.lines()), recipient);

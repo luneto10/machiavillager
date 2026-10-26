@@ -3,15 +3,17 @@
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from fastapi import WebSocket, status
 from pydantic import ValidationError
+from starlette.datastructures import State
 
 from machiavillager.api.bridge.events import handle_event
 from machiavillager.domain.protocol import (
     MAX_DETAIL_LENGTH,
     PROTOCOL_VERSION,
+    DevModelEvent,
     Error,
     ErrorCode,
     Hello,
@@ -101,8 +103,25 @@ async def handshake(websocket: WebSocket) -> bool:
         await reject_and_close(websocket, "bad_message", "first message must be hello")
         return False
 
-    await send(websocket, Welcome(v=PROTOCOL_VERSION, type="welcome", protocol=PROTOCOL_VERSION))
+    # Dev info: the model list goes out only when dev endpoints are on and there is one to list.
+    welcome_fields: dict[str, Any] = {}
+    models = _dev_models(websocket.app.state)
+    if models:
+        welcome_fields["models"] = models
+    await send(
+        websocket,
+        Welcome(v=PROTOCOL_VERSION, type="welcome", protocol=PROTOCOL_VERSION, **welcome_fields),
+    )
     return True
+
+
+def _dev_models(app_state: State) -> list[str]:
+    """The provider:model pairs the mod may suggest; empty unless dev endpoints are on."""
+
+    # Off by default, so a normal run never tells the mod which models it can use.
+    if not app_state.dev_endpoints:
+        return []
+    return app_state.llm_writer.available_models()
 
 
 async def serve(websocket: WebSocket, pending: "PendingRequests") -> None:
@@ -121,5 +140,5 @@ async def serve(websocket: WebSocket, pending: "PendingRequests") -> None:
         # which never waits, so this loop keeps reading the statuses that follow.
         if message.type == "action_status":
             pending.resolve(message)
-        elif isinstance(message, PlayerChatEvent):
+        elif isinstance(message, (PlayerChatEvent, DevModelEvent)):
             await handle_event(message, websocket.app.state)

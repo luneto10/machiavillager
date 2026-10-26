@@ -2,13 +2,20 @@ package io.github.luneto10.machiavillager.minecraft;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.bridge.BridgeStatusText;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+import io.github.luneto10.machiavillager.domain.bridge.BridgeState;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
+import io.github.luneto10.machiavillager.domain.bridge.EventIds;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
@@ -18,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -27,6 +35,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -45,12 +54,20 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set phase <partner|seeds|proposal|regime|war>}: put him in a phase, resetting the ratchet (dev).</li>
  *   <li>{@code brain set mood <calm|bored|irritated>}: change his mood (dev).</li>
+ *   <li>{@code ai models}: list the models the backend offered in its welcome (dev, operators).</li>
+ *   <li>{@code ai model <name>}: ask the backend to answer with this model; tab completes the list (dev, operators).</li>
+ *   <li>{@code ai model reset}: go back to the backend's default model (dev, operators).</li>
  * </ul>
  */
 public final class DevCommands {
     private static final int MIN_DEV_VALUE = 0;
     private static final int MAX_DEV_VALUE = 100;
     private static final String VALUE_ARG = "value";
+    private static final String MODEL_ARG = "name";
+    private static final String NO_MODELS = "No model list: the backend is not connected or not in dev mode.";
+    private static final String NOT_CONNECTED = "Bridge not connected.";
+    private static final String NO_MODEL_NAME = "No model name given.";
+    private static final String RESET_FEEDBACK = "Model reset requested.";
 
     // Dev shortcuts: name -> action aimed at the player who typed the command.
     // Adding a new NpcAction? Add one line here to test it from chat.
@@ -64,6 +81,10 @@ public final class DevCommands {
 
     // Operators only: the spawn and brain subtrees check this themselves, so the root stays open to everyone.
     private static final Predicate<CommandSourceStack> OPERATOR = Commands.hasPermission(Commands.LEVEL_GAMEMASTERS);
+
+    // Tab completion for "ai model": the models from the last welcome, filtered by what is typed so far.
+    private static final SuggestionProvider<CommandSourceStack> MODEL_SUGGESTIONS =
+            (context, builder) -> SharedSuggestionProvider.suggest(modelList(), builder);
 
     private DevCommands() {}
 
@@ -80,8 +101,69 @@ public final class DevCommands {
                 .then(bridge());
         if (FabricLoader.getInstance().isDevelopmentEnvironment()) {
             root.then(brain()); // dev only: debugging shortcuts
+            root.then(ai()); // dev only: pick the model that answers
         }
         return root;
+    }
+
+    // /machiavillager ai models, ai model <name>, ai model reset (dev only, operators)
+    private static LiteralArgumentBuilder<CommandSourceStack> ai() {
+        return Commands.literal("ai")
+                .requires(OPERATOR)
+                .then(Commands.literal("models").executes(DevCommands::runAiModels))
+                .then(Commands.literal("model")
+                        // The literal is a sibling of the name argument, so "reset" is never read as a model name.
+                        .then(Commands.literal("reset").executes(DevCommands::runAiReset))
+                        .then(Commands.argument(MODEL_ARG, StringArgumentType.greedyString())
+                                .suggests(MODEL_SUGGESTIONS)
+                                .executes(DevCommands::runAiSet)));
+    }
+
+    // The model ids from the last welcome; empty when the bridge is not connected.
+    private static List<String> modelList() {
+        return BridgeLifecycle.current().map(BridgeClient::models).orElse(List.of());
+    }
+
+    // Prints one model per line, or says why there are none.
+    private static int runAiModels(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        List<String> models = modelList();
+        if (models.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(NO_MODELS), false);
+            return 0;
+        }
+        for (String model : models) {
+            source.sendSuccess(() -> Component.literal(model), false);
+        }
+        return models.size();
+    }
+
+    private static int runAiSet(CommandContext<CommandSourceStack> context) {
+        String name = StringArgumentType.getString(context, MODEL_ARG).trim();
+        if (name.isEmpty()) {
+            context.getSource().sendFailure(Component.literal(NO_MODEL_NAME));
+            return 0;
+        }
+        String feedback = "Model request sent: " + name + ". The next reply shows who answered.";
+        return sendDevModel(context.getSource(), DevModelOp.SET, Optional.of(name), feedback);
+    }
+
+    private static int runAiReset(CommandContext<CommandSourceStack> context) {
+        return sendDevModel(context.getSource(), DevModelOp.RESET, Optional.empty(), RESET_FEEDBACK);
+    }
+
+    // Sends the request only when the link is up; otherwise the operator is told the bridge is not connected.
+    private static int sendDevModel(
+            CommandSourceStack source, DevModelOp op, Optional<String> model, String feedback) {
+        Optional<BridgeClient> connected = BridgeLifecycle.current()
+                .filter(client -> client.state() == BridgeState.CONNECTED);
+        if (connected.isEmpty()) {
+            source.sendFailure(Component.literal(NOT_CONNECTED));
+            return 0;
+        }
+        connected.get().send(new DevModelEvent(EventIds.newEventId(), Instant.now(), op, model));
+        source.sendSuccess(() -> Component.literal(feedback), false);
+        return 1;
     }
 
     // /machiavillager spawn

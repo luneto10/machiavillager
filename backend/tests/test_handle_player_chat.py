@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -8,8 +9,9 @@ from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.handle_player_chat import (
     HandlePlayerChat,
     conversation_key,
+    reply_action,
 )
-from machiavillager.application.ports import BridgeUnavailable
+from machiavillager.application.ports import BridgeUnavailable, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import (
     PROTOCOL_VERSION,
@@ -32,16 +34,25 @@ NOW = 1000.0
 class FakeWriter:
     """Stands in for the LLM. Records each call; can hold until a test releases it."""
 
-    def __init__(self, lines: tuple[str, ...] = ("Hello.",), gate: asyncio.Event | None = None):
+    def __init__(
+        self,
+        lines: tuple[str, ...] = ("Hello.",),
+        gate: asyncio.Event | None = None,
+        *,
+        model: str | None = None,
+        latency_ms: int | None = None,
+    ):
         self._lines = list(lines)
         self._gate = gate
+        self._model = model
+        self._latency_ms = latency_ms
         self.calls: list[tuple[list[PromptMessage], bool]] = []
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
+    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         self.calls.append((messages, irritated))
         if self._gate is not None:
             await self._gate.wait()
-        return list(self._lines)
+        return Reply(lines=list(self._lines), model=self._model, latency_ms=self._latency_ms)
 
 
 class FakeBridge:
@@ -353,3 +364,37 @@ def test_a_finished_reply_frees_the_player_for_the_next_one():
 def test_conversation_key_is_the_conversation_or_the_player():
     assert conversation_key(_chat_event(conversation_id=CONVERSATION_ID)) == CONVERSATION_ID
     assert conversation_key(_chat_event()) == f"player:{PLAYER_UUID}"
+
+
+def test_reply_action_carries_model_and_latency_only_when_given():
+    event = _chat_event()
+
+    plain = reply_action(event, ["Hi."], REQUEST_ID)
+    shown = reply_action(event, ["Hi."], REQUEST_ID, model="groq:qwen/qwen3.8-27b", latency_ms=480)
+
+    # A line with no model (canned, or a dev echo) leaves both fields off the wire entirely.
+    assert "model" not in json.loads(plain.model_dump_json(exclude_none=True))
+    assert shown.model == "groq:qwen/qwen3.8-27b"
+    assert shown.latency_ms == 480
+
+
+def test_model_and_latency_are_sent_only_when_show_model_is_on():
+    for show_model in (True, False):
+        writer = FakeWriter(model="groq:qwen/qwen3.8-27b", latency_ms=480)
+        bridge = FakeBridge(status=_succeeded())
+        handler = HandlePlayerChat(
+            writer,
+            bridge,
+            ConversationStore(),
+            lambda: PERSONA,
+            "mild",
+            lambda: REQUEST_ID,
+            lambda: NOW,
+            show_model=show_model,
+        )
+
+        _run(handler, _chat_event())
+
+        action = bridge.actions[0]
+        assert action.model == ("groq:qwen/qwen3.8-27b" if show_model else None)
+        assert action.latency_ms == (480 if show_model else None)

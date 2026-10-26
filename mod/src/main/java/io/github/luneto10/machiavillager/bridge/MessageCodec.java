@@ -12,6 +12,8 @@ import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
+import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
 import io.github.luneto10.machiavillager.domain.bridge.Hello;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 /**
@@ -53,6 +56,9 @@ public final class MessageCodec {
     private static final String EVENT_ID = "event_id";
     private static final String CONVERSATION_ID = "conversation_id";
     private static final String IN_REPLY_TO = "in_reply_to";
+    private static final String MODEL = "model";
+    private static final String MODELS = "models";
+    private static final String LATENCY_MS = "latency_ms";
 
     // Loaded once: the schema is the same for every message. Failing here stops a broken build at startup.
     private static final SchemaValidator SCHEMA = new SchemaValidator();
@@ -108,13 +114,18 @@ public final class MessageCodec {
     private static BridgeMessage decodeObject(JsonObject object) {
         return switch (string(object, TYPE)) {
             case "hello" -> new Hello(string(object, "mod_version"));
-            case "welcome" -> new Welcome();
+            case "welcome" -> new Welcome(welcomeModels(object));
             case "action" -> speakAction(object);
             case "action_status" -> actionStatus(object);
-            case "event" -> playerChat(object);
+            case "event" -> event(object);
             case "error" -> error(object);
             default -> throw new DecodeException("unknown message type");
         };
+    }
+
+    // Absent means no models: a backend that sends no list still welcomes the mod.
+    private static List<String> welcomeModels(JsonObject object) {
+        return object.has(MODELS) ? lines(object.getAsJsonArray(MODELS)) : List.of();
     }
 
     private static SpeakAction speakAction(JsonObject object) {
@@ -125,7 +136,9 @@ public final class MessageCodec {
                 object.get("timeout_ms").getAsInt(),
                 optionalString(object, CONVERSATION_ID),
                 optionalUuid(args, "to"),
-                optionalString(object, IN_REPLY_TO));
+                optionalString(object, IN_REPLY_TO),
+                optionalString(object, MODEL),
+                optionalInt(object, LATENCY_MS));
     }
 
     private static ActionStatus actionStatus(JsonObject object) {
@@ -140,6 +153,20 @@ public final class MessageCodec {
                     requestId, object.get("spoken").getAsInt(), object.get("of").getAsInt());
             default -> throw new DecodeException("unknown action status");
         };
+    }
+
+    // "event" carries several kinds; the event name decides which record the object becomes.
+    private static BridgeMessage event(JsonObject object) {
+        return "dev_model".equals(string(object, "event")) ? devModel(object) : playerChat(object);
+    }
+
+    private static DevModelEvent devModel(JsonObject object) {
+        JsonObject data = object.getAsJsonObject("data");
+        return new DevModelEvent(
+                string(object, EVENT_ID),
+                OffsetDateTime.parse(string(object, "occurred_at")).toInstant(),
+                DevModelOp.fromWire(string(data, "op")),
+                optionalString(data, "model"));
     }
 
     private static PlayerChatEvent playerChat(JsonObject object) {
@@ -187,10 +214,11 @@ public final class MessageCodec {
     private static JsonObject toJson(BridgeMessage message) {
         return switch (message) {
             case Hello hello -> helloJson(hello);
-            case Welcome welcome -> welcomeJson();
+            case Welcome welcome -> welcomeJson(welcome);
             case SpeakAction speak -> speakJson(speak);
             case ActionStatus status -> statusJson(status);
             case PlayerChatEvent event -> playerChatJson(event);
+            case DevModelEvent event -> devModelJson(event);
             case BridgeError error -> errorJson(error);
         };
     }
@@ -202,9 +230,13 @@ public final class MessageCodec {
         return json;
     }
 
-    private static JsonObject welcomeJson() {
+    // The models key is written only when there are models, so a welcome without them keeps its old shape.
+    private static JsonObject welcomeJson(Welcome welcome) {
         JsonObject json = envelope("welcome");
         json.addProperty(PROTOCOL, ProtocolRules.PROTOCOL_VERSION);
+        if (!welcome.models().isEmpty()) {
+            json.add(MODELS, stringArray(welcome.models()));
+        }
         return json;
     }
 
@@ -225,6 +257,22 @@ public final class MessageCodec {
         speak.conversationId().ifPresent(id -> json.addProperty(CONVERSATION_ID, id));
         // Only a reply names the event it answers; an unprompted speech omits the key.
         speak.inReplyTo().ifPresent(id -> json.addProperty(IN_REPLY_TO, id));
+        // Dev-only fields: the model that wrote the lines and its latency. Absent ones are left out, never null.
+        speak.model().ifPresent(name -> json.addProperty(MODEL, name));
+        speak.latencyMs().ifPresent(ms -> json.addProperty(LATENCY_MS, ms));
+        return json;
+    }
+
+    // The dev_model event: data.model only for a set, never an explicit null.
+    private static JsonObject devModelJson(DevModelEvent event) {
+        JsonObject json = envelope("event");
+        json.addProperty(EVENT_ID, event.eventId());
+        json.addProperty("event", "dev_model");
+        json.addProperty("occurred_at", event.occurredAt().toString());
+        JsonObject data = new JsonObject();
+        data.addProperty("op", event.op().wireName());
+        event.model().ifPresent(name -> data.addProperty("model", name));
+        json.add("data", data);
         return json;
     }
 
@@ -311,6 +359,18 @@ public final class MessageCodec {
     // Absent means empty. The schema already refuses an explicit null, so presence is the only check.
     private static Optional<String> optionalString(JsonObject object, String key) {
         return object.has(key) ? Optional.of(string(object, key)) : Optional.empty();
+    }
+
+    private static OptionalInt optionalInt(JsonObject object, String key) {
+        return object.has(key) ? OptionalInt.of(object.get(key).getAsInt()) : OptionalInt.empty();
+    }
+
+    private static JsonArray stringArray(List<String> values) {
+        JsonArray array = new JsonArray();
+        for (String value : values) {
+            array.add(value);
+        }
+        return array;
     }
 
     private static Optional<UUID> optionalUuid(JsonObject object, String key) {

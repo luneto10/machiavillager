@@ -12,6 +12,7 @@ from machiavillager.api.app import create_app
 from machiavillager.api.bridge.ids import new_request_id
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.handle_player_chat import HandlePlayerChat
+from machiavillager.application.ports import Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import (
     MAX_LINE_LENGTH,
@@ -142,8 +143,8 @@ def test_echo_truncates_a_long_line_to_the_protocol_limit():
 class _FixedWriter:
     """Stands in for the LLM: answers with fixed lines, so no network is used."""
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> list[str]:
-        return ["Ah, Luciano.", "Sit down."]
+    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+        return Reply(lines=["Ah, Luciano.", "Sit down."])
 
 
 def test_player_chat_gets_the_ai_reply_over_the_real_bridge():
