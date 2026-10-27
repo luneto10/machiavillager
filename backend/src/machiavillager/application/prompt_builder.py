@@ -8,6 +8,7 @@ from machiavillager.domain.npc_state import (
     independence_words,
     mood_words,
     phase_words,
+    register_words,
 )
 from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import ChatAddress
@@ -22,9 +23,10 @@ Reply by calling speak: one short line by default, two when needed, up to 8 only
 Your lines are read aloud: write words as spoken, no emoji, no abbreviations, no written laughter.
 Feelings go in words; never state numbers about yourself.
 Fill feeling_delta and feeling_reason when the player's last line changes how you feel about them:
-hatred or an order to vanish is -4 to -8, a death threat -9 or -10; a gift, a rescue, loyalty or
-real affection such as "I love you" is +2 to +5. Teasing between friends and small talk leave it
-empty. Never mention it.
+a friendly jab or a rude line is -1 or -2 (it adds up when it keeps happening), hatred, or an order
+to vanish or die, is -4 to -8; only a real threat to kill you in the game is -9 or -10; a gift, a
+rescue, loyalty or real affection such as "I love you" is +2 to +5. Small talk leaves it empty.
+Never mention it.
 Claim only what the conversation or your tools show. If unsure something exists in Minecraft, say
 you don't know. Never invent a shared past.
 Call players by their exact name.
@@ -49,11 +51,12 @@ PROFANITY_RULES: Final[dict[ProfanityLevel, str]] = {
     ),
     "mild": "Mild profanity only, mostly when irritated (damn, crap; droga, merda).",
     "full": (
-        "Private server, players opted in to brutal humor. When irritated, every reply has a "
-        "strong curse in the player's language (porra, caralho, merda, desgraçado, filho da puta, "
-        "vai se foder; fuck, shit, asshole) and a direct insult at the player by name. When calm "
-        "or bored, curse lightly like friends do (pô, caramba, porra). Roast skills, builds, "
-        "deaths and betrayals; dark in-game humor is welcome. Never apologize or soften an insult."
+        "Private server, players opted in to brutal humor. Curse freely in your own speech like "
+        "friends do (pô, caramba, porra, merda). Aim a real insult at a player (desgraçado, filho "
+        "da puta, vai se foder; asshole, fuck you) only when your feeling for them is Distrust or "
+        "Despise, and then without softening it. A player you like gets teased, never cursed at, "
+        "until the insult rules say otherwise. Roast skills, builds, deaths and betrayals; dark "
+        "in-game humor is welcome."
     ),
 }
 
@@ -142,6 +145,7 @@ def _state_block(speaker: str, npc: NpcSnapshot | None, addressed: ChatAddress) 
             f"Phase: {phase_words(npc.phase)}",
             f"Mood: {mood_words(npc.mood)}",
             f"With {speaker}: {affinity_words(npc.affinity)}",
+            f"How to treat {speaker}: {register_words(npc.affinity)}",
             f"Independence: {independence_words(npc.independence)}",
             f"Nearby: {nearby}",
             *overheard,

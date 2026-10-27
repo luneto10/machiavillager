@@ -68,10 +68,12 @@ class SpeakOutput(BaseModel):
     feeling_delta: int | None = Field(
         default=None,
         description=(
-            "Set it when the player's last line clearly changes how you feel about them: -4 to -8 "
-            "for hatred or an order to vanish, -9 or -10 for a death threat, +2 to +5 for a gift, "
-            "a rescue, loyalty or real affection. Leave it null for small talk, teasing "
-            "between friends and requests."
+            "Set it when the player's last line changes how you feel about them: -1 or -2 for a "
+            "friendly jab or a rude line, -4 to -8 for hatred or an order to vanish or die, "
+            "-9 or -10 "
+            "only for a real threat to kill you in the game, "
+            "+2 to +5 for a gift, a rescue, loyalty or real affection. Leave it "
+            "null for small talk and requests."
         ),
     )
     feeling_reason: str | None = Field(

@@ -211,3 +211,25 @@ def test_near_address_without_game_state_still_gets_the_overheard_line():
 
     assert state.startswith("Game state unknown right now; stay vague about it.")
     assert state.splitlines()[-1].startswith("Overheard:")
+
+
+def test_state_block_gives_the_register_for_a_liked_speaker():
+    npc = NPC.model_copy(update={"affinity": 70})
+
+    state = _state(build_prompt(PERSONA, "Luciano", [], npc))
+
+    assert "How to treat Luciano: Take insults as jokes and tease back lightly." in state
+
+
+def test_state_block_gives_the_register_for_a_despised_speaker():
+    npc = NPC.model_copy(update={"affinity": 5})
+
+    state = _state(build_prompt(PERSONA, "Luciano", [], npc))
+
+    assert "How to treat Luciano: Be openly rude to them" in state
+
+
+def test_fixed_rules_reserve_minus_nine_for_a_real_threat():
+    rules = build_prompt(PERSONA, "Luciano", [], NPC)[0].content
+
+    assert "only a real threat to kill you in the game is -9 or -10" in rules

@@ -2,7 +2,7 @@
 
 import pytest
 
-from machiavillager.domain.npc_state import affinity_words, independence_words
+from machiavillager.domain.npc_state import affinity_words, independence_words, register_words
 
 
 @pytest.mark.parametrize(
@@ -22,6 +22,25 @@ from machiavillager.domain.npc_state import affinity_words, independence_words
 )
 def test_affinity_words_change_at_each_band_edge(value: int, words: str):
     assert affinity_words(value) == words
+
+
+@pytest.mark.parametrize(
+    ("value", "opening"),
+    [
+        (0, "Be openly rude to them"),
+        (19, "Be openly rude to them"),
+        (20, "Be firm and curt"),
+        (39, "Be firm and curt"),
+        (40, "Take teasing as a joke"),
+        (59, "Take teasing as a joke"),
+        (60, "Take insults as jokes"),
+        (79, "Take insults as jokes"),
+        (80, "Treat them like family"),
+        (100, "Treat them like family"),
+    ],
+)
+def test_register_words_change_at_each_band_edge(value: int, opening: str):
+    assert register_words(value).startswith(opening)
 
 
 @pytest.mark.parametrize(
