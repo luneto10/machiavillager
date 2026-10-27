@@ -19,6 +19,8 @@ from machiavillager.infrastructure.model_params import (
 
 AZURE_GPT6 = "gpt-6-luna-machi"
 REASONING_EXTRA = {"max_completion_tokens": 800, "reasoning_effort": "none"}
+# The speak tool requires both feeling fields next to the lines.
+SPEAK_ARGS = {"lines": ["Hi."], "feeling_reason": "none", "feeling_delta": 0}
 
 
 def _settings(provider: str, model_id: str) -> ModelSettings:
@@ -124,7 +126,7 @@ def _run_batch(writer: LlmBatchWriter) -> None:
 
 def test_chat_writer_sends_azure_gpt6_its_own_settings():
     seen: list[ModelSettings | None] = []
-    writer = _chat_writer([("azure:" + AZURE_GPT6, _spy(seen, "speak", {"lines": ["Hi."]}))])
+    writer = _chat_writer([("azure:" + AZURE_GPT6, _spy(seen, "speak", SPEAK_ARGS))])
 
     _run_chat(writer)
 
@@ -145,7 +147,7 @@ def test_batch_writer_sends_azure_gpt6_its_own_settings():
 @pytest.mark.parametrize(
     ("build", "run", "tool", "args", "cap"),
     [
-        pytest.param(_chat_writer, _run_chat, "speak", {"lines": ["Hi."]}, 800, id="chat"),
+        pytest.param(_chat_writer, _run_chat, "speak", SPEAK_ARGS, 800, id="chat"),
         pytest.param(
             _batch_writer, _run_batch, "deliver_lines", {"lines": ["Hi."]}, 1500, id="batch"
         ),
