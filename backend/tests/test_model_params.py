@@ -10,7 +10,6 @@ from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.infrastructure.llm_batch_writer import LlmBatchWriter
-from machiavillager.infrastructure.llm_tone_judge import LlmToneJudge
 from machiavillager.infrastructure.llm_writer import LlmLineWriter, Pair
 from machiavillager.infrastructure.model_params import (
     NO_CLIENT_RETRIES,
@@ -114,10 +113,6 @@ def _batch_writer(pairs: list[Pair]) -> LlmBatchWriter:
     )
 
 
-def _judge_writer(pairs: list[Pair]) -> LlmToneJudge:
-    return LlmToneJudge(pairs, timeout_seconds=3.0, max_tokens=60)
-
-
 def _run_chat(writer: LlmLineWriter) -> None:
     messages = [PromptMessage("system", "Rules."), PromptMessage("user", "hey machi")]
     asyncio.run(writer.write_reply(messages, irritated=False))
@@ -125,10 +120,6 @@ def _run_chat(writer: LlmLineWriter) -> None:
 
 def _run_batch(writer: LlmBatchWriter) -> None:
     asyncio.run(writer.write_batch("bark", "partner", "calm"))
-
-
-def _run_judge(judge: LlmToneJudge) -> None:
-    asyncio.run(judge.judge("vai se foder"))
 
 
 def test_chat_writer_sends_azure_gpt6_its_own_settings():
@@ -151,26 +142,12 @@ def test_batch_writer_sends_azure_gpt6_its_own_settings():
     _assert_azure_route(seen, cap=1500)
 
 
-def test_tone_judge_sends_azure_gpt6_its_own_settings():
-    seen: list[ModelSettings | None] = []
-    judge = _judge_writer(
-        [("azure:" + AZURE_GPT6, _spy(seen, "classify_tone", {"tone": "insult"}))]
-    )
-
-    _run_judge(judge)
-
-    _assert_azure_route(seen, cap=60)
-
-
 @pytest.mark.parametrize(
     ("build", "run", "tool", "args", "cap"),
     [
         pytest.param(_chat_writer, _run_chat, "speak", {"lines": ["Hi."]}, 800, id="chat"),
         pytest.param(
             _batch_writer, _run_batch, "deliver_lines", {"lines": ["Hi."]}, 1500, id="batch"
-        ),
-        pytest.param(
-            _judge_writer, _run_judge, "classify_tone", {"tone": "insult"}, 60, id="judge"
         ),
     ],
 )

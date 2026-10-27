@@ -6,7 +6,6 @@ from typing import Protocol
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import BackendAction, LineKind, TerminalStatus
 from machiavillager.domain.protocol.common import NpcMood, NpcPhase
-from machiavillager.domain.tone import Tone
 
 
 class BridgeUnavailable(Exception):
@@ -48,16 +47,6 @@ class LineWriter(Protocol):
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         """Return the reply: 0-8 lines that fit speak, where an empty list means he chose silence.
-
-        Never raises for provider problems.
-        """
-
-
-class ToneJudge(Protocol):
-    """Judges the tone of one player line, separately from the model that writes his reply."""
-
-    async def judge(self, text: str) -> Tone | None:
-        """Return the tone of the line, or None on any failure or timeout.
 
         Never raises for provider problems.
         """
