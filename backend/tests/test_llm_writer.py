@@ -478,3 +478,20 @@ def test_speak_without_a_feeling_field_gives_no_feeling():
     writer = _writer(_chain(_answers("Hello.")))
 
     assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling is None
+
+
+def _come_model(come: bool) -> FunctionModel:
+    """A fake model that answers with one line and says whether he comes."""
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        args = {"lines": ["Já vou."], "come": come}
+        return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
+
+    return FunctionModel(reply, model_name="fake-come")
+
+
+@pytest.mark.parametrize("come", [True, False])
+def test_come_comes_back_in_the_reply(come):
+    writer = _writer(_chain(_come_model(come)))
+
+    assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).come is come

@@ -284,3 +284,36 @@ def test_the_stored_line_keeps_only_what_the_player_said():
     stored = store.recent("player:1", 0.0)[-1]
     assert stored.text == "you are useless"
     assert "Reminder" not in stored.text
+
+
+def test_state_block_says_where_he_is_with_coordinates():
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC))
+
+    assert "Where you are: the Overworld, x 120, y 64, z -340" in state
+
+
+@pytest.mark.parametrize(
+    ("answer", "words"),
+    [
+        ("comes", "you go to them"),
+        ("refuses", "you refuse"),
+        ("other_dimension", "you never cross a portal"),
+    ],
+)
+def test_state_block_says_what_he_does_if_asked_to_come(answer, words):
+    npc = NPC.model_copy(update={"if_asked_to_come": answer})
+
+    state = _state(build_prompt(PERSONA, "Luciano", [], npc))
+
+    assert f"If Luciano asks you to come: {words}" in state
+
+
+def test_private_chat_tells_him_only_the_player_reads_it():
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC, addressed="private"))
+
+    assert "Private: this player wrote to you alone" in state
+    assert "Overheard" not in state
+
+
+def test_rules_let_him_state_his_coordinates():
+    assert "except where you are" in FIXED_RULES

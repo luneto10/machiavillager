@@ -2,7 +2,14 @@
 
 import pytest
 
-from machiavillager.domain.npc_state import affinity_words, independence_words, register_words
+from machiavillager.domain.npc_state import (
+    COME_RULES,
+    affinity_words,
+    come_words,
+    independence_words,
+    place_words,
+    register_words,
+)
 
 
 @pytest.mark.parametrize(
@@ -85,3 +92,14 @@ def test_out_of_range_scores_are_refused(value: int):
         affinity_words(value)
     with pytest.raises(ValueError):
         independence_words(value)
+
+
+def test_place_words_name_vanilla_dimensions_and_keep_modded_ids():
+    assert place_words("minecraft:the_nether", -12, 70, 48) == "the Nether, x -12, y 70, z 48"
+    assert place_words("aether:the_aether", 1, 2, 3) == "aether:the_aether, x 1, y 2, z 3"
+
+
+def test_come_words_cover_every_answer():
+    assert set(COME_RULES) == {"comes", "refuses", "other_dimension"}
+    assert "set come to true" in come_words("comes")
+    assert "coordinates" in come_words("other_dimension")

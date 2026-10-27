@@ -22,6 +22,9 @@ from machiavillager.application.prompt_builder import (
 from machiavillager.domain.protocol import (
     MAX_TIMEOUT_MS,
     PROTOCOL_VERSION,
+    BackendAction,
+    ComeToAction,
+    ComeToArgs,
     Interrupted,
     PlayerChatEvent,
     SpeakAction,
@@ -38,6 +41,8 @@ logger = logging.getLogger(__name__)
 
 # The mod answers a suggestion at once, so a short wait keeps a silent mod from delaying the speech.
 SUGGESTION_TIMEOUT_MS: Final = 5_000
+# come_to is instant on the mod side too, so it gets the same short wait.
+COME_TIMEOUT_MS: Final = 5_000
 NPC_SPEAKER: Final = "Machiavillager"
 # Marks a line he was talked over in the middle of, so the next reply knows it was cut short.
 CUT_OFF_MARK: Final = " (cut off)"
@@ -172,6 +177,19 @@ def suggest_action(
     )
 
 
+def come_action(event: PlayerChatEvent, request_id: str) -> ComeToAction:
+    """Build the come_to action that sends him to the player who called him."""
+
+    return ComeToAction(
+        v=PROTOCOL_VERSION,
+        type="action",
+        request_id=request_id,
+        action="come_to",
+        args=ComeToArgs(player=event.data.player_uuid),
+        timeout_ms=COME_TIMEOUT_MS,
+    )
+
+
 class HandlePlayerChat:
     """Replies to a player's chat in character, remembering what he actually said."""
 
@@ -295,6 +313,11 @@ class HandlePlayerChat:
         if feeling is not None:
             await self._suggest(event, feeling)
 
+        # He sets off before he talks, so he does not finish his lines first. Only when the mod's
+        # rule said he comes: the model agreeing is not enough.
+        if reply.come and npc is not None and npc.if_asked_to_come == "comes":
+            await self._send_quick(come_action(event, self._new_request_id()), "come_to")
+
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
         if not reply.lines:
             logger.info("stayed silent event_id=%s", event.event_id)
@@ -328,19 +351,23 @@ class HandlePlayerChat:
     async def _suggest(self, event: PlayerChatEvent, feeling: Feeling) -> None:
         """Send the feeling for the player who spoke. Never raises: the speak still goes out."""
 
-        action = suggest_action(event, feeling, self._new_request_id())
+        # The reason text is never logged on this side: only the request id and the status.
+        await self._send_quick(suggest_action(event, feeling, self._new_request_id()), "feeling")
+
+    async def _send_quick(self, action: BackendAction, label: str) -> None:
+        """Send an instant action before the speak. Never raises: the speak still goes out."""
+
         try:
             status = await self._bridge.request(action)
         except BridgeUnavailable:
-            logger.info("feeling %s not sent: no mod is connected", action.request_id)
+            logger.info("%s %s not sent: no mod is connected", label, action.request_id)
             return
         except Exception as error:
             # Type name only: the error text is kept out of the log, as for the other failures.
-            logger.warning("feeling %s failed: %s", action.request_id, type(error).__name__)
+            logger.warning("%s %s failed: %s", label, action.request_id, type(error).__name__)
             return
 
-        # The reason text is never logged on this side: only the request id and the status.
-        logger.info("feeling %s finished: %s", action.request_id, status.status)
+        logger.info("%s %s finished: %s", label, action.request_id, status.status)
 
     def _remember(self, key: str, lines: list[str], status: TerminalStatus) -> None:
         """Store only what he actually got out, so later replies build on what was said."""

@@ -81,6 +81,13 @@ class SpeakOutput(BaseModel):
         default=None,
         description="With feeling_delta: what the player did, a few words. Never shown.",
     )
+    come: bool = Field(
+        default=False,
+        description=(
+            "True only when the player's last line asks you to come to them and your state says "
+            "you go. False otherwise."
+        ),
+    )
 
 
 class NoUsableModelError(Exception):
@@ -252,6 +259,7 @@ class LlmLineWriter:
                 model=label,
                 latency_ms=round(elapsed_ms),
                 feeling=feeling,
+                come=result.output.come,
             )
 
         # Every model failed: the collected errors go up so write_reply can name them.

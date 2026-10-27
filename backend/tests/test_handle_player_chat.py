@@ -19,6 +19,7 @@ from machiavillager.application.ports import BridgeUnavailable, Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.domain.protocol import (
     PROTOCOL_VERSION,
+    ComeToAction,
     Failed,
     Interrupted,
     NpcSnapshot,
@@ -48,7 +49,9 @@ class FakeWriter:
         model: str | None = None,
         latency_ms: int | None = None,
         feeling: Feeling | None = None,
+        come: bool = False,
     ):
+        self._come = come
         self._lines = list(lines)
         self._gate = gate
         self._model = model
@@ -65,6 +68,7 @@ class FakeWriter:
             model=self._model,
             latency_ms=self._latency_ms,
             feeling=self._feeling,
+            come=self._come,
         )
 
 
@@ -144,7 +148,7 @@ def _chat_event(
     )
 
 
-def _npc(mood: str) -> NpcSnapshot:
+def _npc(mood: str, if_asked_to_come: str = "refuses") -> NpcSnapshot:
     return NpcSnapshot(
         phase="seeds",
         mood=mood,
@@ -155,7 +159,7 @@ def _npc(mood: str) -> NpcSnapshot:
         x=120,
         y=64,
         z=-340,
-        if_asked_to_come="refuses",
+        if_asked_to_come=if_asked_to_come,
     )
 
 
@@ -834,3 +838,39 @@ def test_a_rude_apology_keeps_the_rudeness_floor():
     _run(_handler(writer, bridge), _chat_event(text="desculpa seu idiota"))
 
     assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]
+
+
+def test_come_is_sent_before_the_speak_when_he_comes():
+    bridge = FakeBridge(_succeeded())
+    event = _chat_event(text="vem aqui", addressed="private", npc=_npc("calm", "comes"))
+
+    _run(_handler(FakeWriter(("Já vou.",), come=True), bridge), event)
+
+    assert [type(a) for a in bridge.actions] == [ComeToAction, SpeakAction]
+    assert str(bridge.actions[0].args.player) == PLAYER_UUID
+
+
+@pytest.mark.parametrize("answer", ["refuses", "other_dimension"])
+def test_come_is_never_sent_when_the_mod_said_no_even_if_the_model_agreed(answer):
+    bridge = FakeBridge(_succeeded())
+    event = _chat_event(addressed="private", npc=_npc("calm", answer))
+
+    _run(_handler(FakeWriter(come=True), bridge), event)
+
+    assert [type(a) for a in bridge.actions] == [SpeakAction]
+
+
+def test_come_is_not_sent_when_the_model_did_not_agree():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(npc=_npc("calm", "comes")))
+
+    assert [type(a) for a in bridge.actions] == [SpeakAction]
+
+
+def test_come_without_game_state_is_not_sent():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(come=True), bridge), _chat_event(npc=None))
+
+    assert [type(a) for a in bridge.actions] == [SpeakAction]

@@ -41,6 +41,8 @@ class Reply:
     latency_ms: int | None = None
     # Set only when the writer found a real reason to feel differently about the player.
     feeling: Feeling | None = None
+    # True when the player asked him to come and he agreed; the mod's rule still decides.
+    come: bool = False
 
 
 class LineWriter(Protocol):
