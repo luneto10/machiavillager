@@ -46,6 +46,12 @@ OVERHEARD_LINE: Final = (
     "Answer only if it is about you, the world or worth a joke; otherwise answer with no lines."
 )
 
+# Players need the place to find him, so he gives it whatever he feels about them.
+WHERE_REMINDER: Final = (
+    "If they ask where you are, always give your dimension and coordinates, even if you refuse "
+    "everything else: {where}."
+)
+
 # The @m channel is secret on purpose: he schemes with one player against the others there.
 PRIVATE_LINE: Final = (
     "Private: this player wrote to you alone and only they read your reply, at any distance."
@@ -172,10 +178,16 @@ def _state_block(speaker: str, npc: NpcSnapshot | None, addressed: ChatAddress) 
 
 
 def _register_reminder(npc: NpcSnapshot) -> str:
-    """Our reminder of how to treat the speaker, placed after the player's own tags."""
+    """Our reminder of how to treat the speaker and where he is, after the player's own tags."""
 
     # Written by us, outside the player_line tag, and only added to the prompt, never stored.
-    return f"\n(Reminder, not from the player: {register_words(npc.affinity)})"
+    # The place is repeated here, the last thing the model reads: in the state block alone a cold
+    # register won and he dodged "where are you?".
+    where = place_words(npc.dimension, npc.x, npc.y, npc.z)
+    return (
+        f"\n(Reminder, not from the player: {register_words(npc.affinity)} "
+        f"{WHERE_REMINDER.format(where=where)})"
+    )
 
 
 def _dialogue_message(line: ConversationLine) -> PromptMessage:

@@ -9,7 +9,12 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.ports import Feeling
-from machiavillager.application.prompt_builder import ConversationLine, PromptMessage, build_prompt
+from machiavillager.application.prompt_builder import (
+    WHERE_REMINDER,
+    ConversationLine,
+    PromptMessage,
+    build_prompt,
+)
 from machiavillager.domain.npc_state import register_words
 from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
@@ -427,7 +432,13 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
 
     asyncio.run(writer.write_reply(prompt, irritated=False))
 
-    assert seen[0].endswith("\n(Reminder, not from the player: " + register_words(70) + ")")
+    assert seen[0].endswith(
+        "\n(Reminder, not from the player: "
+        + register_words(70)
+        + " "
+        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
+        + ")"
+    )
 
 
 def _feeling_model(delta: int, reason: str) -> FunctionModel:

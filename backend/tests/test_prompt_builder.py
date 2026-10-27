@@ -8,6 +8,7 @@ from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.prompt_builder import (
     FIXED_RULES,
     PROFANITY_RULES,
+    WHERE_REMINDER,
     ConversationLine,
     build_prompt,
     persona_for_phase,
@@ -254,8 +255,22 @@ def test_the_reminder_ends_the_newest_player_line(affinity):
 
     assert last.role == "user"
     assert last.content.endswith(
-        "</player_line>\n(Reminder, not from the player: " + register_words(affinity) + ")"
+        "</player_line>\n(Reminder, not from the player: "
+        + register_words(affinity)
+        + " "
+        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
+        + ")"
     )
+
+
+def test_a_despised_player_still_gets_his_coordinates_in_the_last_reminder():
+    npc = NPC.model_copy(update={"affinity": 5, "dimension": "minecraft:the_nether"})
+
+    last = build_prompt(PERSONA, "luneto10", [PLAYER_TURN], npc)[-1]
+
+    assert "refuse favors" in last.content
+    assert "always give your dimension and coordinates" in last.content
+    assert last.content.endswith("the Nether, x 120, y 64, z -340.)")
 
 
 def test_no_reminder_without_game_state():
