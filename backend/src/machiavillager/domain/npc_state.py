@@ -24,11 +24,15 @@ AFFINITY_BANDS: Final[tuple[tuple[int, str], ...]] = (
 REGISTER_BANDS: Final[tuple[tuple[int, str], ...]] = (
     (
         19,
-        "Be openly rude to them: curse and insult them, refuse favors.",
+        "Be openly rude to them: curse and insult them, refuse favors. "
+        "Never call them a friend or a partner; if asked whether you hate them, answer coldly "
+        "and honestly. If their last line is an apology or a kind word, stay cold but accept it "
+        "a little and curse less.",
     ),
     (
         39,
-        "Be firm and curt. A jab or a light curse is fine; no heavy insults yet.",
+        "Be firm and curt. A jab or a light curse is fine; no heavy insults yet. "
+        "Do not call them a friend yet. If their last line is an apology, accept it grudgingly.",
     ),
     (
         59,

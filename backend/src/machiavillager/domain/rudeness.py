@@ -1,7 +1,9 @@
-"""A floor for obvious rudeness in a player's words, read from the text alone.
+"""A floor for obvious feelings in a player's words, read from the text alone.
 
-This is a floor for obvious cases, not a classifier: it only catches the listed phrases, and it
-only knows Portuguese and English. Anything subtler is left to the model's own feeling.
+rudeness_floor is the least a rude line may score (0, -1, -2 or -4). kindness_floor is the least a
+kind line may score (0, +1 or +2). Both are floors for obvious cases, not classifiers: they only
+catch the listed phrases, and they only know Portuguese and English. Anything subtler is left to
+the model's own feeling.
 """
 
 import re
@@ -13,10 +15,13 @@ SEVERE_PHRASES: Final = (
     "te odeio",
     "odeio voce",
     "se mata",
+    "se joga",
     "vai morrer",
     "morre",
     "vai se foder",
     "vai tomar no cu",
+    "toma no cu",
+    "toma no seu cu",
     "fdp",
     "filho da puta",
     "i hate you",
@@ -37,6 +42,11 @@ INSULT_PHRASES: Final = (
     "otario",
     "babaca",
     "estupido",
+    "mentiroso",
+    "fudido",
+    "cuzao",
+    "desgracado",
+    "sua mae",
     "seu merda",
     "voce e uma merda",
     "voce eh uma merda",
@@ -45,10 +55,33 @@ INSULT_PHRASES: Final = (
     "useless",
     "idiot",
     "loser",
+    "liar",
 )
 
 # Mild rudeness: a jab, not an insult.
 MILD_PHRASES: Final = ("chato", "boring", "feio")
+
+# Affection: the strongest kind floor.
+AFFECTION_PHRASES: Final = (
+    "te amo",
+    "te adoro",
+    "i love you",
+    "voce e o melhor",
+    "you are the best",
+)
+
+# Apologies: a small kind floor, so a grudging sorry still counts for something.
+APOLOGY_PHRASES: Final = (
+    "desculpa",
+    "desculpe",
+    "me desculpa",
+    "me perdoa",
+    "perdao",
+    "foi mal",
+    "sorry",
+    "my bad",
+    "forgive me",
+)
 
 # Anything that is not a letter or digit separates words, so punctuation cannot glue them together.
 _NON_WORD: Final = re.compile(r"[^a-z0-9]+")
@@ -85,4 +118,17 @@ def rudeness_floor(text: str) -> int:
         return -2
     if _has_any(padded, MILD_PHRASES):
         return -1
+    return 0
+
+
+def kindness_floor(text: str) -> int:
+    """The least affinity change the player's kind words deserve: 0, +1 or +2. Never negative."""
+
+    padded = _normalize(text)
+
+    # Affection is checked first, so a line that is both affectionate and an apology scores +2.
+    if _has_any(padded, AFFECTION_PHRASES):
+        return 2
+    if _has_any(padded, APOLOGY_PHRASES):
+        return 1
     return 0

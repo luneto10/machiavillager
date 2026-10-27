@@ -43,6 +43,24 @@ def test_register_words_change_at_each_band_edge(value: int, opening: str):
     assert register_words(value).startswith(opening)
 
 
+def test_despise_register_is_cold_and_accepts_an_apology_a_little():
+    # Pinned in full: the rules for hatred, a direct "do you hate me", and an apology.
+    assert register_words(0) == (
+        "Be openly rude to them: curse and insult them, refuse favors. "
+        "Never call them a friend or a partner; if asked whether you hate them, answer coldly "
+        "and honestly. If their last line is an apology or a kind word, stay cold but accept it "
+        "a little and curse less."
+    )
+
+
+def test_distrust_register_is_curt_and_accepts_an_apology_grudgingly():
+    # Pinned in full: firm but not yet a friend, and an apology is taken grudgingly.
+    assert register_words(20) == (
+        "Be firm and curt. A jab or a light curse is fine; no heavy insults yet. "
+        "Do not call them a friend yet. If their last line is an apology, accept it grudgingly."
+    )
+
+
 @pytest.mark.parametrize(
     ("value", "words"),
     [

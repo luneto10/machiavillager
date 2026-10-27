@@ -649,3 +649,50 @@ def test_a_normal_line_sends_no_suggestion():
     _run(_handler(FakeWriter(), bridge), _chat_event(text="bom dia, amigo"))
 
     assert _suggestions(bridge) == []
+
+
+def test_an_apology_with_no_model_feeling_sends_plus_one():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="desculpa"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == 1
+    assert suggestion.args.reason == "apology"
+
+
+def test_an_apology_the_model_scored_minus_one_becomes_plus_one():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=-1, reason="still grumpy"))
+
+    _run(_handler(writer, bridge), _chat_event(text="desculpa"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [1]
+
+
+def test_warm_words_with_no_model_feeling_send_plus_two():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="te amo"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == 2
+    assert suggestion.args.reason == "kind words"
+
+
+def test_a_model_feeling_above_the_kindness_floor_stays():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=3, reason="touched"))
+
+    _run(_handler(writer, bridge), _chat_event(text="te amo"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [3]
+
+
+def test_a_rude_apology_keeps_the_rudeness_floor():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=2, reason="kind"))
+
+    _run(_handler(writer, bridge), _chat_event(text="desculpa seu idiota"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]

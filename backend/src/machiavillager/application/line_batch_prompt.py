@@ -80,6 +80,7 @@ def build_batch_prompt(
         "no written laughter.\n"
         "Write normal sentences with capital letters and punctuation; the lines are read aloud.\n"
         "Vary the jokes and the openings; no two lines start the same way.\n"
+        "At most one line of the whole batch may mention missing pumpkin pie, in passing.\n"
         f"{MOOD_RULES[mood]}\n"
         "The mood sets only the tone. The kind rule below always wins.\n"
         f"{KIND_RULES[kind]}\n"

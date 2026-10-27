@@ -187,6 +187,8 @@ public final class BridgeLifecycle {
             // Overheard lines wait out the per-player cooldown; a line that names him always passes.
             boolean limited = reason == Addressed.NEAR;
             if (limited && !nearCooldown.tryAcquire(sender.getUUID(), sender.level().getGameTime())) {
+                // Logged without the text, so a quiet player's blocked lines still leave a trace.
+                Machiavillager.LOGGER.info("player_chat skipped: near cooldown");
                 return;
             }
             running.send(event);
