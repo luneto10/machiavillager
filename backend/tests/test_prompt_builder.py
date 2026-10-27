@@ -275,7 +275,7 @@ def test_a_despised_player_still_gets_the_place_rule_in_the_last_reminder():
     last = build_prompt(PERSONA, "luneto10", [PLAYER_TURN], npc)[-1]
 
     assert "refuse favors" in last.content
-    assert "answer with your dimension and {coords}" in last.content
+    assert "answer with your dimension and {x}, {y} and {z}" in last.content
     assert "even if you refuse everything else" in last.content
 
 
@@ -352,11 +352,11 @@ def test_coordinates_are_offered_only_for_where_are_you_and_the_other_dimension_
     npc = NPC.model_copy(update={"if_asked_to_come": "refuses"})
     system = [m.content for m in build_prompt(PERSONA, "Luciano", [], npc) if m.role == "system"]
 
-    assert not any("{coords}" in content for content in system)
-    assert "{coords}" in WHERE_REMINDER
+    assert not any("{x}" in content for content in system)
+    assert "{x}, {y} and {z}" in WHERE_REMINDER
 
 
 def test_the_other_dimension_refusal_offers_the_coordinates():
     npc = NPC.model_copy(update={"if_asked_to_come": "other_dimension"})
 
-    assert "{coords}" in _state(build_prompt(PERSONA, "Luciano", [], npc))
+    assert "{x}, {y} and {z}" in _state(build_prompt(PERSONA, "Luciano", [], npc))

@@ -764,10 +764,10 @@ def test_come_without_game_state_is_not_sent():
     assert [type(a) for a in bridge.actions] == [SpeakAction]
 
 
-def test_the_coords_placeholder_is_filled_with_his_real_coordinates():
+def test_each_coordinate_placeholder_is_filled_with_his_real_number():
     bridge = FakeBridge(_succeeded())
     store = ConversationStore()
-    writer = FakeWriter(("Tô no Overworld, em {coords}.",))
+    writer = FakeWriter(("Tô no Overworld, em x {x}, y {y}, z {z}.",))
 
     _run(_handler(writer, bridge, store), _chat_event(text="cadê você?", npc=_npc("calm")))
 
@@ -777,17 +777,25 @@ def test_the_coords_placeholder_is_filled_with_his_real_coordinates():
     ]
 
 
-def test_without_game_state_the_coords_placeholder_is_dropped():
+def test_he_may_give_only_some_coordinates_in_his_own_words():
     bridge = FakeBridge(_succeeded())
 
-    _run(_handler(FakeWriter(("Tô por aqui {coords}",)), bridge), _chat_event(npc=None))
+    _run(_handler(FakeWriter(("Lá pelo {x}, {z}.",)), bridge), _chat_event(npc=_npc("calm")))
+
+    assert bridge.actions[0].args.lines == ["Lá pelo 120, -340."]
+
+
+def test_without_game_state_the_coordinate_placeholders_are_dropped():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(("Tô por aqui {x} {y} {z}",)), bridge), _chat_event(npc=None))
 
     assert bridge.actions[0].args.lines == ["Tô por aqui"]
 
 
 def test_a_filled_line_still_fits_the_speak_limit():
     bridge = FakeBridge(_succeeded())
-    long_line = "a" * 250 + " {coords}"
+    long_line = "a" * 240 + " {x}, {y}, {z}"
 
     _run(_handler(FakeWriter((long_line,)), bridge), _chat_event(npc=_npc("calm")))
 

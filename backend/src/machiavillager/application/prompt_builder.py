@@ -46,13 +46,13 @@ OVERHEARD_LINE: Final = (
     "Answer only if it is about you, the world or worth a joke; otherwise answer with no lines."
 )
 
-# Players need the place to find him, so he gives it whatever he feels about them. It is the only
-# place that offers {coords} besides the other-dimension refusal, so he never volunteers it in a
-# story. Asking him to come is kept apart: with the place here he also gave it on "come here".
+# Players need the place to find him, so he gives it whatever he feels about them. Only this and the
+# other-dimension refusal offer the coordinates, so he never volunteers them in a story. Asking him
+# to come is kept apart: with the place here he also gave it on "come here".
 WHERE_REMINDER: Final = (
-    "If their last line asks where you are, answer with your dimension and {coords} (the game "
-    "fills in the numbers), even if you refuse everything else; if it asks you to come, answer "
-    "only about coming."
+    "If their last line asks where you are, answer with your dimension and {x}, {y} and {z} (the "
+    "game fills in the numbers), even if you refuse everything else; if it asks you to come, "
+    "answer only about coming."
 )
 
 # The @m channel is secret on purpose: he schemes with one player against the others there.

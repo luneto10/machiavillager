@@ -6,7 +6,7 @@ from machiavillager.domain.npc_state import (
     COME_RULES,
     affinity_words,
     come_words,
-    coords_words,
+    coordinate_values,
     dimension_words,
     independence_words,
     register_words,
@@ -101,11 +101,11 @@ def test_dimension_words_name_vanilla_dimensions_and_keep_modded_ids():
     assert dimension_words("aether:the_aether") == "aether:the_aether"
 
 
-def test_coords_words_are_digits():
-    assert coords_words(-745, 87, 151) == "x -745, y 87, z 151"
+def test_coordinate_placeholders_map_to_digits():
+    assert coordinate_values(-745, 87, 151) == {"{x}": "-745", "{y}": "87", "{z}": "151"}
 
 
 def test_come_words_cover_every_answer():
     assert set(COME_RULES) == {"comes", "refuses", "other_dimension", "just_came"}
     assert "set come to true" in come_words("comes")
-    assert "{coords}" in come_words("other_dimension")
+    assert "{x}, {y} and {z}" in come_words("other_dimension")

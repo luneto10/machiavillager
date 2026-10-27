@@ -18,7 +18,7 @@ from machiavillager.application.prompt_builder import (
     build_prompt,
 )
 from machiavillager.application.speak_fit import fit_to_speak
-from machiavillager.domain.npc_state import COORDS_PLACEHOLDER, coords_words
+from machiavillager.domain.npc_state import COORDINATE_PLACEHOLDERS, coordinate_values
 from machiavillager.domain.protocol import (
     MAX_TIMEOUT_MS,
     PROTOCOL_VERSION,
@@ -141,13 +141,22 @@ def suggest_action(
 
 
 def fill_coords(lines: list[str], npc: NpcSnapshot | None) -> list[str]:
-    """Put his real coordinates where the model wrote the placeholder, then fit the lines again."""
+    """Put his real coordinates where the model wrote the placeholders, then fit the lines again."""
 
-    # Without game state there is nothing to fill, so the placeholder is dropped, never spoken.
-    coords = coords_words(npc.x, npc.y, npc.z) if npc is not None else ""
+    # Without game state there is nothing to fill, so the placeholders are dropped, never spoken.
+    if npc is None:
+        values = dict.fromkeys(COORDINATE_PLACEHOLDERS, "")
+    else:
+        values = coordinate_values(npc.x, npc.y, npc.z)
+
+    filled = []
+    for line in lines:
+        for placeholder, value in values.items():
+            line = line.replace(placeholder, value)
+        filled.append(line)
 
     # Filling makes a line longer, so the speak limits are applied again afterwards.
-    return fit_to_speak([line.replace(COORDS_PLACEHOLDER, coords) for line in lines])
+    return fit_to_speak(filled)
 
 
 def come_action(event: PlayerChatEvent, request_id: str) -> ComeToAction:

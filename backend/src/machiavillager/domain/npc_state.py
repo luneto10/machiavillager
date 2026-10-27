@@ -76,14 +76,14 @@ COME_RULES: Final[dict[ComeAnswer, str]] = {
     "comes": "you go to them: agree in your own words and set come to true",
     "refuses": "you refuse: they should come to you",
     "other_dimension": (
-        "you never cross a portal for anyone: refuse, name your dimension and write {coords} so "
-        "they can come to you"
+        "you never cross a portal for anyone: refuse, name your dimension and write {x}, {y} "
+        "and {z} so they can come to you"
     ),
     "just_came": "you just went to them: say you were just there and they should wait a bit",
 }
-# The model writes this where his coordinates go and the backend fills it in, so the digits are
-# exact and never spelled out as words.
-COORDS_PLACEHOLDER: Final = "{coords}"
+# The model writes these where his coordinates go and the backend fills them in, so the digits are
+# exact and never spelled out. He picks the words around them, so the line sounds like his own.
+COORDINATE_PLACEHOLDERS: Final = ("{x}", "{y}", "{z}")
 MOOD_LABELS: Final[dict[NpcMood, str]] = {
     "calm": "calm",
     "bored": "bored",
@@ -126,11 +126,11 @@ def dimension_words(dimension: str) -> str:
     return DIMENSION_NAMES.get(dimension, dimension)
 
 
-def coords_words(x: int, y: int, z: int) -> str:
-    """His block coordinates in digits, as they replace the placeholder in his line."""
+def coordinate_values(x: int, y: int, z: int) -> dict[str, str]:
+    """Each coordinate placeholder and the digits that replace it in his line."""
 
     # Coordinates are the one number he may state: players need them to find him.
-    return f"x {x}, y {y}, z {z}"
+    return dict(zip(COORDINATE_PLACEHOLDERS, (str(x), str(y), str(z)), strict=True))
 
 
 def come_words(answer: ComeAnswer) -> str:
