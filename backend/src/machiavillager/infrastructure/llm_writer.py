@@ -72,8 +72,8 @@ class SpeakOutput(BaseModel):
             "friendly jab or a rude line, -4 to -8 for hatred or an order to vanish or die, "
             "-9 or -10 "
             "only for a real threat to kill you in the game, "
-            "+2 to +5 for a gift, a rescue, loyalty or real affection. Leave it "
-            "null for small talk and requests."
+            "+2 to +5 for a gift, a rescue, loyalty or real affection, +1 or +2 for an "
+            "apology or a kind word after a fight. Leave it null for small talk and requests."
         ),
     )
     feeling_reason: str | None = Field(
