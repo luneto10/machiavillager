@@ -104,6 +104,21 @@ public final class LineBank {
         return Map.copyOf(pools);
     }
 
+    /**
+     * Empties every pool and forgets their uses, recent picks and ask times, so the next line comes from a new
+     * batch. Returns how many pools had lines.
+     */
+    public int clear() {
+        int withLines = (int) pools.values().stream().filter(lines -> !lines.isEmpty()).count();
+
+        // The ask times go too: a cleared key may ask the backend at once, not after the old wait.
+        pools.clear();
+        uses.clear();
+        recent.clear();
+        lastAsked.clear();
+        return withLines;
+    }
+
     // A pool of five or fewer lines can only avoid its last pick; a bigger one avoids the last five.
     private static List<String> candidatesFor(List<String> pool, Deque<String> history) {
         int avoid = pool.size() <= RECENT_LIMIT ? 1 : RECENT_LIMIT;

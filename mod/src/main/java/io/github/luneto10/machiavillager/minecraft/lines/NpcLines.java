@@ -43,13 +43,19 @@ public final class NpcLines {
         this.source = new LineSource(new LineBank(StoryData.get(server).linePools()));
     }
 
+    /** A line for the dice-chosen moment, or empty when he stays silent. */
+    public Optional<String> take(LineKind kind, Phase phase, Mood mood) {
+        return take(kind, phase, mood, false);
+    }
+
     /**
      * A line for the moment, or empty when he stays silent. The global cap is checked first, so a refused speech
-     * never uses up a line. A cached or fallback line counts as an unprompted speech.
+     * never uses up a line. A cached or fallback line counts as an unprompted speech. A forced line (dev) skips the
+     * cap and is not counted, so a dev test never delays the real dice.
      */
-    public Optional<String> take(LineKind kind, Phase phase, Mood mood) {
+    public Optional<String> take(LineKind kind, Phase phase, Mood mood, boolean forced) {
         long now = server.getTickCount();
-        if (!cap.canSpeak(now)) {
+        if (!forced && !cap.canSpeak(now)) {
             return Optional.empty();
         }
 
@@ -62,9 +68,18 @@ public final class NpcLines {
             return Optional.empty();
         }
 
-        // Counted only now, when the line is really handed out to be spoken.
-        cap.markSpoke(now);
+        // Counted only now, when the line is really handed out to be spoken; a forced line stays out of the cap.
+        if (!forced) {
+            cap.markSpoke(now);
+        }
         return next.template();
+    }
+
+    /** Dev: empties every pool, in memory and in the saved story. Returns how many pools had lines. */
+    public int clear() {
+        int cleared = source.bank().clear();
+        StoryData.get(server).setLinePools(source.bank().snapshot());
+        return cleared;
     }
 
     /**

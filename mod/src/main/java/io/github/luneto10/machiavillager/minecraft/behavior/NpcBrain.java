@@ -190,7 +190,7 @@ public final class NpcBrain {
     private void decide(PathfinderMob npc, ServerLevel level) {
         current = chooser.choose(snapshot(npc, level), ThreadLocalRandom.current());
         Machiavillager.LOGGER.info("Machiavillager decided: {}", describe(current, level));
-        act(npc, level);
+        act(npc, level, false);
     }
 
     /** Dev: the odds of his next decision, most likely first, e.g. "Follow(Player388) 53% | Wander 26%". */
@@ -239,8 +239,8 @@ public final class NpcBrain {
         // Restart the timer so the forced action lasts a full decision interval, not the rest of the old one.
         decisionTimer.restart();
 
-        // Act right away instead of waiting for the next tick.
-        act(npc, level);
+        // Act right away instead of waiting for the next tick; forced, so it skips the speech cap.
+        act(npc, level, true);
     }
 
     /** His current temperament. Server thread only. */
@@ -294,7 +294,7 @@ public final class NpcBrain {
         return allowed;
     }
 
-    private void act(PathfinderMob npc, ServerLevel level) {
+    private void act(PathfinderMob npc, ServerLevel level, boolean forced) {
         // Sealed interface + exhaustive switch: adding a new NpcAction makes this fail to compile until it is handled.
         switch (current) {
             case NpcAction.Follow follow -> {
@@ -303,10 +303,10 @@ public final class NpcBrain {
             case NpcAction.Wander wander -> {
                 // Nothing to do here: the vanilla stroll goal runs whenever MOVE is free.
             }
-            case NpcAction.Bark bark -> bark(npc, level, bark.listener());
-            case NpcAction.Hint hint -> giveHint(npc, level, hint.listener());
+            case NpcAction.Bark bark -> bark(npc, level, bark.listener(), forced);
+            case NpcAction.Hint hint -> giveHint(npc, level, hint.listener(), forced);
             case NpcAction.Summon summon -> startSummon(npc, level, summon.target());
-            case NpcAction.Mutter() -> mutter(npc, level);
+            case NpcAction.Mutter() -> mutter(npc, level, forced);
         }
     }
 
@@ -414,18 +414,18 @@ public final class NpcBrain {
     }
 
     /** Says one bark to the listener, taken from the line pools. Silent when the listener left or no line is ready. */
-    private void bark(PathfinderMob npc, ServerLevel level, UUID listenerId) {
+    private void bark(PathfinderMob npc, ServerLevel level, UUID listenerId, boolean forced) {
         // A bark needs the listener online; otherwise there is no one to talk to.
         Player listener = level.getPlayerByUUID(listenerId);
         Optional<NpcLines> lines = BridgeLifecycle.lines();
         if (listener == null || lines.isEmpty()) {
             return;
         }
-        lines.get().take(LineKind.BARK, currentPhase(level), mood).ifPresent(template ->
+        lines.get().take(LineKind.BARK, currentPhase(level), mood, forced).ifPresent(template ->
                 NpcSpeech.say(npc, LineRules.fill(template, listener.getPlainTextName(), 0, 0)));
     }
 
-    private void giveHint(PathfinderMob npc, ServerLevel level, UUID listenerId) {
+    private void giveHint(PathfinderMob npc, ServerLevel level, UUID listenerId, boolean forced) {
         // Reset first, also when nothing is found, so a failed search is not retried for 10 minutes.
         activeTicksSinceHint = 0;
 
@@ -444,16 +444,16 @@ public final class NpcBrain {
         }
 
         // Taken only once a village is known, so a line is never used up on a hint that cannot name one.
-        lines.get().take(LineKind.HINT, currentPhase(level), mood).ifPresent(template -> {
+        lines.get().take(LineKind.HINT, currentPhase(level), mood, forced).ifPresent(template -> {
             BlockPos at = village.get();
             NpcSpeech.say(npc, LineRules.fill(template, listener.getPlainTextName(), at.getX(), at.getZ()));
         });
     }
 
     /** Mutters one line for the current story phase. Only players within whisper range overhear it. */
-    private void mutter(PathfinderMob npc, ServerLevel level) {
+    private void mutter(PathfinderMob npc, ServerLevel level, boolean forced) {
         BridgeLifecycle.lines()
-                .flatMap(lines -> lines.take(LineKind.MUTTER, currentPhase(level), mood))
+                .flatMap(lines -> lines.take(LineKind.MUTTER, currentPhase(level), mood, forced))
                 .ifPresent(line -> NpcSpeech.whisper(npc, line));
     }
 

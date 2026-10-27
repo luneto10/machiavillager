@@ -21,6 +21,7 @@ import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
+import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Instant;
@@ -54,6 +55,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
  *   <li>{@code brain nudge <-10..10>}: apply an affinity nudge for you, through the same limits as the AI (dev).</li>
  *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
+ *   <li>{@code brain lines clear}: empty every line pool, in memory and saved, so fresh batches are asked for (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set affinity <0-100>}: set your own affinity exactly, no limits (dev).</li>
 
@@ -255,6 +257,7 @@ public final class DevCommands {
                 .then(Commands.literal("next").executes(DevCommands::runBrainNext))
                 .then(Commands.literal("odds").executes(DevCommands::runBrainOdds));
         brain.then(nudge());
+        brain.then(lines());
 
         // One literal per table entry: "brain do follow", "brain do bark", and so on.
         var does = Commands.literal("do");
@@ -294,6 +297,25 @@ public final class DevCommands {
         String reason = ((RelationshipNudges.Rejected) result).reason();
         source.sendFailure(Component.literal("Nudge refused: " + reason));
         return 0;
+    }
+
+    // "brain lines clear": empties the line pools, so the next lines come from a fresh batch.
+    private static LiteralArgumentBuilder<CommandSourceStack> lines() {
+        return Commands.literal("lines").then(Commands.literal("clear").executes(DevCommands::runLinesClear));
+    }
+
+    private static int runLinesClear(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+
+        // The lines exist only while the bridge runs, so the operator is told when they do not.
+        Optional<NpcLines> lines = BridgeLifecycle.lines();
+        if (lines.isEmpty()) {
+            source.sendFailure(Component.literal("Clear refused: bridge is off."));
+            return 0;
+        }
+        int cleared = lines.get().clear();
+        source.sendSuccess(() -> Component.literal("Cleared " + cleared + " line pools."), false);
+        return cleared;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> set() {

@@ -131,6 +131,18 @@ class LineBankTest {
         assertThrows(UnsupportedOperationException.class, () -> snapshot.put(KEY, List.of()));
     }
 
+    @Test
+    void clear_emptiesEveryPool_andCountsOnlyThePoolsWithLines() {
+        LineKey other = new LineKey(LineKind.HINT, Phase.SEEDS, Mood.CALM);
+        LineKey empty = new LineKey(LineKind.MUTTER, Phase.WAR, Mood.IRRITATED);
+        LineBank bank = new LineBank(new HashMap<>(Map.of(KEY, eight(), other, List.of("one"), empty, List.of())));
+
+        assertEquals(2, bank.clear());
+        assertEquals(Map.of(), bank.snapshot());
+        assertFalse(bank.hasLines(KEY));
+        assertEquals(Optional.empty(), bank.pick(KEY, new Random(7)));
+    }
+
     private static List<String> eight() {
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
