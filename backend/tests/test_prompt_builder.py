@@ -275,7 +275,8 @@ def test_a_despised_player_still_gets_the_place_rule_in_the_last_reminder():
     last = build_prompt(PERSONA, "luneto10", [PLAYER_TURN], npc)[-1]
 
     assert "refuse favors" in last.content
-    assert "answer with your dimension and {coords}, even if you refuse" in last.content
+    assert "answer with your dimension and {coords}" in last.content
+    assert "even if you refuse everything else" in last.content
 
 
 def test_the_place_rule_keeps_a_come_request_apart():
@@ -346,5 +347,16 @@ def test_private_chat_tells_him_only_the_player_reads_it():
     assert "Overheard" not in state
 
 
-def test_rules_tell_him_to_write_the_coordinates_placeholder():
-    assert "Write your coordinates as {coords}" in FIXED_RULES
+def test_coordinates_are_offered_only_for_where_are_you_and_the_other_dimension_refusal():
+    # Outside those two cases he has no numbers and no placeholder, so a story never carries them.
+    npc = NPC.model_copy(update={"if_asked_to_come": "refuses"})
+    system = [m.content for m in build_prompt(PERSONA, "Luciano", [], npc) if m.role == "system"]
+
+    assert not any("{coords}" in content for content in system)
+    assert "{coords}" in WHERE_REMINDER
+
+
+def test_the_other_dimension_refusal_offers_the_coordinates():
+    npc = NPC.model_copy(update={"if_asked_to_come": "other_dimension"})
+
+    assert "{coords}" in _state(build_prompt(PERSONA, "Luciano", [], npc))

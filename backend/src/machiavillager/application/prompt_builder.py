@@ -25,8 +25,7 @@ Reply by calling speak: one short line by default, two when needed, up to 8 only
 (then 3 to 6 lines).
 Your lines are read aloud: write words as spoken, no emoji, no abbreviations, no written laughter.
 Never use em dashes or en dashes; use commas or periods.
-Feelings go in words; never state numbers about yourself. Write your coordinates as {coords};
-the game fills them in.
+Feelings go in words; never state numbers about yourself.
 Fill feeling_delta and feeling_reason when the player's last line changes how you feel about them:
 a friendly jab or a rude line is -1 or -2 (it adds up when it keeps happening), hatred, or an order
 to vanish or die, is -4 to -8; only a real threat to kill you in the game is -9 or -10. A gift, a
@@ -47,11 +46,13 @@ OVERHEARD_LINE: Final = (
     "Answer only if it is about you, the world or worth a joke; otherwise answer with no lines."
 )
 
-# Players need the place to find him, so he gives it whatever he feels about them. Asking him to
-# come is kept apart on purpose: with the place in this reminder he also gave it on "come here".
+# Players need the place to find him, so he gives it whatever he feels about them. It is the only
+# place that offers {coords} besides the other-dimension refusal, so he never volunteers it in a
+# story. Asking him to come is kept apart: with the place here he also gave it on "come here".
 WHERE_REMINDER: Final = (
-    "If their last line asks where you are, answer with your dimension and {coords}, even if you "
-    "refuse everything else; if it asks you to come, answer only about coming."
+    "If their last line asks where you are, answer with your dimension and {coords} (the game "
+    "fills in the numbers), even if you refuse everything else; if it asks you to come, answer "
+    "only about coming."
 )
 
 # The @m channel is secret on purpose: he schemes with one player against the others there.
