@@ -8,6 +8,7 @@ from typing import Final
 from machiavillager.domain.protocol.common import (
     MAX_RELATIONSHIP_SCORE,
     MIN_RELATIONSHIP_SCORE,
+    ComeAnswer,
     NpcMood,
     NpcPhase,
 )
@@ -64,6 +65,22 @@ PHASE_LABELS: Final[dict[NpcPhase, str]] = {
     "regime": "Regime",
     "war": "War",
 }
+# Vanilla dimensions get their usual names; a modded one is shown by its id.
+DIMENSION_NAMES: Final[dict[str, str]] = {
+    "minecraft:overworld": "the Overworld",
+    "minecraft:the_nether": "the Nether",
+    "minecraft:the_end": "the End",
+}
+# What he does if the speaker asks him to come. The mod decided it; the model only says it.
+COME_RULES: Final[dict[ComeAnswer, str]] = {
+    "comes": "you go to them: agree in your own words and set come to true",
+    "refuses": "you refuse: they should come to you",
+    "other_dimension": (
+        "you never cross a portal for anyone: refuse and tell them your dimension and "
+        "coordinates so they can come to you"
+    ),
+    "just_came": "you just went to them: say you were just there and they should wait a bit",
+}
 MOOD_LABELS: Final[dict[NpcMood, str]] = {
     "calm": "calm",
     "bored": "bored",
@@ -97,6 +114,20 @@ def phase_words(phase: NpcPhase) -> str:
 
     # The mapping covers every Literal value; a missing key means the contract grew first.
     return PHASE_LABELS[phase]
+
+
+def place_words(dimension: str, x: int, y: int, z: int) -> str:
+    """Say where he is: the dimension by name and his block coordinates."""
+
+    # Coordinates are the one number he may state: players need them to find him.
+    return f"{DIMENSION_NAMES.get(dimension, dimension)}, x {x}, y {y}, z {z}"
+
+
+def come_words(answer: ComeAnswer) -> str:
+    """Tell him what to do if the speaker asks him to come."""
+
+    # The mapping covers every Literal value; a missing key means the contract grew first.
+    return COME_RULES[answer]
 
 
 def mood_words(mood: NpcMood) -> str:

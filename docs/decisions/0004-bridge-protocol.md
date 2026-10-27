@@ -129,7 +129,7 @@ Unknown fields are rejected, never silently ignored.
   the 60-second silence rule are built together with the AI.
 - **Addressed chat:** `player_chat` carries `addressed`, which says why the mod forwarded the line:
   `name`, `conversation`, `near`, `butt_in` (the player talked over him) or `private` (the @m channel).
-- **NPC state:** `player_chat` may carry an optional `npc` object (phase, mood, affinity, independence and nearby players) with his state when the player spoke; without it the backend answers without game state.
+- **NPC state:** `player_chat` may carry an optional `npc` object (phase, mood, affinity, independence, nearby players, his dimension and block coordinates, and `if_asked_to_come`) with his state when the player spoke; without it the backend answers without game state.
 
 ### 11. Configuration
 
@@ -173,6 +173,25 @@ Unknown fields are rejected, never silently ignored.
   status. No new status code is needed.
 - **Why the mod asks:** the mod keeps the pool and knows when it runs low, so the backend is called
   only when there is something to fill, never per tick.
+
+### 15. Private chat (@m) and "come here"
+
+- **Decision:** a chat line that starts with `@m`, `@machi` or `@machiavillager` (whole word, any case)
+  is cancelled before the broadcast, so no other player sees it. The sender sees an echo, and the mod
+  sends `player_chat` with `addressed: "private"` at any distance and from any dimension. The reply is
+  the usual `speak` with `to`, private text only (decision 7). A private line never interrupts his
+  public speech.
+- **Where he is:** the `npc` snapshot always carries `dimension` (a namespaced id), `x`, `y` and `z`,
+  so he can answer "where are you?" truthfully. The prompt allows him to say coordinates.
+- **The mod decides whether he comes:** the snapshot carries `if_asked_to_come`, checked in this order:
+  `other_dimension` (he never crosses a portal), `refuses` (he is not calm, or affinity is not above
+  independence), `just_came` (he went to this player less than 30 seconds ago), otherwise `comes`.
+  The AI only phrases it; its tone still follows affinity and mood. When the AI says he comes, the
+  backend sends `come_to {player}` before the speak; the mod checks the same rule again, forces a
+  Follow toward the player and teleports him next to them when far. Rejections: `npc_unavailable`,
+  `player_offline`, `busy`, `refused`, `rate_limited` (for `just_came`).
+- **Not loaded:** he is found only while his chunk is loaded. Until #57 keeps a chunk ticket around him,
+  an `@m` line while he is unloaded gets a fixed "out of reach" line from the mod and no event.
 
 ## Consequences
 

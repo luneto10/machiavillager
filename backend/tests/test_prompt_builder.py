@@ -8,6 +8,7 @@ from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.prompt_builder import (
     FIXED_RULES,
     PROFANITY_RULES,
+    WHERE_REMINDER,
     ConversationLine,
     build_prompt,
     persona_for_phase,
@@ -22,6 +23,11 @@ NPC = NpcSnapshot(
     affinity=37,
     independence=63,
     nearby_players=["Ana", "Luciano"],
+    dimension="minecraft:overworld",
+    x=120,
+    y=64,
+    z=-340,
+    if_asked_to_come="refuses",
 )
 
 
@@ -255,8 +261,22 @@ def test_the_reminder_ends_the_newest_player_line(affinity):
 
     assert last.role == "user"
     assert last.content.endswith(
-        "</player_line>\n(Reminder, not from the player: " + register_words(affinity) + ")"
+        "</player_line>\n(Reminder, not from the player: "
+        + register_words(affinity)
+        + " "
+        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
+        + ")"
     )
+
+
+def test_a_despised_player_still_gets_his_coordinates_in_the_last_reminder():
+    npc = NPC.model_copy(update={"affinity": 5, "dimension": "minecraft:the_nether"})
+
+    last = build_prompt(PERSONA, "luneto10", [PLAYER_TURN], npc)[-1]
+
+    assert "refuse favors" in last.content
+    assert "always give your dimension and coordinates" in last.content
+    assert last.content.endswith("the Nether, x 120, y 64, z -340.)")
 
 
 def test_no_reminder_without_game_state():
@@ -285,3 +305,37 @@ def test_the_stored_line_keeps_only_what_the_player_said():
     stored = store.recent("player:1", 0.0)[-1]
     assert stored.text == "you are useless"
     assert "Reminder" not in stored.text
+
+
+def test_state_block_says_where_he_is_with_coordinates():
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC))
+
+    assert "Where you are: the Overworld, x 120, y 64, z -340" in state
+
+
+@pytest.mark.parametrize(
+    ("answer", "words"),
+    [
+        ("comes", "you go to them"),
+        ("refuses", "you refuse"),
+        ("other_dimension", "you never cross a portal"),
+        ("just_came", "you just went to them"),
+    ],
+)
+def test_state_block_says_what_he_does_if_asked_to_come(answer, words):
+    npc = NPC.model_copy(update={"if_asked_to_come": answer})
+
+    state = _state(build_prompt(PERSONA, "Luciano", [], npc))
+
+    assert f"If Luciano asks you to come: {words}" in state
+
+
+def test_private_chat_tells_him_only_the_player_reads_it():
+    state = _state(build_prompt(PERSONA, "Luciano", [], NPC, addressed="private"))
+
+    assert "Private: this player wrote to you alone" in state
+    assert "Overheard" not in state
+
+
+def test_rules_let_him_state_his_coordinates():
+    assert "except where you are" in FIXED_RULES

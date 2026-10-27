@@ -2,7 +2,9 @@ package io.github.luneto10.machiavillager.minecraft.bridge;
 
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
+import io.github.luneto10.machiavillager.domain.behavior.ComeAnswer;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.bridge.ComeToAction;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.RelationshipNudges;
 import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
@@ -13,14 +15,17 @@ import io.github.luneto10.machiavillager.domain.speech.SpeechQueue;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Cooldown;
+import io.github.luneto10.machiavillager.domain.time.PerPlayerCooldown;
 import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
+import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -34,6 +39,9 @@ public final class ActionExecutor {
     static final String PLAYER_OFFLINE = "player_offline";
     static final String RATE_LIMITED = "rate_limited";
     static final String INVALID_LINES = "invalid_lines";
+    static final String REFUSED = "refused";
+    // Orders cannot be spammed: the same player can call him at most once every 30 seconds.
+    static final long COME_COOLDOWN_TICKS = 600;
 
     private final MinecraftServer server;
     private final BridgeClient bridge;
@@ -47,6 +55,9 @@ public final class ActionExecutor {
     private final NpcLines lines;
     // The speech in progress, or null while he is silent.
     private ActiveSpeech speech;
+    // Started only when he really goes, so a refused call does not use up the player's next one. Read by the
+    // player_chat snapshot too, so the AI never promises a come this executor would refuse.
+    private final PerPlayerCooldown comeCooldown = new PerPlayerCooldown(COME_COOLDOWN_TICKS);
 
     /** Creates the executor for one server session. The wait is the minimum gap between unprompted speeches. */
     public ActionExecutor(
@@ -140,6 +151,49 @@ public final class ActionExecutor {
         bridge.send(new ActionStatus.Succeeded(id));
         // Logged by id and count only, never the line text.
         Machiavillager.LOGGER.info("deliver_lines id={} n={}", id, action.lines().size());
+    }
+
+    /**
+     * A player asked him to come. The backend sends it only when the snapshot said he comes, but his mood or the
+     * player may have changed since, so the same rule is checked again here, then the per-player cooldown.
+     */
+    public void comeTo(ComeToAction action) {
+        String id = action.requestId();
+        Optional<MachiavillagerEntity> npc = MachiavillagerLookup.find(server);
+        if (npc.isEmpty()) {
+            reject(id, NPC_UNAVAILABLE);
+            return;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(action.player());
+        if (player == null) {
+            reject(id, PLAYER_OFFLINE);
+            return;
+        }
+        // A meeting owns him until it ends.
+        if (npc.get().inMeeting()) {
+            reject(id, BUSY);
+            return;
+        }
+        // The same rule the snapshot used, cooldown included.
+        boolean cares = StoryData.get(server).relationships().caresAbout(player.getUUID());
+        ComeAnswer answer = ComeAnswer.decide(
+                npc.get().mood(), cares, player.level() == npc.get().level(), cameRecently(player.getUUID()));
+        if (answer != ComeAnswer.COMES) {
+            reject(id, answer == ComeAnswer.JUST_CAME ? RATE_LIMITED : REFUSED);
+            return;
+        }
+        comeCooldown.markUsed(player.getUUID(), server.getTickCount());
+
+        // Instant like a suggestion: he is set on his way, and the walk or teleport is the brain's job.
+        npc.get().comeTo(player);
+        bridge.send(new ActionStatus.Accepted(id));
+        bridge.send(new ActionStatus.Running(id));
+        bridge.send(new ActionStatus.Succeeded(id));
+    }
+
+    /** True while his come cooldown for this player runs: he went to them less than 30 seconds ago. */
+    public boolean cameRecently(UUID player) {
+        return !comeCooldown.isReady(player, server.getTickCount());
     }
 
     /** Called at the end of every server tick: says the next line when its turn comes, or ends the speech. */

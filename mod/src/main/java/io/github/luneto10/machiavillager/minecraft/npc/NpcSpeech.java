@@ -24,6 +24,8 @@ public final class NpcSpeech {
     // Vanilla keys: chat.type.text is "<%s> %s" and commands.message.display.incoming is "%s whispers to you: %s".
     private static final String CHAT_KEY = "chat.type.text";
     private static final String PRIVATE_KEY = "commands.message.display.incoming";
+    // Vanilla key: commands.message.display.outgoing is "You whisper to %s: %s", the sender's side of a whisper.
+    private static final String ECHO_KEY = "commands.message.display.outgoing";
 
     private NpcSpeech() {}
 
@@ -51,6 +53,20 @@ public final class NpcSpeech {
         Component whisper = Component.translatable(PRIVATE_KEY, speaker.getDisplayName(), text)
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC);
         send(player, whisper);
+    }
+
+    /**
+     * Server side only. Echoes a private @m message to its sender as "You whisper to Name: text" in gray italic,
+     * the same look as his private reply. Takes his name, not the entity, because he may not be loaded.
+     */
+    public static void echoPrivate(ServerPlayer sender, Component npcName, String text) {
+        send(sender, Component.translatable(ECHO_KEY, npcName, text)
+                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
+    }
+
+    /** Server side only. A gray italic notice for one player, such as "Machiavillager is out of reach". */
+    public static void notice(ServerPlayer player, Component line) {
+        send(player, line.copy().withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
     }
 
     // One loop for every kind of nearby speech: only the range and the line differ.

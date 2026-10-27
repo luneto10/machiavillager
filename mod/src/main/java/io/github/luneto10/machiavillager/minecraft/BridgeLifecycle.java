@@ -10,6 +10,9 @@ import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.NearChatCooldown;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
 import io.github.luneto10.machiavillager.domain.bridge.ChatAddressing;
+import io.github.luneto10.machiavillager.domain.bridge.ComeToAction;
+import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
+import io.github.luneto10.machiavillager.domain.bridge.PrivateChannel;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
@@ -18,12 +21,14 @@ import io.github.luneto10.machiavillager.minecraft.bridge.ModelLine;
 import io.github.luneto10.machiavillager.minecraft.bridge.PlayerChatReporter;
 import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
 import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
+import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -59,6 +64,8 @@ public final class BridgeLifecycle {
         ServerLifecycleEvents.SERVER_STOPPING.register(BridgeLifecycle::stop);
         // Speech is paced by the server tick, so it advances even while no player is talking.
         ServerTickEvents.END_SERVER_TICK.register(BridgeLifecycle::tickActions);
+        // Before the broadcast: a private @m line is cancelled there, so CHAT_MESSAGE never sees it.
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register(BridgeLifecycle::allowChat);
         ServerMessageEvents.CHAT_MESSAGE.register(BridgeLifecycle::onChat);
     }
 
@@ -146,6 +153,10 @@ public final class BridgeLifecycle {
             actions.deliverLines(deliver);
             return;
         }
+        if (message instanceof ComeToAction come && actions != null) {
+            actions.comeTo(come);
+            return;
+        }
         Machiavillager.LOGGER.info("Bridge received {}", message.getClass().getSimpleName());
     }
 
@@ -155,6 +166,45 @@ public final class BridgeLifecycle {
         if (actions != null) {
             actions.tick();
         }
+    }
+
+    // A private @m line is hidden from everyone else: the broadcast is cancelled, so it never interrupts him either.
+    // This may run on a filter thread, so only the text is read here; the rest is posted to the server thread.
+    private static boolean allowChat(PlayerChatMessage message, ServerPlayer sender, ChatType.Bound bound) {
+        if (!bound.chatType().is(ChatType.CHAT)) {
+            return true;
+        }
+        Optional<String> body = PrivateChannel.body(message.signedContent());
+        if (body.isEmpty()) {
+            return true;
+        }
+        sender.level().getServer().execute(() -> onPrivateChat(sender, body.get()));
+        return false;
+    }
+
+    // Server thread. The sender always sees the echo; the backend gets the line only while the bridge runs.
+    private static void onPrivateChat(ServerPlayer sender, String text) {
+        // "@m" alone has nothing to say, and the contract needs at least one character.
+        if (text.isEmpty()) {
+            return;
+        }
+        Component name = ModEntities.MACHIAVILLAGER.getDescription();
+        NpcSpeech.echoPrivate(sender, name, text);
+        BridgeClient running = client;
+        if (running == null) {
+            return;
+        }
+        Optional<PlayerChatEvent> event =
+                PlayerChatReporter.build(
+                        sender.level().getServer(), sender, text, Addressed.PRIVATE, cameRecently(sender));
+        if (event.isEmpty()) {
+            // shortcut: he is found only while his chunk is loaded; the chunk ticket in #57 keeps him loaded.
+            NpcSpeech.notice(sender, Component.empty().append(name).append(" is out of reach right now."));
+            return;
+        }
+        running.send(event.get());
+        // Logged by id only: a private line is never written to the log.
+        Machiavillager.LOGGER.info("player_chat sent event_id={} (private)", event.get().eventId());
     }
 
     // Normal chat only: commands such as /say and /me also fire this event, and they must never interrupt him.
@@ -183,7 +233,8 @@ public final class BridgeLifecycle {
         }
         Addressed reason = addressed.get();
         // Built first, so a line he cannot hear never uses up the speaker's near cooldown.
-        PlayerChatReporter.build(sender.level().getServer(), sender, text, reason).ifPresent(event -> {
+        boolean justCame = cameRecently(sender);
+        PlayerChatReporter.build(sender.level().getServer(), sender, text, reason, justCame).ifPresent(event -> {
             // Overheard lines wait out the per-player cooldown; a line that names him always passes.
             boolean limited = reason == Addressed.NEAR;
             if (limited && !nearCooldown.tryAcquire(sender.getUUID(), sender.level().getGameTime())) {
@@ -195,6 +246,12 @@ public final class BridgeLifecycle {
             // Logged by id only: the chat text never reaches the log.
             Machiavillager.LOGGER.info("player_chat sent event_id={}", event.eventId());
         });
+    }
+
+    // Server thread. Whether he went to this player within the come cooldown; false while the bridge is off.
+    private static boolean cameRecently(ServerPlayer sender) {
+        ActionExecutor actions = executor;
+        return actions != null && actions.cameRecently(sender.getUUID());
     }
 
     // Server thread. True when the event was queued: the link was up when it was checked.

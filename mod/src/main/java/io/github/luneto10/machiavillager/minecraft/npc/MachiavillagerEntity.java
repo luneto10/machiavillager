@@ -9,6 +9,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -99,6 +100,13 @@ public class MachiavillagerEntity extends PathfinderMob {
     public void forceAction(NpcAction action) {
         if (level() instanceof ServerLevel serverLevel) {
             brain.forceAction(this, serverLevel, action);
+        }
+    }
+
+    /** He goes to this player, who called him. The caller already checked the come rule. Server thread only. */
+    public void comeTo(ServerPlayer player) {
+        if (level() instanceof ServerLevel serverLevel) {
+            brain.comeTo(this, serverLevel, player);
         }
     }
 

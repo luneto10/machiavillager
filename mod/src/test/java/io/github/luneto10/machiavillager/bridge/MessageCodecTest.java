@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonParser;
+import io.github.luneto10.machiavillager.domain.behavior.ComeAnswer;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
@@ -15,6 +16,7 @@ import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
 import io.github.luneto10.machiavillager.domain.bridge.LinesNeededEvent;
+import io.github.luneto10.machiavillager.domain.bridge.ComeToAction;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
@@ -43,7 +45,8 @@ class MessageCodecTest {
     }
 
     private static NpcSnapshot snapshot() {
-        return new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"));
+        return new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"),
+                "minecraft:the_nether", -12, 70, 48, ComeAnswer.OTHER_DIMENSION);
     }
 
     @Test
@@ -68,7 +71,9 @@ class MessageCodecTest {
         String json = MessageCodec.encode(chatEvent(Optional.of(snapshot())));
 
         assertTrue(json.contains("\"npc\":{\"phase\":\"seeds\",\"mood\":\"bored\",\"affinity\":37,"
-                + "\"independence\":63,\"nearby_players\":[\"Luciano\",\"Ana\"]}"));
+                + "\"independence\":63,\"nearby_players\":[\"Luciano\",\"Ana\"],"
+                + "\"dimension\":\"minecraft:the_nether\",\"x\":-12,\"y\":70,\"z\":48,"
+                + "\"if_asked_to_come\":\"other_dimension\"}"));
     }
 
     @Test
@@ -282,6 +287,18 @@ class MessageCodecTest {
 
         assertTrue(encoded.contains("\"action\":\"suggest_relationship\""));
         assertEquals(decoded, MessageCodec.decode(encoded));
+    }
+
+    private static final String COME_TO =
+            "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"come_to\","
+                    + "\"args\":{\"player\":\"7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69\"},\"timeout_ms\":5000}";
+
+    @Test
+    void decode_readsComeTo_andEncodesItBack() {
+        ComeToAction come = assertInstanceOf(ComeToAction.class, MessageCodec.decode(COME_TO));
+
+        assertEquals(PLAYER, come.player());
+        assertEquals(JsonParser.parseString(COME_TO), JsonParser.parseString(MessageCodec.encode(come)));
     }
 
     @Test

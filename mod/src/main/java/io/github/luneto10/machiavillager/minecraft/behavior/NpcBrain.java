@@ -23,6 +23,7 @@ import io.github.luneto10.machiavillager.minecraft.meeting.Meeting;
 import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.meeting.SummonFacts;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
+import io.github.luneto10.machiavillager.minecraft.npc.SafeTeleport;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import io.github.luneto10.machiavillager.minecraft.world.VillageFinder;
 import java.util.Comparator;
@@ -241,6 +242,21 @@ public final class NpcBrain {
 
         // Act right away instead of waiting for the next tick; forced, so it skips the speech cap.
         act(npc, level, true);
+    }
+
+    /**
+     * A player called him and the come rule said yes: he follows that player for a full decision interval. His
+     * chunk may be loaded but not ticking, so the follow goal might never run; the dog teleport is tried at once.
+     */
+    public void comeTo(PathfinderMob npc, ServerLevel level, ServerPlayer player) {
+        current = new NpcAction.Follow(player.getUUID());
+        decisionTimer.restart();
+        Machiavillager.LOGGER.info("Machiavillager comes to {}", player.getPlainTextName());
+
+        // Same rules as the follow goal's catch-up: far, same dimension, he cares, and its own cooldown.
+        if (mayCatchUpTo(player, npc)) {
+            SafeTeleport.tryTeleportNear(npc, player);
+        }
     }
 
     /** His current temperament. Server thread only. */

@@ -9,7 +9,12 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.ports import Feeling
-from machiavillager.application.prompt_builder import ConversationLine, PromptMessage, build_prompt
+from machiavillager.application.prompt_builder import (
+    WHERE_REMINDER,
+    ConversationLine,
+    PromptMessage,
+    build_prompt,
+)
 from machiavillager.domain.npc_state import register_words
 from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
@@ -424,7 +429,16 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
         return _speak("hi")
 
     npc = NpcSnapshot(
-        phase="seeds", mood="irritated", affinity=70, independence=63, nearby_players=[]
+        phase="seeds",
+        mood="irritated",
+        affinity=70,
+        independence=63,
+        nearby_players=[],
+        dimension="minecraft:overworld",
+        x=120,
+        y=64,
+        z=-340,
+        if_asked_to_come="refuses",
     )
     line = ConversationLine("luneto10", "you are useless", from_npc=False)
     prompt = build_prompt("Persona.", "luneto10", [line], npc)
@@ -432,7 +446,13 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
 
     asyncio.run(writer.write_reply(prompt, irritated=False))
 
-    assert seen[0].endswith("\n(Reminder, not from the player: " + register_words(70) + ")")
+    assert seen[0].endswith(
+        "\n(Reminder, not from the player: "
+        + register_words(70)
+        + " "
+        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
+        + ")"
+    )
 
 
 def _feeling_model(delta: int, reason: str) -> FunctionModel:
@@ -483,3 +503,20 @@ def test_speak_without_a_feeling_field_gives_no_feeling():
     writer = _writer(_chain(_answers("Hello.")))
 
     assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling is None
+
+
+def _come_model(come: bool) -> FunctionModel:
+    """A fake model that answers with one line and says whether he comes."""
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        args = {"lines": ["Já vou."], "come": come}
+        return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
+
+    return FunctionModel(reply, model_name="fake-come")
+
+
+@pytest.mark.parametrize("come", [True, False])
+def test_come_comes_back_in_the_reply(come):
+    writer = _writer(_chain(_come_model(come)))
+
+    assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).come is come
