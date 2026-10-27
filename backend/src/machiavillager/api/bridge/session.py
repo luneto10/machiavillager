@@ -17,6 +17,7 @@ from machiavillager.domain.protocol import (
     Error,
     ErrorCode,
     Hello,
+    LinesNeededEvent,
     Message,
     PlayerChatEvent,
     Welcome,
@@ -140,5 +141,5 @@ async def serve(websocket: WebSocket, pending: "PendingRequests") -> None:
         # which never waits, so this loop keeps reading the statuses that follow.
         if message.type == "action_status":
             pending.resolve(message)
-        elif isinstance(message, (PlayerChatEvent, DevModelEvent)):
+        elif isinstance(message, (PlayerChatEvent, DevModelEvent, LinesNeededEvent)):
             await handle_event(message, websocket.app.state)

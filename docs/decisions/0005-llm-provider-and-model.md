@@ -155,6 +155,26 @@ What the numbers do not show:
 - **Rejected:** xAI Grok, the least filtered option. Paid, slower, and the open models above already
   play the character without refusing.
 
+## Line batches
+
+He also says lines nobody asked for: barks, hints and mutterings. When the mod's pool for one key
+(kind, phase, mood) runs low, it asks for a batch and the backend writes it in one call, then sends
+it back as `deliver_lines`.
+
+- **Chain:** `MACHIAVILLAGER_LLM_CHAIN_BATCH`, default
+  `nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b`. It is separate from the chat chains.
+- **Why NVIDIA first:** a batch is one long call and NVIDIA has its own budget (40 requests a minute,
+  no daily cap). Batches then draw on NVIDIA's budget and leave Groq's per-minute tokens for replies.
+  gpt-oss stays second for when NVIDIA fails.
+- **Timeout and size:** 20 s per call (`MACHIAVILLAGER_LLM_BATCH_TIMEOUT_SECONDS`), 1500 output tokens,
+  15 lines asked for by default (1 to 30).
+- **Caps:** 6 batches an hour (`MACHIAVILLAGER_LINES_BATCHES_PER_HOUR`). A key that got lines is not
+  written again for 1200 s; a key whose batch came back empty is retried after 120 s.
+- **Failures:** a model that errors or answers without the `deliver_lines` call falls through to the
+  next one. When every model fails, nothing is sent and the next event for that key retries later.
+- **Checks:** each line is checked against the contract on its own. A line with a stray brace is
+  dropped and the rest of the batch is sent.
+
 ## Future providers (not used yet)
 
 Checked on 2026-10-26, free tiers, for when Groq is not enough:

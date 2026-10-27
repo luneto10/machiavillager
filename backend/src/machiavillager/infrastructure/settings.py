@@ -1,10 +1,11 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from machiavillager.application.prompt_builder import ProfanityLevel
+from machiavillager.domain.protocol.common import MAX_BATCH_LINES
 
 # parents[4] is the repo root, shared with the mod; parents[3] is backend/, kept as a fallback.
 # pydantic-settings lets LATER files win, so the root file is listed last to take precedence.
@@ -83,6 +84,31 @@ class Settings(BaseSettings):
     # Per-server choice: mild by default (public repo, other servers did not opt in).
     # The owner's server sets full.
     profanity: ProfanityLevel = "mild"
+
+    # Line batches: the lines he says without a player, written in one call per batch. NVIDIA leads
+    # so the chat keeps Groq's per-minute budget for replies (ADR 0005).
+    llm_chain_batch: str = "nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b"
+
+    # A batch is long output, so it gets more time than a chat reply.
+    llm_batch_timeout_seconds: float = 20.0
+
+    # A batch of 30 short lines fits well inside this; the cap only stops a runaway.
+    llm_batch_max_tokens: int = 1500
+
+    # Language tag of the batch lines (BCP 47 style, e.g. "en" or "pt-BR").
+    lines_language: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
+
+    # Lines per batch the model is asked for; the contract caps a batch at 30.
+    lines_batch_size: int = Field(default=15, ge=1, le=MAX_BATCH_LINES)
+
+    # Batch calls allowed in any hour, so a busy server cannot drain the provider budget.
+    lines_batches_per_hour: int = Field(default=6, ge=1)
+
+    # A key that got a batch is not asked again for this long.
+    lines_refresh_seconds: int = Field(default=1200, ge=1)
+
+    # A key whose last batch produced nothing is retried after this shorter wait.
+    lines_retry_seconds: int = Field(default=120, ge=1)
 
     def llm_key(self, provider: str) -> str | None:
         """Secret value of that provider's key, or None when unset or empty."""

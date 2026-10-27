@@ -134,8 +134,8 @@ class LlmLineWriter:
         # One set for both chains, so a pair listed twice is reported once.
         skipped: set[str] = set()
         available: list[str] = []
-        calm = _build_chain(settings, settings.llm_chain, skipped, available)
-        irritated = _build_chain(settings, settings.llm_chain_irritated, skipped, available)
+        calm = build_chain(settings, settings.llm_chain, skipped, available)
+        irritated = build_chain(settings, settings.llm_chain_irritated, skipped, available)
 
         # One INFO line names what was left out; keys are never printed.
         if skipped:
@@ -175,7 +175,7 @@ class LlmLineWriter:
             raise ValueError(f"no key set for provider {provider!r}")
 
         # The override goes first in both chains; the chains from settings stay behind it.
-        override: Pair = (pair, _build_model(provider, model_id, key))
+        override: Pair = (pair, build_model(provider, model_id, key))
         self._calm_routes = _build_routes([override, *self._calm_pairs])
         self._irritated_routes = _build_routes([override, *self._irritated_pairs])
         logger.info("LLM model override set to %s", pair)
@@ -298,7 +298,7 @@ def _build_agent(model: Model) -> Agent[None, SpeakOutput]:
     )
 
 
-def _build_chain(
+def build_chain(
     settings: Settings,
     chain_text: str,
     skipped: set[str],
@@ -318,7 +318,7 @@ def _build_chain(
         if key is None:
             skipped.add(pair)
             continue
-        pairs.append((pair, _build_model(provider, model_id, key)))
+        pairs.append((pair, build_model(provider, model_id, key)))
 
         # Listed once even when both chains name it, for the dev model suggestions.
         if pair not in available:
@@ -326,7 +326,7 @@ def _build_chain(
     return pairs
 
 
-def _build_model(provider: str, model_id: str, key: str) -> OpenAIChatModel:
+def build_model(provider: str, model_id: str, key: str) -> OpenAIChatModel:
     """One OpenAI-compatible chat model pointed at its provider."""
 
     client = OpenAIProvider(base_url=LLM_BASE_URLS[provider], api_key=key)

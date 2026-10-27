@@ -37,6 +37,18 @@
       - [3.2.5.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > args > reason`](#oneOf_i2_oneOf_i1_args_reason)
     - [3.2.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > timeout_ms`](#oneOf_i2_oneOf_i1_timeout_ms)
     - [3.2.7. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SuggestRelationshipAction > in_reply_to`](#oneOf_i2_oneOf_i1_in_reply_to)
+  - [3.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction`](#oneOf_i2_oneOf_i2)
+    - [3.3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > v`](#oneOf_i2_oneOf_i2_v)
+    - [3.3.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > type`](#oneOf_i2_oneOf_i2_type)
+    - [3.3.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > request_id`](#oneOf_i2_oneOf_i2_request_id)
+    - [3.3.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > action`](#oneOf_i2_oneOf_i2_action)
+    - [3.3.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args`](#oneOf_i2_oneOf_i2_args)
+      - [3.3.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > kind`](#oneOf_i2_oneOf_i2_args_kind)
+      - [3.3.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > phase`](#oneOf_i2_oneOf_i2_args_phase)
+      - [3.3.5.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > mood`](#oneOf_i2_oneOf_i2_args_mood)
+      - [3.3.5.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines`](#oneOf_i2_oneOf_i2_args_lines)
+        - [3.3.5.4.1. Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines > lines items](#oneOf_i2_oneOf_i2_args_lines_items)
+    - [3.3.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > timeout_ms`](#oneOf_i2_oneOf_i2_timeout_ms)
 - [4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`](#oneOf_i3)
   - [4.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted`](#oneOf_i3_oneOf_i0)
     - [4.1.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted > v`](#oneOf_i3_oneOf_i0_v)
@@ -101,6 +113,16 @@
     - [5.2.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data`](#oneOf_i4_oneOf_i1_data)
       - [5.2.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > op`](#oneOf_i4_oneOf_i1_data_op)
       - [5.2.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > data > model`](#oneOf_i4_oneOf_i1_data_model)
+  - [5.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent`](#oneOf_i4_oneOf_i2)
+    - [5.3.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > v`](#oneOf_i4_oneOf_i2_v)
+    - [5.3.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > type`](#oneOf_i4_oneOf_i2_type)
+    - [5.3.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > event_id`](#oneOf_i4_oneOf_i2_event_id)
+    - [5.3.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > event`](#oneOf_i4_oneOf_i2_event)
+    - [5.3.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > occurred_at`](#oneOf_i4_oneOf_i2_occurred_at)
+    - [5.3.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data`](#oneOf_i4_oneOf_i2_data)
+      - [5.3.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > kind`](#oneOf_i4_oneOf_i2_data_kind)
+      - [5.3.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > phase`](#oneOf_i4_oneOf_i2_data_phase)
+      - [5.3.6.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > mood`](#oneOf_i4_oneOf_i2_data_mood)
 - [6. Property `Machiavillager bridge protocol > oneOf > Error`](#oneOf_i5)
   - [6.1. Property `Machiavillager bridge protocol > oneOf > Error > v`](#oneOf_i5_v)
   - [6.2. Property `Machiavillager bridge protocol > oneOf > Error > type`](#oneOf_i5_type)
@@ -307,6 +329,7 @@ Specific value: `1`
 | ----------------------------------------------- |
 | [SpeakAction](#oneOf_i2_oneOf_i0)               |
 | [SuggestRelationshipAction](#oneOf_i2_oneOf_i1) |
+| [DeliverLinesAction](#oneOf_i2_oneOf_i2)        |
 
 ### <a name="oneOf_i2_oneOf_i0"></a>3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction`
 
@@ -709,6 +732,204 @@ Specific value: `"suggest_relationship"`
 | Restrictions                      |                                                                                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+### <a name="oneOf_i2_oneOf_i2"></a>3.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction`
+
+**Title:** DeliverLinesAction
+
+|                           |                            |
+| ------------------------- | -------------------------- |
+| **Type**                  | `object`                   |
+| **Required**              | No                         |
+| **Additional properties** | Not allowed                |
+| **Defined in**            | #/$defs/DeliverLinesAction |
+
+**Description:** Backend delivers a batch of lines for one key. The mod validates it and may reject it.
+
+| Property                                       | Pattern | Type    | Deprecated | Definition                  | Title/Description |
+| ---------------------------------------------- | ------- | ------- | ---------- | --------------------------- | ----------------- |
+| + [v](#oneOf_i2_oneOf_i2_v )                   | No      | const   | No         | -                           | V                 |
+| + [type](#oneOf_i2_oneOf_i2_type )             | No      | const   | No         | -                           | Type              |
+| + [request_id](#oneOf_i2_oneOf_i2_request_id ) | No      | string  | No         | -                           | Request Id        |
+| + [action](#oneOf_i2_oneOf_i2_action )         | No      | const   | No         | -                           | Action            |
+| + [args](#oneOf_i2_oneOf_i2_args )             | No      | object  | No         | In #/$defs/DeliverLinesArgs | DeliverLinesArgs  |
+| + [timeout_ms](#oneOf_i2_oneOf_i2_timeout_ms ) | No      | integer | No         | -                           | Timeout Ms        |
+
+#### <a name="oneOf_i2_oneOf_i2_v"></a>3.3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > v`
+
+**Title:** V
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Wire version of the message. Always 1. A breaking change bumps it.
+
+Specific value: `1`
+
+#### <a name="oneOf_i2_oneOf_i2_type"></a>3.3.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > type`
+
+**Title:** Type
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Message kind. Always "action".
+
+Specific value: `"action"`
+
+#### <a name="oneOf_i2_oneOf_i2_request_id"></a>3.3.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > request_id`
+
+**Title:** Request Id
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** Generated by the backend: act_ followed by 16 random hex characters. Unique per action; every action_status for this action echoes it. Example: act_3fa9c01b7e2d4f60.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^act_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eact_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+#### <a name="oneOf_i2_oneOf_i2_action"></a>3.3.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > action`
+
+**Title:** Action
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Name of the allowlisted action. "deliver_lines" adds a batch of lines to the pool the mod keeps for one key.
+
+Specific value: `"deliver_lines"`
+
+#### <a name="oneOf_i2_oneOf_i2_args"></a>3.3.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args`
+
+**Title:** DeliverLinesArgs
+
+|                           |                          |
+| ------------------------- | ------------------------ |
+| **Type**                  | `object`                 |
+| **Required**              | Yes                      |
+| **Additional properties** | Not allowed              |
+| **Defined in**            | #/$defs/DeliverLinesArgs |
+
+**Description:** Arguments for deliver_lines. See DeliverLinesArgs.
+
+| Property                                  | Pattern | Type             | Deprecated | Definition | Title/Description |
+| ----------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [kind](#oneOf_i2_oneOf_i2_args_kind )   | No      | enum (of string) | No         | -          | Kind              |
+| + [phase](#oneOf_i2_oneOf_i2_args_phase ) | No      | enum (of string) | No         | -          | Phase             |
+| + [mood](#oneOf_i2_oneOf_i2_args_mood )   | No      | enum (of string) | No         | -          | Mood              |
+| + [lines](#oneOf_i2_oneOf_i2_args_lines ) | No      | array of string  | No         | -          | Lines             |
+
+##### <a name="oneOf_i2_oneOf_i2_args_kind"></a>3.3.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > kind`
+
+**Title:** Kind
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Which kind of line the batch is for: "bark", "hint" or "mutter". Set from the lines_needed event this answers. Example: "hint".
+
+Must be one of:
+* "bark"
+* "hint"
+* "mutter"
+
+##### <a name="oneOf_i2_oneOf_i2_args_phase"></a>3.3.5.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > phase`
+
+**Title:** Phase
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Which stage of his plan the batch is for. Set from the lines_needed event. Example: "seeds".
+
+Must be one of:
+* "partner"
+* "seeds"
+* "proposal"
+* "regime"
+* "war"
+
+##### <a name="oneOf_i2_oneOf_i2_args_mood"></a>3.3.5.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > mood`
+
+**Title:** Mood
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** How he feels for this batch. Set from the lines_needed event. Example: "bored".
+
+Must be one of:
+* "calm"
+* "bored"
+* "irritated"
+
+##### <a name="oneOf_i2_oneOf_i2_args_lines"></a>3.3.5.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines`
+
+**Title:** Lines
+
+|              |                   |
+| ------------ | ----------------- |
+| **Type**     | `array of string` |
+| **Required** | Yes               |
+
+**Description:** The batch, between 1 and 30 lines, each between 1 and 160 characters. A line may only use the placeholders {player}, {x} and {z}; any other brace is refused. The rule is ^(?:[^{}]|\{player\}|\{x\}|\{z\})+$, so "Hi {name}." is rejected. Example: ["{player}, the seeds need water."].
+
+|                      | Array restrictions |
+| -------------------- | ------------------ |
+| **Min items**        | 1                  |
+| **Max items**        | 30                 |
+| **Items unicity**    | False              |
+| **Additional items** | False              |
+| **Tuple validation** | See below          |
+
+| Each item of this array must be                    | Description |
+| -------------------------------------------------- | ----------- |
+| [lines items](#oneOf_i2_oneOf_i2_args_lines_items) | -           |
+
+###### <a name="oneOf_i2_oneOf_i2_args_lines_items"></a>3.3.5.4.1. Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines > lines items
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | No       |
+
+| Restrictions                      |                                                                                                                                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Min length**                    | 1                                                                                                                                                                          |
+| **Max length**                    | 160                                                                                                                                                                        |
+| **Must match regular expression** | ```^(?:[^{}]\|\{player\}\|\{x\}\|\{z\})+$``` [Test](https://regex101.com/?regex=%5E%28%3F%3A%5B%5E%7B%7D%5D%7C%5C%7Bplayer%5C%7D%7C%5C%7Bx%5C%7D%7C%5C%7Bz%5C%7D%29%2B%24) |
+
+#### <a name="oneOf_i2_oneOf_i2_timeout_ms"></a>3.3.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > timeout_ms`
+
+**Title:** Timeout Ms
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How long the mod may take before the action is reported as failed with reason timeout, in milliseconds. Between 100 and 120000. Example: 30000.
+
+| Restrictions |             |
+| ------------ | ----------- |
+| **Minimum**  | &ge; 100    |
+| **Maximum**  | &le; 120000 |
 
 ## <a name="oneOf_i3"></a>4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`
 
@@ -1248,10 +1469,11 @@ Specific value: `"interrupted"`
 | **Required**              | No               |
 | **Additional properties** | Any type allowed |
 
-| One of(Option)                        |
-| ------------------------------------- |
-| [PlayerChatEvent](#oneOf_i4_oneOf_i0) |
-| [DevModelEvent](#oneOf_i4_oneOf_i1)   |
+| One of(Option)                         |
+| -------------------------------------- |
+| [PlayerChatEvent](#oneOf_i4_oneOf_i0)  |
+| [DevModelEvent](#oneOf_i4_oneOf_i1)    |
+| [LinesNeededEvent](#oneOf_i4_oneOf_i2) |
 
 ### <a name="oneOf_i4_oneOf_i0"></a>5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent`
 
@@ -1704,6 +1926,165 @@ Must be one of:
 | -------------- | -- |
 | **Min length** | 1  |
 | **Max length** | 80 |
+
+### <a name="oneOf_i4_oneOf_i2"></a>5.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent`
+
+**Title:** LinesNeededEvent
+
+|                           |                          |
+| ------------------------- | ------------------------ |
+| **Type**                  | `object`                 |
+| **Required**              | No                       |
+| **Additional properties** | Not allowed              |
+| **Defined in**            | #/$defs/LinesNeededEvent |
+
+**Description:** Mod asks for a batch of lines for one key, because its pool is empty or about 70% used.
+
+The backend answers with a deliver_lines action.
+
+| Property                                         | Pattern | Type   | Deprecated | Definition                 | Title/Description |
+| ------------------------------------------------ | ------- | ------ | ---------- | -------------------------- | ----------------- |
+| + [v](#oneOf_i4_oneOf_i2_v )                     | No      | const  | No         | -                          | V                 |
+| + [type](#oneOf_i4_oneOf_i2_type )               | No      | const  | No         | -                          | Type              |
+| + [event_id](#oneOf_i4_oneOf_i2_event_id )       | No      | string | No         | -                          | Event Id          |
+| + [event](#oneOf_i4_oneOf_i2_event )             | No      | const  | No         | -                          | Event             |
+| + [occurred_at](#oneOf_i4_oneOf_i2_occurred_at ) | No      | string | No         | -                          | Occurred At       |
+| + [data](#oneOf_i4_oneOf_i2_data )               | No      | object | No         | In #/$defs/LinesNeededData | LinesNeededData   |
+
+#### <a name="oneOf_i4_oneOf_i2_v"></a>5.3.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > v`
+
+**Title:** V
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Wire version of the message. Always 1. A breaking change bumps it.
+
+Specific value: `1`
+
+#### <a name="oneOf_i4_oneOf_i2_type"></a>5.3.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > type`
+
+**Title:** Type
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Message kind. Always "event".
+
+Specific value: `"event"`
+
+#### <a name="oneOf_i4_oneOf_i2_event_id"></a>5.3.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > event_id`
+
+**Title:** Event Id
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** Generated by the mod: evt_ followed by 8 to 32 letters or digits. Unique per event. Example: evt_01HZX8K2M9.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^evt_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eevt_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+#### <a name="oneOf_i4_oneOf_i2_event"></a>5.3.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > event`
+
+**Title:** Event
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Name of the event. "lines_needed" asks for a batch of lines.
+
+Specific value: `"lines_needed"`
+
+#### <a name="oneOf_i4_oneOf_i2_occurred_at"></a>5.3.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > occurred_at`
+
+**Title:** Occurred At
+
+|              |             |
+| ------------ | ----------- |
+| **Type**     | `string`    |
+| **Required** | Yes         |
+| **Format**   | `date-time` |
+
+**Description:** When the mod sent the event, from the mod's clock, in UTC with the Z suffix. Example: 2026-10-18T12:00:00Z.
+
+#### <a name="oneOf_i4_oneOf_i2_data"></a>5.3.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data`
+
+**Title:** LinesNeededData
+
+|                           |                         |
+| ------------------------- | ----------------------- |
+| **Type**                  | `object`                |
+| **Required**              | Yes                     |
+| **Additional properties** | Not allowed             |
+| **Defined in**            | #/$defs/LinesNeededData |
+
+**Description:** The key the batch is for. See LinesNeededData.
+
+| Property                                  | Pattern | Type             | Deprecated | Definition | Title/Description |
+| ----------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [kind](#oneOf_i4_oneOf_i2_data_kind )   | No      | enum (of string) | No         | -          | Kind              |
+| + [phase](#oneOf_i4_oneOf_i2_data_phase ) | No      | enum (of string) | No         | -          | Phase             |
+| + [mood](#oneOf_i4_oneOf_i2_data_mood )   | No      | enum (of string) | No         | -          | Mood              |
+
+##### <a name="oneOf_i4_oneOf_i2_data_kind"></a>5.3.6.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > kind`
+
+**Title:** Kind
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Which kind of line the batch is for: "bark", "hint" or "mutter". Set by the mod. Example: "hint".
+
+Must be one of:
+* "bark"
+* "hint"
+* "mutter"
+
+##### <a name="oneOf_i4_oneOf_i2_data_phase"></a>5.3.6.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > phase`
+
+**Title:** Phase
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** Which stage of his plan the batch is for. Set by the mod, lowercased. Example: "seeds".
+
+Must be one of:
+* "partner"
+* "seeds"
+* "proposal"
+* "regime"
+* "war"
+
+##### <a name="oneOf_i4_oneOf_i2_data_mood"></a>5.3.6.3. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > LinesNeededEvent > data > mood`
+
+**Title:** Mood
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** How he feels for this batch. Set by the mod, lowercased. Example: "bored".
+
+Must be one of:
+* "calm"
+* "bored"
+* "irritated"
 
 ## <a name="oneOf_i5"></a>6. Property `Machiavillager bridge protocol > oneOf > Error`
 
