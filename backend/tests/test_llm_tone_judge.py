@@ -5,6 +5,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from machiavillager.api.app import create_app
 from machiavillager.infrastructure.llm_tone_judge import LlmToneJudge
 from machiavillager.infrastructure.llm_writer import Pair
 from machiavillager.infrastructure.settings import Settings
@@ -138,8 +139,22 @@ def test_no_keys_at_all_means_no_judge_model():
 def test_judge_settings_have_the_briefed_defaults():
     settings = Settings(_env_file=None)
 
-    assert settings.llm_chain_judge == (
-        "nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b"
-    )
     assert settings.llm_judge_timeout_seconds == 3.0
     assert settings.llm_judge_max_tokens == 60
+
+
+def test_the_default_judge_chain_is_empty_so_each_message_is_one_call():
+    settings = Settings(_env_file=None)
+
+    assert settings.llm_chain_judge == ""
+    assert not LlmToneJudge.from_settings(settings).has_models
+
+
+def test_default_app_wiring_gives_the_chat_handler_no_judge():
+    # _env_file=None keeps a developer's real .env out of the test. The fake key only builds models.
+    settings = Settings(_env_file=None, groq_api_key="fake-key-for-tests")
+
+    app = create_app(settings)
+
+    assert app.state.handle_player_chat is not None
+    assert app.state.handle_player_chat._tone_judge is None

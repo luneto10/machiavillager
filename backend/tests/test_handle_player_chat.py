@@ -822,6 +822,17 @@ def test_the_judge_starts_before_the_writer_finishes():
     assert _feelings_sent(bridge) == [(1, "tone: kind")]
 
 
+def test_with_the_judge_off_a_chat_message_makes_exactly_one_writer_call():
+    writer = FakeWriter(feeling=Feeling(affinity_delta=1, reason="warm"))
+    bridge = FakeBridge(_succeeded())
+
+    # No tone judge is passed, so the judge is never created or awaited: one call per message.
+    _run(_handler(writer, bridge), _chat_event(text="bom dia"))
+
+    assert len(writer.calls) == 1
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [1]
+
+
 def test_a_rude_apology_keeps_the_rudeness_floor():
     bridge = FakeBridge(_succeeded())
     writer = FakeWriter(feeling=Feeling(affinity_delta=2, reason="kind"))

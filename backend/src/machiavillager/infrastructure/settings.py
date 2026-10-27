@@ -111,8 +111,9 @@ class Settings(BaseSettings):
     lines_batch_size: int = Field(default=15, ge=1, le=MAX_BATCH_LINES)
 
     # Tone judge: a tiny separate call that classifies the tone of the player's newest line.
-    # The small replying model may skip the optional feeling, so the judge does not depend on it.
-    llm_chain_judge: str = "nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b"
+    # Off by default: empty means no judge, so every message is one call (the reply carries the
+    # feeling, and the word list is the safety net). Set a chain to make each message two calls.
+    llm_chain_judge: str = ""
 
     # The judge must answer fast; a slower judge is ignored so his speech is never held up.
     llm_judge_timeout_seconds: float = Field(default=3.0, ge=0.5)

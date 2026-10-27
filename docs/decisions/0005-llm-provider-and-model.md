@@ -179,13 +179,23 @@ it back as `deliver_lines`.
 
 - **Why:** the model that writes his reply also sets the affinity change, and a small model
   (nvidia `nemotron-3.5-bolt-e4b`) almost never fills that optional field, so insults did not lower
-  affinity. A separate tiny call judges the tone of the player's newest line instead.
-- **How:** the judge runs as a task started just before the reply is awaited, so it costs no extra
-  wait. It returns one of seven tones (`domain/tone.py`); `TONE_DELTAS` gives its affinity change.
+  affinity. A separate tiny call can judge the tone of the player's newest line instead.
+- **Off by default: one call per message.** `MACHIAVILLAGER_LLM_CHAIN_JUDGE` defaults to empty, so no
+  judge is built (`LlmToneJudge.has_models` is False and the chat handler gets `tone_judge=None`).
+  Each message is then exactly one LLM call: the reply carries `feeling_delta`, and the word list
+  (`apply_feeling_floors`) is the safety net for listed words.
+- **Turning it on:** set `MACHIAVILLAGER_LLM_CHAIN_JUDGE` in the repo-root `.env`, e.g.
+  `nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b`. Every message then makes two calls
+  (reply plus judge). It only pays off when a small fallback model answers and skips the feeling.
+- **Live finding:** on Azure, `gpt-6-luna` fills the feeling well on its own, with the word list as
+  the safety net. `nemotron-3.5-bolt-e4b` often leaves it out, which is why the judge was first
+  written. Prefer the single call with a capable reply model; keep the judge for a small fallback.
+- **How:** when on, the judge runs as a task started just before the reply is awaited, so it costs
+  no extra wait. It returns one of seven tones (`domain/tone.py`); `TONE_DELTAS` gives its affinity change.
 - **Merge:** a negative tone wins over a milder model value; a positive tone only lifts a feeling
   that is missing, negative or smaller. A neutral tone keeps the model's feeling.
-- **Chain and time limits:** `MACHIAVILLAGER_LLM_CHAIN_JUDGE` (nvidia first, then gpt-oss-120b),
-  a 3 s request timeout per model, 60 output tokens. The reply waits at most 2 s more for the judge
+- **Chain and time limits:** `MACHIAVILLAGER_LLM_CHAIN_JUDGE` (empty by default; the example chain is
+  nvidia first, then gpt-oss-120b), a 3 s request timeout per model, 60 output tokens. The reply waits at most 2 s more for the judge
   (`JUDGE_GRACE_SECONDS`); a slower judge is ignored and he speaks without it.
 - **Word list stays:** `apply_feeling_floors` still runs on top as the safety net for listed words.
 
