@@ -143,6 +143,18 @@ def test_every_model_failing_speaks_a_canned_line(caplog):
     assert "timed out" not in caplog.text
 
 
+def test_an_emoji_is_spoken_without_it():
+    writer = _writer(_chain(_answers("Ah para você, luneto10 é? 😊")))
+
+    assert _reply(writer) == ["Ah para você, luneto10 é?"]
+
+
+def test_a_line_that_is_only_emoji_is_dropped():
+    writer = _writer(_chain(_answers("😊", "Valeu, mano!")))
+
+    assert _reply(writer) == ["Valeu, mano!"]
+
+
 def test_overlong_output_is_fitted_before_it_is_returned():
     too_many = [f"line {number}" for number in range(MAX_SPEAK_LINES + 2)]
     too_long = "w" * (MAX_LINE_LENGTH + 10)

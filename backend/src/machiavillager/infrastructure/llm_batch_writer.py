@@ -15,6 +15,7 @@ from machiavillager.application.line_batch_prompt import build_batch_prompt
 from machiavillager.application.prompt_builder import ProfanityLevel
 from machiavillager.domain.protocol import LineKind
 from machiavillager.domain.protocol.common import NpcMood, NpcPhase
+from machiavillager.domain.text_clean import speakable
 from machiavillager.infrastructure.llm_writer import MODEL_RETRIES, Pair, build_chain
 from machiavillager.infrastructure.persona import read_persona
 from machiavillager.infrastructure.settings import Settings
@@ -147,7 +148,8 @@ class LlmBatchWriter:
                 continue
 
             elapsed_ms = (time.perf_counter() - started) * 1000
-            lines = list(result.output.lines)
+            # Emoji are removed here too, so a stored line is never read aloud with one.
+            lines = speakable(result.output.lines)
 
             # The count is logged, never the text: the lines are checked again by the use case.
             logger.info(

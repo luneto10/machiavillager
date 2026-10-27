@@ -26,6 +26,7 @@ from machiavillager.application.ports import Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
 from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
+from machiavillager.domain.text_clean import speakable
 from machiavillager.infrastructure.settings import (
     LLM_BASE_URLS,
     Settings,
@@ -232,8 +233,8 @@ class LlmLineWriter:
 
             elapsed_ms = (time.perf_counter() - started) * 1000
 
-            # The model's lines may be longer or more numerous than the mod accepts, so fit them.
-            lines = fit_to_speak(result.output.lines)
+            # Emoji are read aloud as nonsense, so they go first; then the lines are fitted.
+            lines = fit_to_speak(speakable(result.output.lines))
 
             # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
             outcome = "reply" if lines else "chose silence"

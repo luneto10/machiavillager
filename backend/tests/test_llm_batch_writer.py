@@ -70,6 +70,12 @@ def test_a_good_answer_returns_its_lines():
     assert _write(writer) == ["Hey, {player}.", "Come here."]
 
 
+def test_emoji_are_removed_from_batch_lines_and_emoji_only_lines_are_dropped():
+    writer = _writer(("groq:fake-ok", _answers("Hey, {player}. 😊", "😊🎉", "Come here.")))
+
+    assert _write(writer) == ["Hey, {player}.", "Come here."]
+
+
 def test_a_failing_first_model_falls_through_to_the_second(caplog):
     writer = _writer(
         ("groq:fake-429", _fails_with_429()),
