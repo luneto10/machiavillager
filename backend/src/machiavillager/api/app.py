@@ -11,8 +11,9 @@ from machiavillager.api.dev import router as dev_router
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.handle_lines_needed import HandleLinesNeeded
 from machiavillager.application.handle_player_chat import HandlePlayerChat
-from machiavillager.application.ports import GameBridge
+from machiavillager.application.ports import GameBridge, ToneJudge
 from machiavillager.infrastructure.llm_batch_writer import LlmBatchWriter
+from machiavillager.infrastructure.llm_tone_judge import LlmToneJudge
 from machiavillager.infrastructure.llm_writer import LlmLineWriter
 from machiavillager.infrastructure.persona import read_persona
 from machiavillager.infrastructure.settings import Settings, get_settings
@@ -39,8 +40,18 @@ def _configure_logging() -> None:
     logger.propagate = False
 
 
+def _build_tone_judge(settings: Settings) -> ToneJudge | None:
+    """The tone judge, or None when no judge model has a key to classify a line."""
+
+    judge = LlmToneJudge.from_settings(settings)
+    return judge if judge.has_models else None
+
+
 def _build_player_chat(
-    settings: Settings, bridge: GameBridge, writer: LlmLineWriter
+    settings: Settings,
+    bridge: GameBridge,
+    writer: LlmLineWriter,
+    tone_judge: ToneJudge | None,
 ) -> HandlePlayerChat | None:
     """The AI reply to player chat, or None when no model has a key to write it."""
 
@@ -57,6 +68,7 @@ def _build_player_chat(
         time.monotonic,
         # Dev only: replies say which model wrote them, and the dev routes are the only switch.
         show_model=settings.dev_endpoints,
+        tone_judge=tone_judge,
     )
 
 
@@ -98,7 +110,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Read by handle_event and the welcome: the dev-only model switch and suggestions need this.
     app.state.dev_endpoints = effective.dev_endpoints
     # Read by handle_event: when set, a player's chat line gets his AI reply.
-    app.state.handle_player_chat = _build_player_chat(effective, app.state.game_bridge, writer)
+    # Built once; the judge runs beside the reply, so it is only passed to the chat handler.
+    tone_judge = _build_tone_judge(effective)
+    app.state.handle_player_chat = _build_player_chat(
+        effective, app.state.game_bridge, writer, tone_judge
+    )
     # Read by handle_event: when set, a lines_needed event gets a batch written and sent.
     app.state.handle_lines_needed = _build_lines_needed(effective, app.state.game_bridge)
     app.include_router(router)

@@ -127,6 +127,21 @@ def test_kindness_needs_whole_words_and_is_zero_otherwise(text):
     assert kindness_floor(text) == 0
 
 
+@pytest.mark.parametrize(
+    "text",
+    ["chupa meus ovo", "chupa meu peru grossao", "vsf", "Vai chupar!", "pau no cu"],
+)
+def test_the_newer_insult_phrases_floor_at_minus_two(text):
+    # The lines from the game and the new short curses sit on the middle floor.
+    assert rudeness_floor(text) == -2
+
+
+@pytest.mark.parametrize("text", ["chupeta", "chupado", "vtnccc"])
+def test_words_that_only_contain_a_new_insult_do_not_match(text):
+    # Whole words only: "chupa" inside "chupeta" or "chupado" is not an insult.
+    assert rudeness_floor(text) == 0
+
+
 def test_kindness_takes_the_highest_match():
     # An apology next to warm words scores as the warm words do.
     assert kindness_floor("desculpa, te amo") == 2

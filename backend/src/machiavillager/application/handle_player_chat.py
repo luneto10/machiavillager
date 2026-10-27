@@ -1,12 +1,19 @@
 """Answers one player_chat: builds the prompt, asks the writer, sends the speak action back."""
 
+import asyncio
 import logging
 from collections.abc import Callable
 from typing import Any, Final
 
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.history_budget import fit_history
-from machiavillager.application.ports import BridgeUnavailable, Feeling, GameBridge, LineWriter
+from machiavillager.application.ports import (
+    BridgeUnavailable,
+    Feeling,
+    GameBridge,
+    LineWriter,
+    ToneJudge,
+)
 from machiavillager.application.prompt_builder import (
     ConversationLine,
     ProfanityLevel,
@@ -25,6 +32,7 @@ from machiavillager.domain.protocol import (
     TerminalStatus,
 )
 from machiavillager.domain.rudeness import kindness_floor, rudeness_floor
+from machiavillager.domain.tone import TONE_DELTAS, Tone
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +44,8 @@ CUT_OFF_MARK: Final = " (cut off)"
 IRRITATED_MOOD: Final = "irritated"
 # The reason the mod shows for each kind floor value: an apology is +1, warm words are +2.
 KINDNESS_REASONS: Final = {1: "apology", 2: "kind words"}
+# The judge's answer is waited for this long after the reply; later, the reply goes out without it.
+JUDGE_GRACE_SECONDS: Final = 2.0
 
 
 def conversation_key(event: PlayerChatEvent) -> str:
@@ -104,6 +114,41 @@ def apply_feeling_floors(text: str, feeling: Feeling | None) -> Feeling | None:
     return feeling
 
 
+def merge_tone_feeling(feeling: Feeling | None, tone: Tone | None) -> Feeling | None:
+    """Let the judged tone move the model's feeling, only in the direction the tone pulls."""
+
+    # No judgement, or a neutral one, leaves the model's feeling exactly as it was.
+    if tone is None or TONE_DELTAS[tone] == 0:
+        return feeling
+
+    delta = TONE_DELTAS[tone]
+    if delta < 0:
+        # A model feeling already at or below the tone is the harsher one, so it is kept.
+        if feeling is not None and feeling.affinity_delta <= delta:
+            return feeling
+        return Feeling(affinity_delta=delta, reason=f"tone: {tone}")
+
+    # A kind tone only lifts a feeling that is missing, negative or smaller than it.
+    if feeling is None or feeling.affinity_delta < delta:
+        return Feeling(affinity_delta=delta, reason=f"tone: {tone}")
+    return feeling
+
+
+async def _await_tone(task: "asyncio.Task[Tone | None] | None") -> Tone | None:
+    """The judged tone if it arrives within the grace time, else None. Never raises."""
+
+    # No task means the judge was skipped for this line, for example when the text is empty.
+    if task is None:
+        return None
+    try:
+        return await asyncio.wait_for(task, timeout=JUDGE_GRACE_SECONDS)
+    except Exception as error:
+        # A slow or failed judge only costs its tone; the reply goes out without it.
+        task.cancel()
+        logger.info("tone judge skipped: %s", type(error).__name__)
+        return None
+
+
 def suggest_action(
     event: PlayerChatEvent,
     feeling: Feeling,
@@ -141,8 +186,10 @@ class HandlePlayerChat:
         clock: Callable[[], float],
         *,
         show_model: bool = False,
+        tone_judge: ToneJudge | None = None,
     ) -> None:
         self._writer = writer
+        self._tone_judge = tone_judge
         self._bridge = bridge
         self._store = store
         self._read_persona = read_persona
@@ -226,13 +273,23 @@ class HandlePlayerChat:
             addressed=event.data.addressed,
         )
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
-        reply = await self._writer.write_reply(messages, irritated=irritated)
+
+        # Started before the reply, so the tone is judged while he writes and costs no extra wait.
+        tone_task = self._start_tone_judge(event)
+        try:
+            reply = await self._writer.write_reply(messages, irritated=irritated)
+        except BaseException:
+            if tone_task is not None:
+                tone_task.cancel()
+            raise
+        tone = await _await_tone(tone_task)
 
         # Only the count is logged, so a silent reply shows up without any of his words in the log.
         logger.info("reply %s lines=%d", event.event_id, len(reply.lines))
+        logger.info("tone event_id=%s: %s", event.event_id, tone or "none")
 
         # Floor reads his newest line only. The dev echo never gets here, so it is never floored.
-        feeling = apply_feeling_floors(event.data.text, reply.feeling)
+        feeling = apply_feeling_floors(event.data.text, merge_tone_feeling(reply.feeling, tone))
 
         # The feeling goes first: it is instant, while the speak below can take seconds.
         if feeling is not None:
@@ -259,6 +316,14 @@ class HandlePlayerChat:
 
         self._remember(key, reply.lines, status)
         logger.info("reply %s finished: %s", action.request_id, status.status)
+
+    def _start_tone_judge(self, event: PlayerChatEvent) -> "asyncio.Task[Tone | None] | None":
+        """Start judging his newest line's tone as a task; None when there is nothing to judge."""
+
+        # An empty line has no tone to judge, and without a judge there is nothing to start.
+        if self._tone_judge is None or not event.data.text.strip():
+            return None
+        return asyncio.create_task(self._tone_judge.judge(event.data.text))
 
     async def _suggest(self, event: PlayerChatEvent, feeling: Feeling) -> None:
         """Send the feeling for the player who spoke. Never raises: the speak still goes out."""

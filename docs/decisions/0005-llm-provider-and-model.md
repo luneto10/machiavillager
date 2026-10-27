@@ -175,6 +175,20 @@ it back as `deliver_lines`.
 - **Checks:** each line is checked against the contract on its own. A line with a stray brace is
   dropped and the rest of the batch is sent.
 
+## Tone judge
+
+- **Why:** the model that writes his reply also sets the affinity change, and a small model
+  (nvidia `nemotron-3.5-bolt-e4b`) almost never fills that optional field, so insults did not lower
+  affinity. A separate tiny call judges the tone of the player's newest line instead.
+- **How:** the judge runs as a task started just before the reply is awaited, so it costs no extra
+  wait. It returns one of seven tones (`domain/tone.py`); `TONE_DELTAS` gives its affinity change.
+- **Merge:** a negative tone wins over a milder model value; a positive tone only lifts a feeling
+  that is missing, negative or smaller. A neutral tone keeps the model's feeling.
+- **Chain and time limits:** `MACHIAVILLAGER_LLM_CHAIN_JUDGE` (nvidia first, then gpt-oss-120b),
+  a 3 s request timeout per model, 60 output tokens. The reply waits at most 2 s more for the judge
+  (`JUDGE_GRACE_SECONDS`); a slower judge is ignored and he speaks without it.
+- **Word list stays:** `apply_feeling_floors` still runs on top as the safety net for listed words.
+
 ## Future providers (not used yet)
 
 Checked on 2026-10-26, free tiers, for when Groq is not enough:

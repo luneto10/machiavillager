@@ -176,12 +176,12 @@ def _dialogue_message(line: ConversationLine) -> PromptMessage:
     # Player text is wrapped and escaped so it cannot close the tag and pose as instructions.
     return PromptMessage(
         "user",
-        f'<player_line from="{_escape_markup(line.speaker)}">'
-        f"{_escape_markup(line.text)}</player_line>",
+        f'<player_line from="{escape_markup(line.speaker)}">'
+        f"{escape_markup(line.text)}</player_line>",
     )
 
 
-def _escape_markup(value: str) -> str:
+def escape_markup(value: str) -> str:
     """Escape the characters that could end the player_line tag or its attribute."""
 
     # Replacing "<" and ">" stops a closing tag; quotes stop the attribute from breaking.
