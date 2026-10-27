@@ -12,7 +12,9 @@ public enum ComeAnswer {
     /** He stays: not calm, or he does not care enough about the player. */
     REFUSES("refuses"),
     /** He never crosses a portal for anyone, so another dimension is always a no. */
-    OTHER_DIMENSION("other_dimension");
+    OTHER_DIMENSION("other_dimension"),
+    /** He would go, but he just went to this player; the per-player cooldown is still running. */
+    JUST_CAME("just_came");
 
     private final String wire;
 
@@ -25,14 +27,21 @@ public enum ComeAnswer {
         return wire;
     }
 
-    /** The answer for this request. {@code caresAbout} comes from {@link Relationships#caresAbout}. */
-    public static ComeAnswer decide(Mood mood, boolean caresAbout, boolean sameDimension) {
+    /**
+     * The answer for this request. {@code caresAbout} comes from {@link Relationships#caresAbout};
+     * {@code cameRecently} is true while his cooldown for this player runs.
+     */
+    public static ComeAnswer decide(Mood mood, boolean caresAbout, boolean sameDimension, boolean cameRecently) {
         Objects.requireNonNull(mood, "mood");
         // The dimension comes first: even a friend gets the refusal that says where he is.
         if (!sameDimension) {
             return OTHER_DIMENSION;
         }
-        return mood == Mood.CALM && caresAbout ? COMES : REFUSES;
+        // Not wanting to wins over the cooldown: an irritated refusal stays a refusal.
+        if (mood != Mood.CALM || !caresAbout) {
+            return REFUSES;
+        }
+        return cameRecently ? JUST_CAME : COMES;
     }
 
     /** Finds the answer with this wire name. Throws on an unknown name, so a bad value never passes quietly. */

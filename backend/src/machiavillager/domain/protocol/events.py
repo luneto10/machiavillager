@@ -97,6 +97,8 @@ class NpcSnapshot(ClosedModel):
             '"comes": he is calm and cares about the player, so a come_to would be accepted. '
             '"refuses": he is not calm or does not care enough. '
             '"other_dimension": the player is in another dimension, and he never crosses one. '
+            '"just_came": he would go, but he went to this player less than 30 seconds ago, so '
+            "a come_to would be refused. "
             'Example: "comes".'
         )
     )

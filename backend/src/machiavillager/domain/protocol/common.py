@@ -85,8 +85,8 @@ ChatAddress = Literal["name", "conversation", "near", "butt_in", "private"]
 NpcPhase = Literal["partner", "seeds", "proposal", "regime", "war"]
 NpcMood = Literal["calm", "bored", "irritated"]
 # What he does if the speaker asks him to come, decided by the mod from his mood, how much he
-# cares about the speaker and whether they share a dimension.
-ComeAnswer = Literal["comes", "refuses", "other_dimension"]
+# cares about the speaker, whether they share a dimension and whether he just went to them.
+ComeAnswer = Literal["comes", "refuses", "other_dimension", "just_came"]
 # A namespaced dimension id such as minecraft:the_nether. The pattern keeps markup out of the
 # prompt, where the id is written as is.
 Dimension = Annotated[

@@ -1993,12 +1993,13 @@ Must be one of:
 | **Type**     | `enum (of string)` |
 | **Required** | Yes                |
 
-**Description:** What he does if the player who spoke asks him to come, decided by the mod. "comes": he is calm and cares about the player, so a come_to would be accepted. "refuses": he is not calm or does not care enough. "other_dimension": the player is in another dimension, and he never crosses one. Example: "comes".
+**Description:** What he does if the player who spoke asks him to come, decided by the mod. "comes": he is calm and cares about the player, so a come_to would be accepted. "refuses": he is not calm or does not care enough. "other_dimension": the player is in another dimension, and he never crosses one. "just_came": he would go, but he went to this player less than 30 seconds ago, so a come_to would be refused. Example: "comes".
 
 Must be one of:
 * "comes"
 * "refuses"
 * "other_dimension"
+* "just_came"
 
 #### <a name="oneOf_i4_oneOf_i0_conversation_id"></a>5.1.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > conversation_id`
 

@@ -195,7 +195,8 @@ public final class BridgeLifecycle {
             return;
         }
         Optional<PlayerChatEvent> event =
-                PlayerChatReporter.build(sender.level().getServer(), sender, text, Addressed.PRIVATE);
+                PlayerChatReporter.build(
+                        sender.level().getServer(), sender, text, Addressed.PRIVATE, cameRecently(sender));
         if (event.isEmpty()) {
             // shortcut: he is found only while his chunk is loaded; the chunk ticket in #57 keeps him loaded.
             NpcSpeech.notice(sender, Component.empty().append(name).append(" is out of reach right now."));
@@ -232,7 +233,8 @@ public final class BridgeLifecycle {
         }
         Addressed reason = addressed.get();
         // Built first, so a line he cannot hear never uses up the speaker's near cooldown.
-        PlayerChatReporter.build(sender.level().getServer(), sender, text, reason).ifPresent(event -> {
+        boolean justCame = cameRecently(sender);
+        PlayerChatReporter.build(sender.level().getServer(), sender, text, reason, justCame).ifPresent(event -> {
             // Overheard lines wait out the per-player cooldown; a line that names him always passes.
             boolean limited = reason == Addressed.NEAR;
             if (limited && !nearCooldown.tryAcquire(sender.getUUID(), sender.level().getGameTime())) {
@@ -244,6 +246,12 @@ public final class BridgeLifecycle {
             // Logged by id only: the chat text never reaches the log.
             Machiavillager.LOGGER.info("player_chat sent event_id={}", event.eventId());
         });
+    }
+
+    // Server thread. Whether he went to this player within the come cooldown; false while the bridge is off.
+    private static boolean cameRecently(ServerPlayer sender) {
+        ActionExecutor actions = executor;
+        return actions != null && actions.cameRecently(sender.getUUID());
     }
 
     // Server thread. True when the event was queued: the link was up when it was checked.

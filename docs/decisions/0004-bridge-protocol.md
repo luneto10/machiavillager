@@ -183,12 +183,13 @@ Unknown fields are rejected, never silently ignored.
   public speech.
 - **Where he is:** the `npc` snapshot always carries `dimension` (a namespaced id), `x`, `y` and `z`,
   so he can answer "where are you?" truthfully. The prompt allows him to say coordinates.
-- **The mod decides whether he comes:** the snapshot carries `if_asked_to_come`: `comes` (he is calm and
-  cares about the speaker, affinity > independence), `refuses`, or `other_dimension` (he never crosses
-  a portal). The AI only phrases it. When the AI says he comes, the backend sends `come_to {player}`
-  before the speak; the mod checks the same rule again plus a 30-second cooldown per player, forces a
+- **The mod decides whether he comes:** the snapshot carries `if_asked_to_come`, checked in this order:
+  `other_dimension` (he never crosses a portal), `refuses` (he is not calm, or affinity is not above
+  independence), `just_came` (he went to this player less than 30 seconds ago), otherwise `comes`.
+  The AI only phrases it; its tone still follows affinity and mood. When the AI says he comes, the
+  backend sends `come_to {player}` before the speak; the mod checks the same rule again, forces a
   Follow toward the player and teleports him next to them when far. Rejections: `npc_unavailable`,
-  `player_offline`, `busy`, `refused`, `rate_limited`.
+  `player_offline`, `busy`, `refused`, `rate_limited` (for `just_came`).
 - **Not loaded:** he is found only while his chunk is loaded. Until #57 keeps a chunk ticket around him,
   an `@m` line while he is unloaded gets a fixed "out of reach" line from the mod and no event.
 

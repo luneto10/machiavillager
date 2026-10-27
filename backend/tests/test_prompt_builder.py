@@ -313,6 +313,7 @@ def test_state_block_says_where_he_is_with_coordinates():
         ("comes", "you go to them"),
         ("refuses", "you refuse"),
         ("other_dimension", "you never cross a portal"),
+        ("just_came", "you just went to them"),
     ],
 )
 def test_state_block_says_what_he_does_if_asked_to_come(answer, words):

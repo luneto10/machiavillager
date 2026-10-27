@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -54,7 +55,8 @@ public final class ActionExecutor {
     private final NpcLines lines;
     // The speech in progress, or null while he is silent.
     private ActiveSpeech speech;
-    // Started only when he really goes, so a refused call does not use up the player's next one.
+    // Started only when he really goes, so a refused call does not use up the player's next one. Read by the
+    // player_chat snapshot too, so the AI never promises a come this executor would refuse.
     private final PerPlayerCooldown comeCooldown = new PerPlayerCooldown(COME_COOLDOWN_TICKS);
 
     /** Creates the executor for one server session. The wait is the minimum gap between unprompted speeches. */
@@ -172,22 +174,26 @@ public final class ActionExecutor {
             reject(id, BUSY);
             return;
         }
+        // The same rule the snapshot used, cooldown included.
         boolean cares = StoryData.get(server).relationships().caresAbout(player.getUUID());
-        if (ComeAnswer.decide(npc.get().mood(), cares, player.level() == npc.get().level()) != ComeAnswer.COMES) {
-            reject(id, REFUSED);
+        ComeAnswer answer = ComeAnswer.decide(
+                npc.get().mood(), cares, player.level() == npc.get().level(), cameRecently(player.getUUID()));
+        if (answer != ComeAnswer.COMES) {
+            reject(id, answer == ComeAnswer.JUST_CAME ? RATE_LIMITED : REFUSED);
             return;
         }
-        // Last check on purpose: it starts the cooldown, so it must run only when he really goes.
-        if (!comeCooldown.tryUse(player.getUUID(), server.getTickCount())) {
-            reject(id, RATE_LIMITED);
-            return;
-        }
+        comeCooldown.markUsed(player.getUUID(), server.getTickCount());
 
         // Instant like a suggestion: he is set on his way, and the walk or teleport is the brain's job.
         npc.get().comeTo(player);
         bridge.send(new ActionStatus.Accepted(id));
         bridge.send(new ActionStatus.Running(id));
         bridge.send(new ActionStatus.Succeeded(id));
+    }
+
+    /** True while his come cooldown for this player runs: he went to them less than 30 seconds ago. */
+    public boolean cameRecently(UUID player) {
+        return !comeCooldown.isReady(player, server.getTickCount());
     }
 
     /** Called at the end of every server tick: says the next line when its turn comes, or ends the speech. */

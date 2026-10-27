@@ -31,10 +31,11 @@ public final class PlayerChatReporter {
 
     /**
      * The event for this line, or empty when he cannot get it: he must be loaded and, unless the line is private,
-     * in the speaker's dimension and within reach. The addressed reason comes from the caller, which decided it.
+     * in the speaker's dimension and within reach. The addressed reason comes from the caller, which decided it;
+     * {@code cameRecently} is whether his come cooldown for this player is still running.
      */
     public static Optional<PlayerChatEvent> build(
-            MinecraftServer server, ServerPlayer sender, String text, Addressed addressed) {
+            MinecraftServer server, ServerPlayer sender, String text, Addressed addressed, boolean cameRecently) {
         Optional<MachiavillagerEntity> found = MachiavillagerLookup.find(server);
         if (found.isEmpty() || !(found.get().level() instanceof ServerLevel level)) {
             return Optional.empty();
@@ -48,7 +49,7 @@ public final class PlayerChatReporter {
             return Optional.empty();
         }
 
-        NpcSnapshot snapshot = snapshot(server, level, npc, sender);
+        NpcSnapshot snapshot = snapshot(server, level, npc, sender, cameRecently);
         return Optional.of(new PlayerChatEvent(
                 EventIds.newEventId(),
                 Instant.now(),
@@ -63,10 +64,17 @@ public final class PlayerChatReporter {
     // Phase and independence come from the story, mood from the brain, affinity toward this speaker.
     // His place and the come rule let him answer "where are you?" and "come here" truthfully.
     private static NpcSnapshot snapshot(
-            MinecraftServer server, ServerLevel level, MachiavillagerEntity npc, ServerPlayer sender) {
+            MinecraftServer server,
+            ServerLevel level,
+            MachiavillagerEntity npc,
+            ServerPlayer sender,
+            boolean cameRecently) {
         StoryData story = StoryData.get(server);
         ComeAnswer ifAskedToCome = ComeAnswer.decide(
-                npc.mood(), story.relationships().caresAbout(sender.getUUID()), sender.level() == level);
+                npc.mood(),
+                story.relationships().caresAbout(sender.getUUID()),
+                sender.level() == level,
+                cameRecently);
         return new NpcSnapshot(
                 story.progress().phase(),
                 npc.mood(),

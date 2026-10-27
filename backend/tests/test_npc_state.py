@@ -100,6 +100,6 @@ def test_place_words_name_vanilla_dimensions_and_keep_modded_ids():
 
 
 def test_come_words_cover_every_answer():
-    assert set(COME_RULES) == {"comes", "refuses", "other_dimension"}
+    assert set(COME_RULES) == {"comes", "refuses", "other_dimension", "just_came"}
     assert "set come to true" in come_words("comes")
     assert "coordinates" in come_words("other_dimension")

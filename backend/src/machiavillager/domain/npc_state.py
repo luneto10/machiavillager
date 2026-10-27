@@ -78,6 +78,7 @@ COME_RULES: Final[dict[ComeAnswer, str]] = {
         "you never cross a portal for anyone: refuse and tell them your dimension and "
         "coordinates so they can come to you"
     ),
+    "just_came": "you just went to them: say you were just there and they should wait a bit",
 }
 MOOD_LABELS: Final[dict[NpcMood, str]] = {
     "calm": "calm",

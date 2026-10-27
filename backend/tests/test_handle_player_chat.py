@@ -850,7 +850,7 @@ def test_come_is_sent_before_the_speak_when_he_comes():
     assert str(bridge.actions[0].args.player) == PLAYER_UUID
 
 
-@pytest.mark.parametrize("answer", ["refuses", "other_dimension"])
+@pytest.mark.parametrize("answer", ["refuses", "other_dimension", "just_came"])
 def test_come_is_never_sent_when_the_mod_said_no_even_if_the_model_agreed(answer):
     bridge = FakeBridge(_succeeded())
     event = _chat_event(addressed="private", npc=_npc("calm", answer))
