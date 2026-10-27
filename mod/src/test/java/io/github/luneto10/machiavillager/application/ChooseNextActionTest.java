@@ -9,6 +9,8 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NearbyPlayer;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+import io.github.luneto10.machiavillager.domain.behavior.Relationships;
+
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.ArrayList;
@@ -133,7 +135,7 @@ class ChooseNextActionTest {
     }
 
     private static NearbyPlayer nearbyAt(double distance) {
-        return new NearbyPlayer(PLAYER, "Alice", distance);
+        return new NearbyPlayer(PLAYER, "Alice", distance, Relationships.DEFAULT_AFFINITY);
     }
 
     private static List<NpcAction> rollSequence(ChooseNextAction useCase, Situation situation,

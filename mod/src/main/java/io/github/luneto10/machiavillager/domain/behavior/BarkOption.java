@@ -12,6 +12,10 @@ public final class BarkOption implements ActionOption {
     public void propose(Situation now, WeightedDice.Builder<NpcAction> candidates) {
         int weight = weightFor(now.mood());
         for (NearbyPlayer player : now.playersWithin(Hearing.DISTANCE)) {
+            // Cold players get the silent treatment: no unprompted bark goes to them.
+            if (!player.isFriendly()) {
+                continue;
+            }
             candidates.add(new NpcAction.Bark(player.id()), weight);
         }
     }

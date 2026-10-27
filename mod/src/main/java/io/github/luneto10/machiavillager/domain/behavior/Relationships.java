@@ -15,6 +15,8 @@ public final class Relationships {
     public static final int MAX = 100;
     /** A stranger starts neutral. */
     public static final int DEFAULT_AFFINITY = 50;
+    /** Below this affinity he is cold to the player: no unprompted barks or hints go to them. */
+    public static final int MIN_AFFINITY_FOR_FRIENDLY_LINES = 40;
     private static final int NO_INDEPENDENCE = 0;
 
     private final Map<UUID, Integer> affinities;

@@ -32,6 +32,10 @@ public final class HintOption implements ActionOption {
 
         // Only players close enough to hear him can receive a hint.
         for (NearbyPlayer player : now.playersWithin(Hearing.DISTANCE)) {
+            // Cold players get the silent treatment: no unprompted hint goes to them.
+            if (!player.isFriendly()) {
+                continue;
+            }
             candidates.add(new NpcAction.Hint(player.id()), weight);
         }
     }
