@@ -86,6 +86,7 @@ def build_batch_prompt(
         "Each line is at most 120 characters. Spoken words only: no stage directions, no emoji, "
         "no written laughter.\n"
         "Write normal sentences with capital letters and punctuation; the lines are read aloud.\n"
+        "Never use em dashes or en dashes; use commas or periods.\n"
         "Vary the jokes and the openings; no two lines start the same way.\n"
         "At most one line of the whole batch may mention missing pumpkin pie, in passing.\n"
         f"{MOOD_RULES[mood]}\n"

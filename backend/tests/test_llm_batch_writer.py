@@ -76,6 +76,12 @@ def test_emoji_are_removed_from_batch_lines_and_emoji_only_lines_are_dropped():
     assert _write(writer) == ["Hey, {player}.", "Come here."]
 
 
+def test_an_em_dash_is_stored_as_a_comma():
+    writer = _writer(("groq:fake-ok", _answers("Vai, {player} — só aparece pra quem acredita.")))
+
+    assert _write(writer) == ["Vai, {player}, só aparece pra quem acredita."]
+
+
 def test_a_failing_first_model_falls_through_to_the_second(caplog):
     writer = _writer(
         ("groq:fake-429", _fails_with_429()),

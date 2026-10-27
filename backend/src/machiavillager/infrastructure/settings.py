@@ -110,16 +110,6 @@ class Settings(BaseSettings):
     # Lines per batch the model is asked for; the contract caps a batch at 30.
     lines_batch_size: int = Field(default=15, ge=1, le=MAX_BATCH_LINES)
 
-    # Tone judge: a tiny separate call that classifies the tone of the player's newest line.
-    # The small replying model may skip the optional feeling, so the judge does not depend on it.
-    llm_chain_judge: str = "nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b"
-
-    # The judge must answer fast; a slower judge is ignored so his speech is never held up.
-    llm_judge_timeout_seconds: float = Field(default=3.0, ge=0.5)
-
-    # One tone is a few tokens, so the cap only stops a runaway.
-    llm_judge_max_tokens: int = 60
-
     # Batch calls allowed in any hour, so a busy server cannot drain the provider budget.
     lines_batches_per_hour: int = Field(default=6, ge=1)
 

@@ -154,6 +154,12 @@ def test_an_emoji_is_spoken_without_it():
     assert _reply(writer) == ["Ah para você, luneto10 é?"]
 
 
+def test_an_em_dash_is_spoken_as_a_comma():
+    writer = _writer(_chain(_answers("meu chapéu é lendário — só aparece pra quem acredita.")))
+
+    assert _reply(writer) == ["meu chapéu é lendário, só aparece pra quem acredita."]
+
+
 def test_a_line_that_is_only_emoji_is_dropped():
     writer = _writer(_chain(_answers("😊", "Valeu, mano!")))
 
@@ -284,12 +290,20 @@ def test_requests_send_the_default_max_tokens_cap():
     assert seen[0]["max_tokens"] == 800
 
 
-def test_max_tokens_setting_reaches_the_writer():
-    settings = Settings(groq_api_key="x", llm_max_tokens=123, _env_file=None)
+def test_max_tokens_setting_reaches_the_request():
+    seen: list[ModelSettings | None] = []
 
-    writer = LlmLineWriter.from_settings(settings)
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.model_settings)
+        return _speak("hi")
 
-    assert writer._request_settings["max_tokens"] == 123
+    model = FunctionModel(reply, model_name="fake-ok")
+    writer = LlmLineWriter([("groq:fake-ok", model)], [], timeout_seconds=4.0, max_tokens=123)
+
+    _reply(writer)
+
+    assert seen[0] is not None
+    assert seen[0]["max_tokens"] == 123
 
 
 def _labelled_writer(calm: Model) -> LlmLineWriter:

@@ -27,6 +27,7 @@ from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
 from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
 from machiavillager.domain.text_clean import speakable
+from machiavillager.infrastructure.model_params import settings_for_label
 from machiavillager.infrastructure.settings import (
     AZURE_PROVIDER,
     Settings,
@@ -123,13 +124,9 @@ class LlmLineWriter:
         self._settings = settings
         self._available = list(available or [])
 
-        # No client retries: a 429 or timeout should fall through to the next model at once.
-        # max_tokens caps a runaway reply's cost and latency.
-        self._request_settings = ModelSettings(
-            timeout=timeout_seconds,
-            max_retries=0,
-            max_tokens=max_tokens,
-        )
+        # Kept so each route builds its own settings: the reply cap and field depend on the model.
+        self._timeout_seconds = timeout_seconds
+        self._max_tokens = max_tokens
 
     @property
     def has_models(self) -> bool:
@@ -196,6 +193,15 @@ class LlmLineWriter:
         self._irritated_routes = _build_routes([override, *self._irritated_pairs])
         logger.info("LLM model override set to %s", pair)
 
+    def _settings_for(self, label: str) -> ModelSettings:
+        """The request settings for one route. The reply cap bounds cost and latency."""
+
+        return settings_for_label(
+            label,
+            max_tokens=self._max_tokens,
+            timeout_seconds=self._timeout_seconds,
+        )
+
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         """Return the fitted lines with model and latency. No lines means he chose silence.
 
@@ -228,7 +234,7 @@ class LlmLineWriter:
                     prompt,
                     message_history=history,
                     instructions=instructions,
-                    model_settings=self._request_settings,
+                    model_settings=self._settings_for(label),
                 )
             except (ModelAPIError, UnexpectedModelBehavior) as error:
                 # A bad answer from one model does not end the chain; the next model gets its turn.

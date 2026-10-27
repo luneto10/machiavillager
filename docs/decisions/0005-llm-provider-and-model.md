@@ -175,19 +175,11 @@ it back as `deliver_lines`.
 - **Checks:** each line is checked against the contract on its own. A line with a stray brace is
   dropped and the rest of the batch is sent.
 
-## Tone judge
+## Tone
 
-- **Why:** the model that writes his reply also sets the affinity change, and a small model
-  (nvidia `nemotron-3.5-bolt-e4b`) almost never fills that optional field, so insults did not lower
-  affinity. A separate tiny call judges the tone of the player's newest line instead.
-- **How:** the judge runs as a task started just before the reply is awaited, so it costs no extra
-  wait. It returns one of seven tones (`domain/tone.py`); `TONE_DELTAS` gives its affinity change.
-- **Merge:** a negative tone wins over a milder model value; a positive tone only lifts a feeling
-  that is missing, negative or smaller. A neutral tone keeps the model's feeling.
-- **Chain and time limits:** `MACHIAVILLAGER_LLM_CHAIN_JUDGE` (nvidia first, then gpt-oss-120b),
-  a 3 s request timeout per model, 60 output tokens. The reply waits at most 2 s more for the judge
-  (`JUDGE_GRACE_SECONDS`); a slower judge is ignored and he speaks without it.
-- **Word list stays:** `apply_feeling_floors` still runs on top as the safety net for listed words.
+The affinity change comes from the same reply call, so each player message costs one LLM call.
+A word-list floor (`apply_feeling_floors`) lowers obvious insults and raises apologies.
+A separate judge call was tried and removed, because one call per message is a requirement.
 
 ## Azure
 
@@ -201,6 +193,10 @@ Azure OpenAI (or Microsoft Foundry) works as a provider, written `azure:` in any
   with either variable missing is skipped, like a pair with no key.
 - **Content filters:** Azure applies its own content filters. A filtered prompt answers 400 with
   `content_filter`, which counts as a failed model, so the chain falls through to the next pair.
+- **Reasoning models:** Deployments named `gpt-5*`, `gpt-6*`, `o1*`, `o3*` or `o4*` reject `max_tokens`
+  and reject function tools unless reasoning is off, so they get `max_completion_tokens` and
+  `reasoning_effort: "none"` (via `extra_body`). The rule matches the deployment name prefix, so any
+  custom suffix works, and other providers and Azure families are unchanged.
 - **Latency first:** Azure is in no default chain yet. Measure its chat latency with
   `scripts/compare_models.py` before putting it first.
 

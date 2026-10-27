@@ -29,7 +29,6 @@ from machiavillager.domain.protocol import (
     Succeeded,
     SuggestRelationshipAction,
 )
-from machiavillager.domain.tone import Tone
 
 PLAYER_UUID = "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69"
 CONVERSATION_ID = "conv_01HZX8K2M9"
@@ -709,126 +708,15 @@ def test_a_model_feeling_above_the_kindness_floor_stays():
     assert [a.args.affinity_delta for a in _suggestions(bridge)] == [3]
 
 
-class FakeToneJudge:
-    """Stands in for the tone judge: one tone, optionally slow, optionally setting an event."""
-
-    def __init__(
-        self,
-        tone: Tone | None = None,
-        *,
-        delay: float = 0.0,
-        on_judge: asyncio.Event | None = None,
-    ):
-        self._tone = tone
-        self._delay = delay
-        self._on_judge = on_judge
-        self.texts: list[str] = []
-
-    async def judge(self, text: str) -> Tone | None:
-        self.texts.append(text)
-        if self._on_judge is not None:
-            self._on_judge.set()
-        if self._delay:
-            await asyncio.sleep(self._delay)
-        return self._tone
-
-
-def _judged_handler(
-    writer: FakeWriter, bridge: FakeBridge, judge: FakeToneJudge
-) -> HandlePlayerChat:
-    return HandlePlayerChat(
-        writer,
-        bridge,
-        ConversationStore(),
-        lambda: PERSONA,
-        "mild",
-        lambda: REQUEST_ID,
-        lambda: NOW,
-        tone_judge=judge,
-    )
-
-
-def _feelings_sent(bridge: FakeBridge) -> list[tuple[int, str]]:
-    return [(a.args.affinity_delta, a.args.reason) for a in _suggestions(bridge)]
-
-
-def test_a_judged_insult_with_no_model_feeling_sends_minus_two():
+def test_a_chat_message_makes_exactly_one_writer_call():
+    writer = FakeWriter(feeling=Feeling(affinity_delta=1, reason="warm"))
     bridge = FakeBridge(_succeeded())
 
-    _run(
-        _judged_handler(FakeWriter(), bridge, FakeToneJudge("insult")), _chat_event(text="bom dia")
-    )
+    # One writer call per message: the reply carries the feeling, with no second call.
+    _run(_handler(writer, bridge), _chat_event(text="bom dia"))
 
-    assert _feelings_sent(bridge) == [(-2, "tone: insult")]
-
-
-def test_a_judged_hate_beats_a_milder_model_feeling():
-    bridge = FakeBridge(_succeeded())
-    writer = FakeWriter(feeling=Feeling(affinity_delta=-1, reason="grumpy"))
-
-    _run(_judged_handler(writer, bridge, FakeToneJudge("hate")), _chat_event(text="bom dia"))
-
-    assert _feelings_sent(bridge) == [(-5, "tone: hate")]
-
-
-def test_a_judged_apology_beats_a_model_minus_one_and_gives_plus_one():
-    bridge = FakeBridge(_succeeded())
-    writer = FakeWriter(feeling=Feeling(affinity_delta=-1, reason="still grumpy"))
-
-    _run(
-        _judged_handler(writer, bridge, FakeToneJudge("apology")),
-        _chat_event(text="bom dia"),
-    )
-
-    assert _feelings_sent(bridge) == [(1, "tone: apology")]
-
-
-def test_a_judged_neutral_keeps_the_model_feeling():
-    bridge = FakeBridge(_succeeded())
-
-    _run(
-        _judged_handler(FakeWriter(feeling=FEELING), bridge, FakeToneJudge("neutral")),
-        _chat_event(),
-    )
-
-    assert _feelings_sent(bridge) == [(-6, "threatened him for real")]
-
-
-def test_a_judge_that_returns_nothing_keeps_the_old_behavior():
-    bridge = FakeBridge(_succeeded())
-
-    _run(_judged_handler(FakeWriter(), bridge, FakeToneJudge(None)), _chat_event(text="bom dia"))
-
-    assert _suggestions(bridge) == []
-    assert len(_speaks(bridge)) == 1
-
-
-def test_a_slow_judge_is_ignored_and_the_reply_still_goes_out(monkeypatch):
-    monkeypatch.setattr("machiavillager.application.handle_player_chat.JUDGE_GRACE_SECONDS", 0.01)
-    bridge = FakeBridge(_succeeded())
-    judge = FakeToneJudge("insult", delay=5.0)
-
-    _run(_judged_handler(FakeWriter(), bridge, judge), _chat_event(text="bom dia"))
-
-    assert _suggestions(bridge) == []
-    assert [a.args.lines for a in _speaks(bridge)] == [["Hello."]]
-
-
-def test_the_judge_starts_before_the_writer_finishes():
-    gate = asyncio.Event()
-    judge = FakeToneJudge("kind", on_judge=gate)
-    bridge = FakeBridge(_succeeded())
-    # The writer holds until the judge sets the gate; if the judge only ran after the writer,
-    # this would time out instead of finishing.
-    handler = _judged_handler(FakeWriter(gate=gate), bridge, judge)
-
-    async def scenario() -> None:
-        await asyncio.wait_for(handler(_chat_event(text="bom dia")), timeout=2.0)
-
-    asyncio.run(scenario())
-
-    assert judge.texts == ["bom dia"]
-    assert _feelings_sent(bridge) == [(1, "tone: kind")]
+    assert len(writer.calls) == 1
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [1]
 
 
 def test_a_rude_apology_keeps_the_rudeness_floor():

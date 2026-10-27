@@ -84,6 +84,13 @@ def test_every_kind_asks_for_normal_punctuated_sentences(kind):
 
 
 @pytest.mark.parametrize("kind", ["bark", "hint", "mutter"])
+def test_every_kind_forbids_em_and_en_dashes(kind):
+    text = _system_text(_build(kind=kind))
+
+    assert "Never use em dashes or en dashes; use commas or periods." in text
+
+
+@pytest.mark.parametrize("kind", ["bark", "hint", "mutter"])
 def test_every_kind_says_to_translate_the_example_not_copy_it(kind):
     text = _system_text(_build(kind=kind))
 
