@@ -728,6 +728,16 @@ def test_a_rude_apology_keeps_the_rudeness_floor():
     assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]
 
 
+def test_a_threat_with_no_model_feeling_sends_minus_four():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="queria tanto te matar"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == -4
+    assert suggestion.args.reason == "rude words"
+
+
 def test_come_is_sent_before_the_speak_when_he_comes():
     bridge = FakeBridge(_succeeded())
     event = _chat_event(text="vem aqui", addressed="private", npc=_npc("calm", "comes"))
