@@ -201,6 +201,10 @@ Azure OpenAI (or Microsoft Foundry) works as a provider, written `azure:` in any
   with either variable missing is skipped, like a pair with no key.
 - **Content filters:** Azure applies its own content filters. A filtered prompt answers 400 with
   `content_filter`, which counts as a failed model, so the chain falls through to the next pair.
+- **Reasoning models:** Deployments named `gpt-5*`, `gpt-6*`, `o1*`, `o3*` or `o4*` reject `max_tokens`
+  and reject function tools unless reasoning is off, so they get `max_completion_tokens` and
+  `reasoning_effort: "none"` (via `extra_body`). The rule matches the deployment name prefix, so any
+  custom suffix works, and other providers and Azure families are unchanged.
 - **Latency first:** Azure is in no default chain yet. Measure its chat latency with
   `scripts/compare_models.py` before putting it first.
 

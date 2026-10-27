@@ -22,8 +22,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from pydantic import ValidationError
+from pydantic_ai.settings import ModelSettings
 
 from machiavillager.domain.protocol.actions import SpeakArgs
+from machiavillager.infrastructure.model_params import request_settings
 from machiavillager.infrastructure.settings import Settings, parse_model_pair
 
 # The shortlist from ADR 0005: the chosen chain plus the fastest rejected model as a baseline.
@@ -43,6 +45,7 @@ PAUSE_BETWEEN_CALLS_S = 2.1
 MAX_RATE_LIMIT_RETRIES = 3
 DEFAULT_RETRY_AFTER_S = 5.0
 REQUEST_TIMEOUT_S = 60.0
+MAX_REPLY_TOKENS = 300
 ERROR_BODY_CHARS = 120
 USER_AGENT = "machiavillager-compare/1"
 
@@ -173,7 +176,9 @@ def fmt(value: float | None, digits: int = 2) -> str:
     return "-" if value is None else f"{value:.{digits}f}"
 
 
-def build_body(model: str, player_text: str, system_prompt: str = SYSTEM_PROMPT) -> dict[str, Any]:
+def build_body(
+    model: str, player_text: str, params: ModelSettings, system_prompt: str = SYSTEM_PROMPT
+) -> dict[str, Any]:
     """Build the chat request for one scenario."""
 
     # Same user line format the game sends, so the test matches the production prompt.
@@ -188,8 +193,14 @@ def build_body(model: str, player_text: str, system_prompt: str = SYSTEM_PROMPT)
         # Forces a tool call, so a plain-text reply shows up as invalid instead of being skipped.
         "tool_choice": "required",
         "temperature": 0.8,
-        "max_tokens": 300,
     }
+
+    # The same helper as the backend picks the reply-cap field for this model.
+    if "max_tokens" in params:
+        body["max_tokens"] = params["max_tokens"]
+    extra_body = params.get("extra_body")
+    if isinstance(extra_body, dict):
+        body.update(extra_body)
 
     # gpt-oss models reason before answering; low effort cuts that latency.
     if model.startswith("openai/gpt-oss"):
@@ -231,11 +242,13 @@ def run_call(
     scenario: str,
     player_text: str,
     system_prompt: str = SYSTEM_PROMPT,
+    *,
+    params: ModelSettings,
 ) -> CallResult:
     """Send one scenario, retrying on 429. Only the successful attempt is timed."""
 
     url = f"{base_url.rstrip('/')}/chat/completions"
-    body = build_body(model, player_text, system_prompt)
+    body = build_body(model, player_text, params, system_prompt)
     for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
         started = time.perf_counter()
         try:
@@ -263,6 +276,8 @@ def run_model(
     runs: int,
     scenarios: tuple[tuple[str, str], ...] = SCENARIOS,
     system_prompt: str = SYSTEM_PROMPT,
+    *,
+    params: ModelSettings,
 ) -> list[CallResult]:
     """Run every scenario `runs` times against one model, pacing calls to the rate limit."""
 
@@ -273,7 +288,9 @@ def run_model(
             if results:
                 time.sleep(PAUSE_BETWEEN_CALLS_S)
             print(f"  {model} {scenario}", file=sys.stderr)
-            results.append(run_call(base_url, headers, model, scenario, text, system_prompt))
+            results.append(
+                run_call(base_url, headers, model, scenario, text, system_prompt, params=params)
+            )
     return results
 
 
@@ -387,7 +404,16 @@ def main(argv: list[str] | None = None) -> int:
             "User-Agent": USER_AGENT,
         }
         name = f"{provider}:{model}"
-        results_by_model[name] = run_model(base_url, headers, model, args.runs, *SUITES[args.suite])
+        # Per model, because the reply-cap field depends on the deployment (Azure GPT-5/6 differs).
+        params = request_settings(
+            provider,
+            model,
+            max_tokens=MAX_REPLY_TOKENS,
+            timeout_seconds=REQUEST_TIMEOUT_S,
+        )
+        results_by_model[name] = run_model(
+            base_url, headers, model, args.runs, *SUITES[args.suite], params=params
+        )
 
         # Print each row as soon as its model finishes, so an interrupted run keeps its results.
         print(summarize_row(name, results_by_model[name]), file=sys.stderr, flush=True)

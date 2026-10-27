@@ -6,7 +6,9 @@ pyproject.toml sets pytest's pythonpath to scripts/, so the import below needs n
 from typing import Any
 
 import pytest
-from compare_models import is_valid_speak, parse_model_pair
+from compare_models import build_body, is_valid_speak, parse_model_pair
+
+from machiavillager.infrastructure.model_params import request_settings
 
 
 def _reply(tool_name: str, arguments: str) -> dict[str, Any]:
@@ -58,3 +60,28 @@ def test_arguments_failing_speak_args_are_not_valid() -> None:
 
     # Act / Assert
     assert is_valid_speak(reply) is None
+
+
+def test_azure_gpt6_body_uses_completion_tokens_and_no_reasoning() -> None:
+    # Arrange: the same helper the backend uses, for the deployment name the user typed
+    params = request_settings("azure", "gpt-6-luna-machi", max_tokens=300, timeout_seconds=60.0)
+
+    # Act
+    body = build_body("gpt-6-luna-machi", "oi", params)
+
+    # Assert
+    assert "max_tokens" not in body
+    assert body["max_completion_tokens"] == 300
+    assert body["reasoning_effort"] == "none"
+
+
+def test_groq_body_keeps_max_tokens() -> None:
+    # Arrange
+    params = request_settings("groq", "qwen/qwen3.8-27b", max_tokens=300, timeout_seconds=60.0)
+
+    # Act
+    body = build_body("qwen/qwen3.8-27b", "oi", params)
+
+    # Assert
+    assert body["max_tokens"] == 300
+    assert "reasoning_effort" not in body

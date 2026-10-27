@@ -279,12 +279,20 @@ def test_requests_send_the_default_max_tokens_cap():
     assert seen[0]["max_tokens"] == 800
 
 
-def test_max_tokens_setting_reaches_the_writer():
-    settings = Settings(groq_api_key="x", llm_max_tokens=123, _env_file=None)
+def test_max_tokens_setting_reaches_the_request():
+    seen: list[ModelSettings | None] = []
 
-    writer = LlmLineWriter.from_settings(settings)
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.model_settings)
+        return _speak("hi")
 
-    assert writer._request_settings["max_tokens"] == 123
+    model = FunctionModel(reply, model_name="fake-ok")
+    writer = LlmLineWriter([("groq:fake-ok", model)], [], timeout_seconds=4.0, max_tokens=123)
+
+    _reply(writer)
+
+    assert seen[0] is not None
+    assert seen[0]["max_tokens"] == 123
 
 
 def _labelled_writer(calm: Model) -> LlmLineWriter:

@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.models import Model
-from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.tone_prompt import build_tone_prompt
 from machiavillager.domain.tone import Tone
 from machiavillager.infrastructure.llm_writer import MODEL_RETRIES, Pair, build_chain
+from machiavillager.infrastructure.model_params import settings_for_label
 from machiavillager.infrastructure.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,9 @@ class LlmToneJudge:
         # Built once here, so a judgement only pays for its own request.
         self._routes: list[ToneRoute] = [(label, _build_agent(model)) for label, model in pairs]
 
-        # No client retries: a slow model should hand over to the next one at once.
-        self._request_settings = ModelSettings(
-            timeout=timeout_seconds,
-            max_retries=0,
-            max_tokens=max_tokens,
-        )
+        # Kept so each route builds its own settings: the cap depends on the model.
+        self._timeout_seconds = timeout_seconds
+        self._max_tokens = max_tokens
 
     @property
     def has_models(self) -> bool:
@@ -102,7 +99,11 @@ class LlmToneJudge:
                 result = await agent.run(
                     prompt,
                     instructions=instructions,
-                    model_settings=self._request_settings,
+                    model_settings=settings_for_label(
+                        label,
+                        max_tokens=self._max_tokens,
+                        timeout_seconds=self._timeout_seconds,
+                    ),
                 )
             except (ModelAPIError, UnexpectedModelBehavior) as error:
                 # Type name and HTTP status only: the error text can hold provider details.
