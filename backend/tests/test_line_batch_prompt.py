@@ -116,6 +116,26 @@ def test_bark_rules_ask_for_the_player_placeholder():
     assert "e.g. 'Hey {player}, careful with that lava.'" in text
 
 
+ADDRESS_RULE = (
+    "Speak TO the player in the second person. Use {player} only as a call or address "
+    "(for example at the start followed by a comma, or at the end), never as the subject "
+    "of a sentence about them."
+)
+
+
+@pytest.mark.parametrize("kind", ["bark", "hint"])
+def test_bark_and_hint_speak_to_the_player_and_use_player_only_as_an_address(kind):
+    assert ADDRESS_RULE in _system_text(_build(kind=kind))
+
+
+def test_mutter_does_not_get_the_address_rule():
+    assert ADDRESS_RULE not in _system_text(_build(kind="mutter"))
+
+
+def test_hint_writes_the_coordinates_as_x_comma_z():
+    assert "Write the coordinates as '{x}, {z}'." in _system_text(_build(kind="hint"))
+
+
 def test_mutter_prompt_names_no_placeholder_and_forbids_braces():
     text = _system_text(_build(kind="mutter"))
 

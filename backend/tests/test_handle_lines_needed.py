@@ -9,6 +9,7 @@ import pytest
 from machiavillager.application.handle_lines_needed import (
     MIN_VALID_LINES,
     HandleLinesNeeded,
+    fits_kind,
 )
 from machiavillager.application.ports import BridgeUnavailable
 from machiavillager.domain.protocol import (
@@ -27,7 +28,7 @@ ONE_HOUR = 3600.0
 # Distinct valid hint lines, exactly the minimum batch size.
 HINT_LINES = [f"{{player}}, village {i} is at {{x}}, {{z}}." for i in range(MIN_VALID_LINES)]
 # Plain lines, valid for bark and mutter.
-PLAIN_LINES = [f"Line {i}." for i in range(MIN_VALID_LINES)]
+PLAIN_LINES = [f"Plain line number {i} here." for i in range(MIN_VALID_LINES)]
 
 
 class FakeBatchWriter:
@@ -122,6 +123,95 @@ def _run(handler: HandleLinesNeeded, event: LinesNeededEvent) -> None:
 
 
 @pytest.mark.parametrize(
+    ("kind", "line"),
+    [
+        ("hint", "{player}, olha a vila em {x}, {z}."),
+        ("hint", "Olha a vila em {x}, {z}, {player}!"),
+        ("hint", "Ei, {player}! A vila fica em {x}, {z}."),
+        ("bark", "Ei, {player}!"),
+        ("bark", "Hey {player}, careful."),
+    ],
+)
+def test_player_used_as_an_address_fits_bark_and_hint(kind, line):
+    assert fits_kind(kind, line)
+
+
+@pytest.mark.parametrize(
+    ("kind", "line"),
+    [
+        ("hint", "{player} viu a vila em {x} {z}"),
+        ("bark", "{player} foi pra mina"),
+    ],
+)
+def test_player_as_the_subject_of_a_sentence_fails_bark_and_hint(kind, line):
+    assert not fits_kind(kind, line)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '"E aí {player}',
+        'o dia tá gostoso hoje."',
+        '"O que cê vai fazer mais tarde {player}"',
+        '"Viu aquele meme novo?"',
+    ],
+)
+def test_broken_split_fragments_are_rejected_for_bark(line):
+    assert not fits_kind("bark", line)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Ei {player}, cuidado com a lava.",
+        "Gravel sempre cai em quem cava.",
+        "Oi tudo bem!",
+    ],
+)
+def test_whole_sentences_are_kept_for_bark(line):
+    assert fits_kind("bark", line)
+
+
+@pytest.mark.parametrize(
+    ("kind", "line"),
+    [
+        ("bark", "Oi tudo bem"),
+        ("bark", "Cuidadosamente"),
+        ("hint", "“{player}”, a vila fica em {x}, {z}."),
+        ("mutter", "Oi tudo bem"),
+    ],
+)
+def test_short_single_word_or_curly_quoted_lines_fail_every_kind(kind, line):
+    assert not fits_kind(kind, line)
+
+
+@pytest.mark.parametrize(
+    ("kind", "line"),
+    [
+        ("bark", "o dia tá gostoso hoje."),
+        ("hint", "o dia tá gostoso hoje."),
+    ],
+)
+def test_lowercase_fragment_without_a_placeholder_fails_bark_and_hint(kind, line):
+    assert not fits_kind(kind, line)
+
+
+def test_mutter_may_start_lowercase():
+    assert fits_kind("mutter", "gravel sempre cai em quem cava.")
+
+
+@pytest.mark.parametrize(
+    ("kind", "line"),
+    [
+        ("hint", "A vila fica em {x}, {z}."),
+        ("bark", "Hey you there."),
+    ],
+)
+def test_lines_without_player_are_not_checked_for_address(kind, line):
+    assert fits_kind(kind, line)
+
+
+@pytest.mark.parametrize(
     ("kind", "line", "kept"),
     [
         # Bark takes {player} only; a coordinate in a bark is dropped.
@@ -213,7 +303,16 @@ def test_a_succeeded_status_waits_the_long_refresh_time():
 
 def test_the_drop_log_names_the_rule_each_line_failed(caplog):
     writer = FakeBatchWriter(
-        [["Hi {name}.", "{player}, go to {x}.", "Fine.", "Ok.", "Yes.", "Sure."]]
+        [
+            [
+                "Hi {name}.",
+                "{player}, go to {x}.",
+                "Fine weather for digging today.",
+                "Ok, let us keep going.",
+                "Yes, that is a good plan.",
+                "Sure thing, my friend.",
+            ]
+        ]
     )
 
     with caplog.at_level(logging.INFO):
@@ -241,14 +340,31 @@ def test_sends_one_action_with_the_key_and_the_lines():
 
 
 def test_a_line_with_a_bad_brace_is_dropped_and_the_rest_kept(caplog):
-    writer = FakeBatchWriter([["Hi {name}.", "Good.", "Fine.", "Ok.", "Yes.", "Sure."]])
+    writer = FakeBatchWriter(
+        [
+            [
+                "Hi {name}.",
+                "Good morning, my friends.",
+                "Fine weather for digging today.",
+                "Ok, let us keep going.",
+                "Yes, that is a good plan.",
+                "Sure thing, my friend.",
+            ]
+        ]
+    )
     bridge = FakeBridge()
 
     # Bark takes no coordinates, so the plain line is kept and the bad brace is dropped.
     with caplog.at_level(logging.INFO):
         _run(_handler(writer, bridge, FakeClock()), _event(kind="bark"))
 
-    assert bridge.actions[0].args.lines == ["Good.", "Fine.", "Ok.", "Yes.", "Sure."]
+    assert bridge.actions[0].args.lines == [
+        "Good morning, my friends.",
+        "Fine weather for digging today.",
+        "Ok, let us keep going.",
+        "Yes, that is a good plan.",
+        "Sure thing, my friend.",
+    ]
     assert "dropped 1 (contract 1, kind rule 0)" in caplog.text
 
 

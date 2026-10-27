@@ -1,6 +1,7 @@
 """Answers one lines_needed event: writes a batch for its key and sends it as deliver_lines."""
 
 import logging
+import re
 import time
 from collections import deque
 from collections.abc import Callable
@@ -33,19 +34,78 @@ MIN_VALID_LINES: Final = 5
 LineKey = tuple[LineKind, NpcPhase, NpcMood]
 
 
+# Punctuation that may follow {player} directly when it is a call: "{player}, ..." or "...!".
+ADDRESS_PUNCTUATION: Final = ",!?.:"
+_PLAYER_PLACEHOLDER: Final = re.compile(r"\{player\}")
+_TRAILING_PUNCTUATION: Final = re.compile(r"[\s,!?.:]*")
+
+
+def _player_is_address(line: str) -> bool:
+    """Whether every {player} in the line is a call or an address, never a subject."""
+
+    # A line without {player} has nothing to check, so it passes.
+    for match in _PLAYER_PLACEHOLDER.finditer(line):
+        before = line[: match.start()]
+        after = line[match.end() :]
+
+        # Called by name: punctuation right after it, or the line ends there.
+        if not after or after[0] in ADDRESS_PUNCTUATION:
+            continue
+
+        # Named last, after ", ": only punctuation and spaces may follow it.
+        if before.endswith(", ") and _TRAILING_PUNCTUATION.fullmatch(after):
+            continue
+        return False
+    return True
+
+
+# A line shorter than this is a filler word or a cut-off piece, never a spoken line.
+MIN_LINE_CHARS: Final = 12
+# A stray quote means the list was split at it, so no line may carry one.
+QUOTE_MARKS: Final = ('"', "“", "”")
+# The placeholders that make a bark or hint a thought about a player or a village.
+PLACEHOLDERS: Final = ("{player}", "{x}", "{z}")
+
+
+def _is_whole_sentence(line: str) -> bool:
+    """Whether a line has no stray quote, is long enough, and has more than one word."""
+
+    stripped = line.strip()
+    if any(mark in stripped for mark in QUOTE_MARKS):
+        return False
+
+    # A single word or a short piece is a cut-off fragment, not something he would say.
+    return len(stripped) >= MIN_LINE_CHARS and " " in stripped
+
+
+def _is_fragment(line: str) -> bool:
+    """Whether a line starts mid-sentence: lowercase, and naming no player and no village."""
+
+    stripped = line.strip()
+    return stripped[:1].islower() and not any(p in stripped for p in PLACEHOLDERS)
+
+
 def fits_kind(kind: LineKind, line: str) -> bool:
-    """Whether a line uses only the placeholders its kind allows."""
+    """Whether a line uses only the placeholders its kind allows, with {player} as an address."""
+
+    # A broken split leaves quotes, fragments and single words behind; no kind may keep them.
+    if not _is_whole_sentence(line):
+        return False
+
+    # Bark and hint are spoken as whole sentences, so a lowercase start with no name is a fragment.
+    if kind in ("bark", "hint") and _is_fragment(line):
+        return False
 
     # A bark calls one player, so the village coordinates have no place in it.
     if kind == "bark":
-        return "{x}" not in line and "{z}" not in line
+        return "{x}" not in line and "{z}" not in line and _player_is_address(line)
 
     # A mutter names nobody, so it carries no braces at all.
     if kind == "mutter":
         return "{" not in line and "}" not in line
 
     # A hint without its coordinates tells the player nothing useful.
-    return "{x}" in line and "{z}" in line
+    return "{x}" in line and "{z}" in line and _player_is_address(line)
 
 
 @dataclass(frozen=True)

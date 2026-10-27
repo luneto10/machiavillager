@@ -19,7 +19,10 @@ KIND_RULES: Final[dict[LineKind, str]] = {
     "bark": (
         "Kind bark: a quick call to one nearby player. Use ONLY {player}, in most lines; "
         "never {x} or {z}. e.g. 'Hey {player}, careful with that lava.' "
-        "Translate the idea into the target language; never copy the example."
+        "Translate the idea into the target language; never copy the example. "
+        "Speak TO the player in the second person. Use {player} only as a call or address "
+        "(for example at the start followed by a comma, or at the end), never as the subject "
+        "of a sentence about them."
     ),
     "hint": (
         "Kind hint: he tells one player about a village he saw. Include {player}, {x} and {z} in "
@@ -30,7 +33,11 @@ KIND_RULES: Final[dict[LineKind, str]] = {
         "Another shape: 'Between us, {player}: the village at {x}, {z} has too many emeralds "
         "and too few leaders.' "
         "Translate the idea into the target language; never copy the example. "
-        "A line without {x} and {z} is wrong."
+        "A line without {x} and {z} is wrong. "
+        "Write the coordinates as '{x}, {z}'. "
+        "Speak TO the player in the second person. Use {player} only as a call or address "
+        "(for example at the start followed by a comma, or at the end), never as the subject "
+        "of a sentence about them."
     ),
     "mutter": (
         "Kind mutter: said to himself, to no one. Complain or scheme about the game, the world, "
