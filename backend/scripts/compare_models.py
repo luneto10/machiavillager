@@ -3,7 +3,8 @@
 Run from backend/:
     uv run python scripts/compare_models.py --models groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b
 
-Each model is a provider:model pair. A provider with no key in the repo-root .env is skipped.
+Each model is a provider:model pair. A provider with no key in the repo-root .env is skipped; Azure
+also needs MACHIAVILLAGER_AZURE_BASE_URL, and its model part is the deployment name.
 
 Each model gets the same scenarios several times. A reply counts as valid only when it is a
 speak call whose arguments pass SpeakArgs. The output is a latency and validity table, then the
@@ -23,7 +24,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from machiavillager.domain.protocol.actions import SpeakArgs
-from machiavillager.infrastructure.settings import LLM_BASE_URLS, Settings, parse_model_pair
+from machiavillager.infrastructure.settings import Settings, parse_model_pair
 
 # The shortlist from ADR 0005: the chosen chain plus the fastest rejected model as a baseline.
 # NVIDIA's /models lists far more than a free key can call; most others return 404.
@@ -357,33 +358,36 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(error))
 
     settings = Settings()
-    usable: list[tuple[str, str, str]] = []
+    usable: list[tuple[str, str, str, str]] = []
     for provider, model in pairs:
         key = settings.llm_key(provider)
-        # Without a key every call to that provider would fail with 401, so leave it out.
-        if key is None:
-            print(f"skipping {provider}:{model}: no {provider.upper()} key", file=sys.stderr)
+        base_url = settings.llm_base_url(provider)
+        # Without a key or base URL every call to that provider would fail, so leave it out.
+        if key is None or base_url is None:
+            print(
+                f"skipping {provider}:{model}: no {provider.upper()} key or base URL",
+                file=sys.stderr,
+            )
             continue
-        usable.append((provider, model, key))
+        usable.append((provider, model, key, base_url))
 
     # Nothing left to run; say how to fix it instead of printing an empty table.
     if not usable:
         print(
-            "Set MACHIAVILLAGER_GROQ_API_KEY or MACHIAVILLAGER_NVIDIA_API_KEY in the repo-root .env"
+            "Set a provider key in the repo-root .env, e.g. MACHIAVILLAGER_GROQ_API_KEY "
+            "(Azure also needs MACHIAVILLAGER_AZURE_BASE_URL)"
         )
         return 1
 
     results_by_model: dict[str, list[CallResult]] = {}
-    for provider, model, key in usable:
+    for provider, model, key, base_url in usable:
         headers = {
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
             "User-Agent": USER_AGENT,
         }
         name = f"{provider}:{model}"
-        results_by_model[name] = run_model(
-            LLM_BASE_URLS[provider], headers, model, args.runs, *SUITES[args.suite]
-        )
+        results_by_model[name] = run_model(base_url, headers, model, args.runs, *SUITES[args.suite])
 
         # Print each row as soon as its model finishes, so an interrupted run keeps its results.
         print(summarize_row(name, results_by_model[name]), file=sys.stderr, flush=True)

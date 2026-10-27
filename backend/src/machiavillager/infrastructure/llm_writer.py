@@ -28,7 +28,7 @@ from machiavillager.application.speak_fit import fit_to_speak
 from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
 from machiavillager.domain.text_clean import speakable
 from machiavillager.infrastructure.settings import (
-    LLM_BASE_URLS,
+    AZURE_PROVIDER,
     Settings,
     parse_model_pair,
 )
@@ -161,7 +161,7 @@ class LlmLineWriter:
         """Dev only: answer with this provider:model first, or back to the chains when None.
 
         The chain from settings stays behind it as the fallback. Raises ValueError for an unknown
-        provider or a provider with no key; the message never holds the key.
+        provider or a provider with no key or base URL; the message never holds the key.
         """
 
         # Swapping the route lists is the whole switch: a reply already running keeps the routes
@@ -173,12 +173,18 @@ class LlmLineWriter:
             return
 
         provider, model_id = parse_model_pair(pair)
-        key = self._settings.llm_key(provider) if self._settings is not None else None
-        if key is None:
+        settings = self._settings
+        key = settings.llm_key(provider) if settings is not None else None
+        if settings is None or key is None:
             raise ValueError(f"no key set for provider {provider!r}")
 
+        # Azure has no fixed host, so a missing base URL is refused the same way as a missing key.
+        base_url = settings.llm_base_url(provider)
+        if base_url is None:
+            raise ValueError(f"no base URL set for provider {provider!r}")
+
         # The override goes first in both chains; the chains from settings stay behind it.
-        override: Pair = (pair, build_model(provider, model_id, key))
+        override: Pair = (pair, build_model(model_id, base_url, key))
         self._calm_routes = _build_routes([override, *self._calm_pairs])
         self._irritated_routes = _build_routes([override, *self._irritated_pairs])
         logger.info("LLM model override set to %s", pair)
@@ -219,6 +225,7 @@ class LlmLineWriter:
                 )
             except (ModelAPIError, UnexpectedModelBehavior) as error:
                 # A bad answer from one model does not end the chain; the next model gets its turn.
+                # Azure content filters answer 400 (ModelHTTPError): the next model takes over.
                 errors.append(error)
                 # Type name only: the error text can hold player words or provider details.
                 # The HTTP status (429 rate limit, 404 no access) says why; it holds no player text.
@@ -318,10 +325,15 @@ def build_chain(
 
         # A provider without a key would fail with 401 on every call, so the pair is left out.
         key = settings.llm_key(provider)
-        if key is None:
+        base_url = settings.llm_base_url(provider)
+        if key is None or base_url is None:
             skipped.add(pair)
+
+            # Azure's URL is per resource, so a missing one is named here; the key is never shown.
+            if provider == AZURE_PROVIDER and base_url is None:
+                logger.info("LLM pair %s skipped, MACHIAVILLAGER_AZURE_BASE_URL is not set", pair)
             continue
-        pairs.append((pair, build_model(provider, model_id, key)))
+        pairs.append((pair, build_model(model_id, base_url, key)))
 
         # Listed once even when both chains name it, for the dev model suggestions.
         if pair not in available:
@@ -329,10 +341,10 @@ def build_chain(
     return pairs
 
 
-def build_model(provider: str, model_id: str, key: str) -> OpenAIChatModel:
-    """One OpenAI-compatible chat model pointed at its provider."""
+def build_model(model_id: str, base_url: str, key: str) -> OpenAIChatModel:
+    """One OpenAI-compatible chat model pointed at its provider's base URL."""
 
-    client = OpenAIProvider(base_url=LLM_BASE_URLS[provider], api_key=key)
+    client = OpenAIProvider(base_url=base_url, api_key=key)
 
     # gpt-oss reasons before it answers; low effort keeps the reply inside the time budget.
     model_settings = (

@@ -189,6 +189,21 @@ it back as `deliver_lines`.
   (`JUDGE_GRACE_SECONDS`); a slower judge is ignored and he speaks without it.
 - **Word list stays:** `apply_feeling_floors` still runs on top as the safety net for listed words.
 
+## Azure
+
+Azure OpenAI (or Microsoft Foundry) works as a provider, written `azure:` in any pair.
+
+- **Why:** Azure credits, high rate limits and no daily cap, so a busy server keeps talking when the
+  free tiers run out.
+- **Configuration:** two variables. `MACHIAVILLAGER_AZURE_BASE_URL` is the resource's `/openai/v1/`
+  URL (https, one trailing slash) and `MACHIAVILLAGER_AZURE_API_KEY` is its key. The part after
+  `azure:` is the deployment name, which may hold dots and dashes, e.g. `azure:gpt-4.1-mini`. A pair
+  with either variable missing is skipped, like a pair with no key.
+- **Content filters:** Azure applies its own content filters. A filtered prompt answers 400 with
+  `content_filter`, which counts as a failed model, so the chain falls through to the next pair.
+- **Latency first:** Azure is in no default chain yet. Measure its chat latency with
+  `scripts/compare_models.py` before putting it first.
+
 ## Future providers (not used yet)
 
 Checked on 2026-10-26, free tiers, for when Groq is not enough:
