@@ -21,16 +21,16 @@ class LineSourceTest {
     void poolLine_winsOverFallback() {
         LineSource source = sourceWith(List.of("cached"));
 
-        LineSource.Next next = source.next(KEY, false, NOW, new Random(1));
+        LineSource.Next next = source.next(KEY, false, true, NOW, new Random(1));
 
         assertEquals(Optional.of("cached"), next.template());
     }
 
     @Test
-    void emptyPool_backendDown_usesFallback() {
+    void emptyPool_backendDownLongEnough_usesFallback() {
         LineSource source = sourceWith(List.of());
 
-        LineSource.Next next = source.next(KEY, false, NOW, new Random(1));
+        LineSource.Next next = source.next(KEY, false, true, NOW, new Random(1));
 
         assertTrue(next.template().isPresent());
         assertEquals(FallbackLines.pick(LineKind.BARK, Phase.PARTNER, new Random(1)), next.template());
@@ -38,10 +38,30 @@ class LineSourceTest {
     }
 
     @Test
+    void emptyPool_backendDownShortly_staysSilentAndDoesNotAsk() {
+        LineSource source = sourceWith(List.of());
+
+        LineSource.Next next = source.next(KEY, false, false, NOW, new Random(1));
+
+        assertEquals(Optional.empty(), next.template());
+        assertFalse(next.askBackend());
+    }
+
+    @Test
     void emptyPool_backendUp_staysSilentAndAsks() {
         LineSource source = sourceWith(List.of());
 
-        LineSource.Next next = source.next(KEY, true, NOW, new Random(1));
+        LineSource.Next next = source.next(KEY, true, false, NOW, new Random(1));
+
+        assertEquals(Optional.empty(), next.template());
+        assertTrue(next.askBackend());
+    }
+
+    @Test
+    void backendUp_neverUsesFallback_evenIfAllowed() {
+        LineSource source = sourceWith(List.of());
+
+        LineSource.Next next = source.next(KEY, true, true, NOW, new Random(1));
 
         assertEquals(Optional.empty(), next.template());
         assertTrue(next.askBackend());
@@ -52,10 +72,10 @@ class LineSourceTest {
         LineSource source = sourceWith(List.of());
         Random random = new Random(1);
 
-        assertTrue(source.next(KEY, true, NOW, random).askBackend());
-        assertFalse(source.next(KEY, true, NOW + 100, random).askBackend());
-        assertFalse(source.next(KEY, true, NOW + ASK - 1, random).askBackend());
-        assertTrue(source.next(KEY, true, NOW + ASK, random).askBackend());
+        assertTrue(source.next(KEY, true, false, NOW, random).askBackend());
+        assertFalse(source.next(KEY, true, false, NOW + 100, random).askBackend());
+        assertFalse(source.next(KEY, true, false, NOW + ASK - 1, random).askBackend());
+        assertTrue(source.next(KEY, true, false, NOW + ASK, random).askBackend());
     }
 
     @Test
@@ -66,8 +86,8 @@ class LineSourceTest {
 
         for (int i = 0; i < 50; i++) {
             long now = NOW + i * ASK;
-            assertFalse(empty.next(KEY, false, now, random).askBackend());
-            assertFalse(used.next(KEY, false, now, random).askBackend());
+            assertFalse(empty.next(KEY, false, true, now, random).askBackend());
+            assertFalse(used.next(KEY, false, false, now, random).askBackend());
         }
     }
 
@@ -77,8 +97,13 @@ class LineSourceTest {
         Random random = new Random(3);
 
         for (int i = 0; i < 100; i++) {
-            assertEquals(Optional.of("cached"), source.next(KEY, false, NOW, random).template());
+            assertEquals(Optional.of("cached"), source.next(KEY, false, true, NOW, random).template());
         }
+    }
+
+    @Test
+    void fallbackThreshold_isFiveMinutes() {
+        assertEquals(6_000, LineSource.FALLBACK_AFTER_TICKS);
     }
 
     // A source over a bank that starts with the given lines for KEY; an empty list means no pool at all.

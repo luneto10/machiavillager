@@ -5,11 +5,15 @@ import java.util.Optional;
 import java.util.random.RandomGenerator;
 
 /**
- * Picks the line to speak for a key. A cached line wins. With the backend down, a hand-written fallback fills an
- * empty pool. With the backend up and the pool empty, he stays silent while the first batch is on its way.
- * Pure Java: callers pass nowTicks.
+ * Picks the line to speak for a key. A cached line wins. With the backend down for at least
+ * {@link #FALLBACK_AFTER_TICKS}, a hand-written fallback fills an empty pool; a shorter outage stays silent, so a
+ * reconnect does not switch languages mid-game. With the backend up and the pool empty, he stays silent while the
+ * first batch is on its way. Pure Java: callers pass nowTicks.
  */
 public final class LineSource {
+    /** How long the backend must be continuously down before the English fallbacks may speak: 5 minutes. */
+    public static final long FALLBACK_AFTER_TICKS = 6_000;
+
     private final LineBank bank;
 
     /**
@@ -35,14 +39,17 @@ public final class LineSource {
         return bank;
     }
 
-    /** The line to speak for the key, and whether a batch should be asked for. Marks the ask when it says so. */
-    public Next next(LineKey key, boolean backendUp, long nowTicks, RandomGenerator random) {
+    /**
+     * The line to speak for the key, and whether a batch should be asked for. Marks the ask when it says so.
+     * {@code fallbackAllowed} says the backend has been down long enough for the fallbacks; it is ignored while up.
+     */
+    public Next next(LineKey key, boolean backendUp, boolean fallbackAllowed, long nowTicks, RandomGenerator random) {
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(random, "random");
 
         // A cached line always wins, so the fallback is only used while the pool is empty.
         Optional<String> template = bank.pick(key, random);
-        if (template.isEmpty() && !backendUp) {
+        if (template.isEmpty() && !backendUp && fallbackAllowed) {
             template = FallbackLines.pick(key.kind(), key.phase(), random);
         }
 

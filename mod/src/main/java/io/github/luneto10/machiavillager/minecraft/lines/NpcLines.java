@@ -34,6 +34,9 @@ public final class NpcLines {
     private final LineSource source;
     // Limits unprompted speech across all players, lines from the pools included.
     private final SpeechCap cap = new SpeechCap();
+    // Tick the link was first seen down in the current outage; NOT_DOWN while it is up.
+    private static final long NOT_DOWN = -1L;
+    private long downSinceTick = NOT_DOWN;
 
     /** Starts from the pools saved with the world, so a restart keeps the batches already delivered. */
     public NpcLines(MinecraftServer server, BooleanSupplier backendUp, Predicate<LinesNeededEvent> sender) {
@@ -55,12 +58,15 @@ public final class NpcLines {
      */
     public Optional<String> take(LineKind kind, Phase phase, Mood mood, boolean forced) {
         long now = server.getTickCount();
+        // Sampled before the cap check, so the outage clock sees every moment he could have spoken.
+        boolean up = backendUp.getAsBoolean();
+        boolean fallbackAllowed = trackOutage(up, now);
         if (!forced && !cap.canSpeak(now)) {
             return Optional.empty();
         }
 
         LineKey key = new LineKey(kind, phase, mood);
-        LineSource.Next next = source.next(key, backendUp.getAsBoolean(), now, ThreadLocalRandom.current());
+        LineSource.Next next = source.next(key, up, fallbackAllowed, now, ThreadLocalRandom.current());
         if (next.askBackend()) {
             requestBatch(key);
         }
@@ -97,6 +103,20 @@ public final class NpcLines {
         StoryData.get(server).setLinePools(source.bank().snapshot());
         Machiavillager.LOGGER.info("deliver_lines stored kind={} n={}", kind.wire(), valid.size());
         return true;
+    }
+
+    // Starts the outage clock on the first down sample and stops it on an up sample. True once the outage is long.
+    private boolean trackOutage(boolean up, long nowTicks) {
+        if (up) {
+            downSinceTick = NOT_DOWN;
+            return false;
+        }
+
+        // A short reconnect never reaches the threshold, so it stays silent instead of speaking the fallbacks.
+        if (downSinceTick == NOT_DOWN) {
+            downSinceTick = nowTicks;
+        }
+        return nowTicks - downSinceTick >= LineSource.FALLBACK_AFTER_TICKS;
     }
 
     // Sends the request for a batch. Logged by kind, phase and mood only; no line text is involved.
