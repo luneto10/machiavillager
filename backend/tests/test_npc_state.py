@@ -6,8 +6,9 @@ from machiavillager.domain.npc_state import (
     COME_RULES,
     affinity_words,
     come_words,
+    coordinate_values,
+    dimension_words,
     independence_words,
-    place_words,
     register_words,
 )
 
@@ -95,12 +96,16 @@ def test_out_of_range_scores_are_refused(value: int):
         independence_words(value)
 
 
-def test_place_words_name_vanilla_dimensions_and_keep_modded_ids():
-    assert place_words("minecraft:the_nether", -12, 70, 48) == "the Nether, x -12, y 70, z 48"
-    assert place_words("aether:the_aether", 1, 2, 3) == "aether:the_aether, x 1, y 2, z 3"
+def test_dimension_words_name_vanilla_dimensions_and_keep_modded_ids():
+    assert dimension_words("minecraft:the_nether") == "the Nether"
+    assert dimension_words("aether:the_aether") == "aether:the_aether"
+
+
+def test_coordinate_placeholders_map_to_digits():
+    assert coordinate_values(-745, 87, 151) == {"{x}": "-745", "{y}": "87", "{z}": "151"}
 
 
 def test_come_words_cover_every_answer():
     assert set(COME_RULES) == {"comes", "refuses", "other_dimension", "just_came"}
     assert "set come to true" in come_words("comes")
-    assert "coordinates" in come_words("other_dimension")
+    assert "{x}, {y} and {z}" in come_words("other_dimension")

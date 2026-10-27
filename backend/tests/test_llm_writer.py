@@ -451,11 +451,7 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
     asyncio.run(writer.write_reply(prompt, irritated=False))
 
     assert seen[0].endswith(
-        "\n(Reminder, not from the player: "
-        + register_words(70)
-        + " "
-        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
-        + ")"
+        "\n(Reminder, not from the player: " + register_words(70) + " " + WHERE_REMINDER + ")"
     )
 
 
