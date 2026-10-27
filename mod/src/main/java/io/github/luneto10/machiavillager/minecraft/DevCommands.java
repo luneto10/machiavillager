@@ -23,6 +23,7 @@ import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
 import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
+import io.github.luneto10.machiavillager.minecraft.npc.NpcRespawn;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
 import java.time.Instant;
 import java.util.List;
@@ -55,6 +56,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@code brain odds}: print the odds of his next decision, one line per NPC (dev).</li>
  *   <li>{@code brain nudge <-10..10>}: apply an affinity nudge for you, through the same limits as the AI (dev).</li>
  *   <li>{@code brain do <action>}: force follow, wander, bark, hint, summon or mutter aimed at you (dev).</li>
+ *   <li>{@code brain respawn now}: bring him back now if he is dead and waiting to return (dev).</li>
  *   <li>{@code brain lines clear}: empty every line pool, in memory and saved, so fresh batches are asked for (dev).</li>
  *   <li>{@code brain set ambition|independence <0-100>}: edit the saved story (dev).</li>
  *   <li>{@code brain set affinity <0-100>}: set your own affinity exactly, no limits (dev).</li>
@@ -227,12 +229,18 @@ public final class DevCommands {
         if (!existing.isEmpty()) {
             MachiavillagerEntity npc = existing.getFirst();
             npc.teleportTo(source.getLevel(), pos.x, pos.y, pos.z, Set.of(), npc.getYRot(), npc.getXRot(), true);
+
+            // He is here now, so a pending respawn would only make a second one.
+            StoryData.get(source.getServer()).clearRespawn();
             source.sendSuccess(() -> Component.literal("Machiavillager already exists. He came to you."), false);
             return 1;
         }
 
         // First spawn: he arrives where the command was typed.
         ModEntities.MACHIAVILLAGER.spawn(source.getLevel(), BlockPos.containing(pos), EntitySpawnReason.COMMAND);
+
+        // Created now, so the respawn saved for his death is no longer needed.
+        StoryData.get(source.getServer()).clearRespawn();
         source.sendSuccess(() -> Component.literal("Machiavillager has arrived. Hide your emeralds."), false);
         return 1;
     }
@@ -258,6 +266,7 @@ public final class DevCommands {
                 .then(Commands.literal("odds").executes(DevCommands::runBrainOdds));
         brain.then(nudge());
         brain.then(lines());
+        brain.then(respawn());
 
         // One literal per table entry: "brain do follow", "brain do bark", and so on.
         var does = Commands.literal("do");
@@ -316,6 +325,28 @@ public final class DevCommands {
         int cleared = lines.get().clear();
         source.sendSuccess(() -> Component.literal("Cleared " + cleared + " line pools."), false);
         return cleared;
+    }
+
+    // "brain respawn now": brings him back at once when he is dead and waiting. Same path as the timed check.
+    private static LiteralArgumentBuilder<CommandSourceStack> respawn() {
+        return Commands.literal("respawn").then(Commands.literal("now").executes(DevCommands::runRespawnNow));
+    }
+
+    private static int runRespawnNow(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        MinecraftServer server = source.getServer();
+        if (!NpcRespawn.isPending(server)) {
+            source.sendSuccess(() -> Component.literal("No respawn pending."), false);
+            return 0;
+        }
+
+        // Fails only when no safe spot exists yet: the plan stays pending and the timed check retries it.
+        if (!NpcRespawn.respawnNow(server)) {
+            source.sendFailure(Component.literal("Respawn failed: no safe spot yet. It retries every second."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Respawned him."), false);
+        return 1;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> set() {
