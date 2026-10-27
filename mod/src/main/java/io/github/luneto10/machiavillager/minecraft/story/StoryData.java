@@ -8,11 +8,14 @@ import io.github.luneto10.machiavillager.domain.lines.LineKey;
 import io.github.luneto10.machiavillager.domain.lines.SavedLinePools;
 import io.github.luneto10.machiavillager.domain.story.Personality;
 import io.github.luneto10.machiavillager.domain.story.Phase;
+import io.github.luneto10.machiavillager.domain.story.RespawnPlan;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +31,15 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * the data dirty.
  */
 public final class StoryData extends SavedData {
+    // Declared before CODEC, which uses it: static fields initialize top to bottom.
+    private static final Codec<RespawnPlan> RESPAWN_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                    Codec.LONG.fieldOf("due_tick").forGetter(RespawnPlan::dueTick),
+                    Codec.STRING.fieldOf("dimension").forGetter(RespawnPlan::dimension),
+                    Codec.DOUBLE.fieldOf("x").forGetter(RespawnPlan::x),
+                    Codec.DOUBLE.fieldOf("y").forGetter(RespawnPlan::y),
+                    Codec.DOUBLE.fieldOf("z").forGetter(RespawnPlan::z))
+            .apply(instance, RespawnPlan::new));
+
     private static final Codec<StoryData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                     Codec.DOUBLE.fieldOf("ambition").forGetter(data -> data.progress.ambition()),
                     Codec.STRING.fieldOf("phase").forGetter(data -> data.progress.phase().name()),
@@ -40,7 +52,10 @@ public final class StoryData extends SavedData {
                             .forGetter(data -> List.copyOf(data.summonOptOut)),
                     // Optional, so saves from before the AI wrote lines still load: no pools yet.
                     Codec.unboundedMap(Codec.STRING, Codec.list(Codec.STRING)).optionalFieldOf("line_pools", Map.of())
-                            .forGetter(data -> idKeyed(data.linePools)))
+                            .forGetter(data -> idKeyed(data.linePools)),
+                    // Optional, so saves from before the death respawn still load: nothing is pending.
+                    RESPAWN_CODEC.optionalFieldOf("respawn")
+                            .forGetter(data -> Optional.ofNullable(data.respawn)))
             .apply(instance, StoryData::restore));
 
     private static final SavedDataType<StoryData> TYPE = new SavedDataType<>(
@@ -50,20 +65,24 @@ public final class StoryData extends SavedData {
     private Relationships relationships;
     private Set<UUID> summonOptOut;
     private Map<LineKey, List<String>> linePools;
+    // Null while he is alive: a pending respawn exists only between his death and his return.
+    private RespawnPlan respawn;
 
     public StoryData() {
-        this(StoryProgress.initial(), Relationships.initial(), Set.of(), Map.of());
+        this(StoryProgress.initial(), Relationships.initial(), Set.of(), Map.of(), null);
     }
 
     private StoryData(
             StoryProgress progress,
             Relationships relationships,
             Set<UUID> summonOptOut,
-            Map<LineKey, List<String>> linePools) {
+            Map<LineKey, List<String>> linePools,
+            RespawnPlan respawn) {
         this.progress = progress;
         this.relationships = relationships;
         this.summonOptOut = summonOptOut;
         this.linePools = linePools;
+        this.respawn = respawn;
     }
 
     /** Loads the story of this server, or creates a fresh one the first time. */
@@ -141,6 +160,23 @@ public final class StoryData extends SavedData {
         setRelationships(relationships.withIndependence(value));
     }
 
+    /** His pending respawn, empty while he is alive. */
+    public Optional<RespawnPlan> respawn() {
+        return Optional.ofNullable(respawn);
+    }
+
+    /** Saves the respawn to wait for after his death. Replaces any earlier plan. */
+    public void scheduleRespawn(RespawnPlan plan) {
+        respawn = Objects.requireNonNull(plan, "plan");
+        setDirty();
+    }
+
+    /** Forgets the pending respawn: he is back, or he already exists. */
+    public void clearRespawn() {
+        respawn = null;
+        setDirty();
+    }
+
     private static StoryData restore(
             double ambition,
             String phase,
@@ -148,14 +184,16 @@ public final class StoryData extends SavedData {
             int independence,
             Map<UUID, Integer> affinities,
             List<UUID> summonOptOut,
-            Map<String, List<String>> linePools) {
+            Map<String, List<String>> linePools,
+            Optional<RespawnPlan> respawn) {
         StoryProgress restoredProgress =
                 StoryProgress.restored(ambition, Phase.valueOf(phase), Phase.valueOf(highestPhase));
         return new StoryData(
                 restoredProgress,
                 Relationships.restored(affinities, independence),
                 Set.copyOf(summonOptOut),
-                parsePools(linePools));
+                parsePools(linePools),
+                respawn.orElse(null));
     }
 
     // Validated by the domain: unknown ids and invalid lines are dropped, so an edited save cannot break the bank.

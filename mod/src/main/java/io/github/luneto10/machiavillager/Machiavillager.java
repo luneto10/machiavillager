@@ -5,6 +5,7 @@ import io.github.luneto10.machiavillager.minecraft.DevCommands;
 import io.github.luneto10.machiavillager.minecraft.ModEntities;
 import io.github.luneto10.machiavillager.minecraft.ServerLifecycleLog;
 import io.github.luneto10.machiavillager.minecraft.notice.Notices;
+import io.github.luneto10.machiavillager.minecraft.npc.NpcRespawn;
 import io.github.luneto10.machiavillager.minecraft.speech.NpcChatPayload;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ public class Machiavillager implements ModInitializer {
 		ModEntities.register(); // first: commands below use the entity type
 		        		ServerLifecycleLog.register();
         BridgeLifecycle.register(); // starts the backend link with the server; off without a token
+        NpcRespawn.register(); // death is not a reset: the due respawn is checked every second, bridge or not
         Notices.register(); // payload types must exist on both ends before any player joins
         NpcChatPayload.register(); // NPC chat lines: same rule, both ends before any player joins
 		DevCommands.register();
