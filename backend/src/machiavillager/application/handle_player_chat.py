@@ -6,7 +6,12 @@ from typing import Any, Final
 
 from machiavillager.application.conversation_store import ConversationStore
 from machiavillager.application.history_budget import fit_history
-from machiavillager.application.ports import BridgeUnavailable, Feeling, GameBridge, LineWriter
+from machiavillager.application.ports import (
+    BridgeUnavailable,
+    Feeling,
+    GameBridge,
+    LineWriter,
+)
 from machiavillager.application.prompt_builder import (
     ConversationLine,
     ProfanityLevel,
@@ -24,6 +29,7 @@ from machiavillager.domain.protocol import (
     SuggestRelationshipArgs,
     TerminalStatus,
 )
+from machiavillager.domain.rudeness import kindness_floor, rudeness_floor
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +39,8 @@ NPC_SPEAKER: Final = "Machiavillager"
 # Marks a line he was talked over in the middle of, so the next reply knows it was cut short.
 CUT_OFF_MARK: Final = " (cut off)"
 IRRITATED_MOOD: Final = "irritated"
+# The reason the mod shows for each kind floor value: an apology is +1, warm words are +2.
+KINDNESS_REASONS: Final = {1: "apology", 2: "kind words"}
 
 
 def conversation_key(event: PlayerChatEvent) -> str:
@@ -79,6 +87,26 @@ def reply_action(
         in_reply_to=event.event_id,
         **action_fields,
     )
+
+
+def apply_feeling_floors(text: str, feeling: Feeling | None) -> Feeling | None:
+    """Pin the model's feeling to what his words deserve: rude lines drop it, kind ones lift it."""
+
+    # Rude words are checked first and win: a line with an insult never gets the kindness floor.
+    rude = rudeness_floor(text)
+    if rude < 0:
+        # A feeling already at or below the floor is kept, so a harsher model reply is not undone.
+        if feeling is not None and feeling.affinity_delta <= rude:
+            return feeling
+        logger.info("feeling floor applied: %d", rude)
+        return Feeling(affinity_delta=rude, reason="rude words")
+
+    # Kind words only lift the feeling: a model value already at or above the floor is kept.
+    kind = kindness_floor(text)
+    if kind > 0 and (feeling is None or feeling.affinity_delta < kind):
+        logger.info("feeling floor applied: %d", kind)
+        return Feeling(affinity_delta=kind, reason=KINDNESS_REASONS[kind])
+    return feeling
 
 
 def suggest_action(
@@ -203,11 +231,18 @@ class HandlePlayerChat:
             addressed=event.data.addressed,
         )
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
+
         reply = await self._writer.write_reply(messages, irritated=irritated)
 
+        # Only the count is logged, so a silent reply shows up without any of his words in the log.
+        logger.info("reply %s lines=%d", event.event_id, len(reply.lines))
+
+        # Floor reads his newest line only. The dev echo never gets here, so it is never floored.
+        feeling = apply_feeling_floors(event.data.text, reply.feeling)
+
         # The feeling goes first: it is instant, while the speak below can take seconds.
-        if reply.feeling is not None:
-            await self._suggest(event, reply.feeling)
+        if feeling is not None:
+            await self._suggest(event, feeling)
 
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
         if not reply.lines:

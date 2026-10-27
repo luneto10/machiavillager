@@ -9,7 +9,8 @@ import java.util.UUID;
  * Mutable on purpose: it owns the cooldowns that decide whether a hit counts.
  */
 public final class HitReaction {
-    static final int AFFINITY_LOSS = 10;
+    // A light tap costs little: the owner wants a punch at 1 to 2 affinity, far below a death threat.
+    static final int AFFINITY_LOSS = 2;
     // 1 min: a flurry of punches is one offense per player.
     static final long AFFINITY_COOLDOWN_TICKS = 1_200;
     static final int INDEPENDENCE_GAIN = 2;

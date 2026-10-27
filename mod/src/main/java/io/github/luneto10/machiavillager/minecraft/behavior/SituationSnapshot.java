@@ -41,7 +41,8 @@ public final class SituationSnapshot {
                 continue;
             }
             UUID id = player.getUUID();
-            nearby.add(new NearbyPlayer(id, player.getPlainTextName(), npc.distanceTo(player)));
+            nearby.add(new NearbyPlayer(
+                    id, player.getPlainTextName(), npc.distanceTo(player), relationships.affinityOf(id)));
 
             // The domain only ever sees ids, never Minecraft player objects.
             if (summonable.test(player)) {

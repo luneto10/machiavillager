@@ -155,6 +155,51 @@ What the numbers do not show:
 - **Rejected:** xAI Grok, the least filtered option. Paid, slower, and the open models above already
   play the character without refusing.
 
+## Line batches
+
+He also says lines nobody asked for: barks, hints and mutterings. When the mod's pool for one key
+(kind, phase, mood) runs low, it asks for a batch and the backend writes it in one call, then sends
+it back as `deliver_lines`.
+
+- **Chain:** `MACHIAVILLAGER_LLM_CHAIN_BATCH`, default
+  `nvidia:nvidia/nemotron-3.5-bolt-e4b,groq:openai/gpt-oss-120b`. It is separate from the chat chains.
+- **Why NVIDIA first:** a batch is one long call and NVIDIA has its own budget (40 requests a minute,
+  no daily cap). Batches then draw on NVIDIA's budget and leave Groq's per-minute tokens for replies.
+  gpt-oss stays second for when NVIDIA fails.
+- **Timeout and size:** 20 s per call (`MACHIAVILLAGER_LLM_BATCH_TIMEOUT_SECONDS`), 1500 output tokens,
+  15 lines asked for by default (1 to 30).
+- **Caps:** 6 batches an hour (`MACHIAVILLAGER_LINES_BATCHES_PER_HOUR`). A key that got lines is not
+  written again for 1200 s; a key whose batch came back empty is retried after 120 s.
+- **Failures:** a model that errors or answers without the `deliver_lines` call falls through to the
+  next one. When every model fails, nothing is sent and the next event for that key retries later.
+- **Checks:** each line is checked against the contract on its own. A line with a stray brace is
+  dropped and the rest of the batch is sent.
+
+## Tone
+
+The affinity change comes from the same reply call, so each player message costs one LLM call.
+A word-list floor (`apply_feeling_floors`) lowers obvious insults and raises apologies.
+A separate judge call was tried and removed, because one call per message is a requirement.
+
+## Azure
+
+Azure OpenAI (or Microsoft Foundry) works as a provider, written `azure:` in any pair.
+
+- **Why:** Azure credits, high rate limits and no daily cap, so a busy server keeps talking when the
+  free tiers run out.
+- **Configuration:** two variables. `MACHIAVILLAGER_AZURE_BASE_URL` is the resource's `/openai/v1/`
+  URL (https, one trailing slash) and `MACHIAVILLAGER_AZURE_API_KEY` is its key. The part after
+  `azure:` is the deployment name, which may hold dots and dashes, e.g. `azure:gpt-4.1-mini`. A pair
+  with either variable missing is skipped, like a pair with no key.
+- **Content filters:** Azure applies its own content filters. A filtered prompt answers 400 with
+  `content_filter`, which counts as a failed model, so the chain falls through to the next pair.
+- **Reasoning models:** Deployments named `gpt-5*`, `gpt-6*`, `o1*`, `o3*` or `o4*` reject `max_tokens`
+  and reject function tools unless reasoning is off, so they get `max_completion_tokens` and
+  `reasoning_effort: "none"` (via `extra_body`). The rule matches the deployment name prefix, so any
+  custom suffix works, and other providers and Azure families are unchanged.
+- **Latency first:** Azure is in no default chain yet. Measure its chat latency with
+  `scripts/compare_models.py` before putting it first.
+
 ## Future providers (not used yet)
 
 Checked on 2026-10-26, free tiers, for when Groq is not enough:

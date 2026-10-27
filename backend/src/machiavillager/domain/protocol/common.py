@@ -44,6 +44,10 @@ MAX_RELATIONSHIP_SCORE: Final = 100
 MIN_AFFINITY_DELTA: Final = -10
 MAX_AFFINITY_DELTA: Final = 10
 MAX_FEELING_REASON_LENGTH: Final = 120
+# A batch is the pool of lines for one key, sent in one message. Its line length is separate from
+# MAX_LINE_LENGTH, which limits speech.
+MAX_BATCH_LINES: Final = 30
+MAX_BATCH_LINE_LENGTH: Final = 160
 
 # Identifiers are prefixed so a log line shows what kind of id it is.
 ACTION_ID_PATTERN: Final = r"^act_[A-Za-z0-9]{8,32}$"
@@ -57,6 +61,18 @@ ActionId = Annotated[str, StringConstraints(pattern=ACTION_ID_PATTERN)]
 EventId = Annotated[str, StringConstraints(pattern=EVENT_ID_PATTERN)]
 ConversationId = Annotated[str, StringConstraints(pattern=CONVERSATION_ID_PATTERN)]
 SpeakLine = Annotated[str, StringConstraints(min_length=1, max_length=MAX_LINE_LENGTH)]
+# A bark is a short call, a hint points somewhere, a mutter is said to himself.
+LineKind = Literal["bark", "hint", "mutter"]
+# Braces are allowed only as the placeholders {player}, {x} and {z}, which the mod fills in before
+# it speaks. Any other brace would be spoken as is, so it is refused here.
+BatchLine = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        max_length=MAX_BATCH_LINE_LENGTH,
+        pattern=r"^(?:[^{}]|\{player\}|\{x\}|\{z\})+$",
+    ),
+]
 Reason = Annotated[str, StringConstraints(max_length=MAX_REASON_LENGTH)]
 ErrorCode = Literal["bad_message", "unsupported_protocol", "unauthorized", "internal"]
 # Why the mod forwarded a chat line. "private" is the @m channel; the rest are public chat.

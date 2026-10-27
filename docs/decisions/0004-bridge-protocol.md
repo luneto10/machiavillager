@@ -151,7 +151,7 @@ Unknown fields are rejected, never silently ignored.
   `reason` is 1 to 120 characters, logged by the mod with the change and never shown to players. The
   backend sends it before the speak it belongs to and waits for its terminal status first, with the
   same timeout as speech; a failure of the suggestion never stops the speak.- **The AI never sets values.** It suggests a bounded move; the mod checks that the player exists,
-  caps the change, rate-limits it (30 seconds between changes, +10 and -20 at most per 15 minutes
+  caps the change, rate-limits it (separate 30 seconds between rises and between drops, so an apology soon after an insult counts; a rise within 5 minutes of a drop is at most half of that drop; +10 and -20 at most per 15 minutes
   for each player) and applies it. Replies: `rejected` with reason
   `unknown_player`, `rate_limited` or `capped`; otherwise the usual progress and terminal statuses.
 - **Provenance is `claimed`.** The model only reports what the conversation suggests, so a big move
@@ -160,6 +160,19 @@ Unknown fields are rejected, never silently ignored.
   than feeling bad. The writer clamps before the contract sees the value.
 - **Why a feeling is optional and rare:** the prompt tells the model to omit it almost always, so most
   replies carry no suggestion and no extra round trip.
+
+### 14. Batches of lines: the mod asks, the backend writes
+
+- **Decision:** when a pool of lines for one key (`kind`, `phase`, `mood`) is empty or about 70% used,
+  the mod sends `lines_needed {kind, phase, mood}`. The backend answers with `deliver_lines {kind,
+  phase, mood, lines}`, between 1 and 30 lines of 1 to 160 characters each.
+- **Placeholders:** a line may use only `{player}`, `{x}` and `{z}`. The contract refuses any other
+  brace, such as `{name}`, so the mod never speaks a raw template by mistake.
+- **The mod decides:** it validates the batch and may reject it. The reply is the usual
+  `action_status`: `rejected` when the batch breaks its rules, otherwise progress and a terminal
+  status. No new status code is needed.
+- **Why the mod asks:** the mod keeps the pool and knows when it runs low, so the backend is called
+  only when there is something to fill, never per tick.
 
 ## Consequences
 

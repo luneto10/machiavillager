@@ -69,7 +69,7 @@ class FollowOptionTest {
     private static Situation situation(Mood mood, double distance, Set<UUID> caredFor) {
         return new Situation(
                 mood,
-                List.of(new NearbyPlayer(PLAYER, "Alice", distance)),
+                List.of(new NearbyPlayer(PLAYER, "Alice", distance, Relationships.DEFAULT_AFFINITY)),
                 Phase.PARTNER,
                 0,
                 Set.of(),

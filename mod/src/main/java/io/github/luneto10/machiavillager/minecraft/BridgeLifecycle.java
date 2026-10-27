@@ -3,6 +3,8 @@ package io.github.luneto10.machiavillager.minecraft;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeConfig;
+import io.github.luneto10.machiavillager.domain.bridge.BridgeState;
+import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.ModelLabel;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.NearChatCooldown;
@@ -15,6 +17,7 @@ import io.github.luneto10.machiavillager.minecraft.bridge.ActionExecutor;
 import io.github.luneto10.machiavillager.minecraft.bridge.ModelLine;
 import io.github.luneto10.machiavillager.minecraft.bridge.PlayerChatReporter;
 import io.github.luneto10.machiavillager.minecraft.bridge.RelationshipNudger;
+import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -45,6 +48,8 @@ public final class BridgeLifecycle {
     private static volatile ModelLine modelLine;
     // Applies suggested affinity changes; fresh per start, null when the bridge is off.
     private static volatile RelationshipNudger nudger;
+    // The spoken lines; fresh per start and present whenever a server runs, even with the bridge off.
+    private static volatile NpcLines npcLines;
 
     private BridgeLifecycle() {}
 
@@ -67,6 +72,11 @@ public final class BridgeLifecycle {
         return Optional.ofNullable(nudger);
     }
 
+    /** The spoken lines of the running server, or empty when no server is running. Works with the bridge off. */
+    public static Optional<NpcLines> lines() {
+        return Optional.ofNullable(npcLines);
+    }
+
     /** Dev: the model label the boss bar shows. Back to "no reply yet" when the bridge is off or restarted. */
     public static String aiLineText() {
         ModelLine line = modelLine;
@@ -80,6 +90,8 @@ public final class BridgeLifecycle {
         } catch (IllegalArgumentException invalid) {
             // Logged, not thrown: a bad bridge setting must never stop the server from starting.
             Machiavillager.LOGGER.error("Bridge off: invalid bridge settings ({})", invalid.getMessage());
+            // Lines still work without the bridge: they come from the fallbacks, and nothing is asked.
+            npcLines = new NpcLines(server, () -> false, event -> false);
             return;
         }
         BridgeClient started = new BridgeClient(config, modVersion(), server, BridgeLifecycle::onMessage);
@@ -94,8 +106,14 @@ public final class BridgeLifecycle {
         RelationshipNudger nudges = new RelationshipNudger(server);
         nudger = nudges;
         // The executor is in place before the socket starts, so the first action finds it.
+        // Built once the client exists, so requests go out through it; they are dropped unless the link is up.
+        NpcLines lines = new NpcLines(
+                server,
+                () -> started.state() == BridgeState.CONNECTED,
+                event -> sendIfConnected(started, event));
+        npcLines = lines;
         executor = new ActionExecutor(
-                server, started, SpeechRules.unpromptedCooldown(System.getenv()), line, nudges);
+                server, started, SpeechRules.unpromptedCooldown(System.getenv()), line, nudges, lines);
         client = started;
         started.start();
     }
@@ -105,6 +123,7 @@ public final class BridgeLifecycle {
         client = null;
         executor = null;
         nudger = null;
+        npcLines = null;
         nearCooldown = null;
         modelLine = null;
         if (running != null) {
@@ -112,7 +131,7 @@ public final class BridgeLifecycle {
         }
     }
 
-    // Game thread. Speak and relationship suggestions are executed; any other message is only logged.
+    // Game thread. Speak, relationship suggestions and delivered lines are executed; any other message is only logged.
     private static void onMessage(BridgeMessage message) {
         ActionExecutor actions = executor;
         if (message instanceof SpeakAction speak && actions != null) {
@@ -121,6 +140,10 @@ public final class BridgeLifecycle {
         }
         if (message instanceof SuggestRelationshipAction suggest && actions != null) {
             actions.suggestRelationship(suggest);
+            return;
+        }
+        if (message instanceof DeliverLinesAction deliver && actions != null) {
+            actions.deliverLines(deliver);
             return;
         }
         Machiavillager.LOGGER.info("Bridge received {}", message.getClass().getSimpleName());
@@ -164,12 +187,23 @@ public final class BridgeLifecycle {
             // Overheard lines wait out the per-player cooldown; a line that names him always passes.
             boolean limited = reason == Addressed.NEAR;
             if (limited && !nearCooldown.tryAcquire(sender.getUUID(), sender.level().getGameTime())) {
+                // Logged without the text, so a quiet player's blocked lines still leave a trace.
+                Machiavillager.LOGGER.info("player_chat skipped: near cooldown");
                 return;
             }
             running.send(event);
             // Logged by id only: the chat text never reaches the log.
             Machiavillager.LOGGER.info("player_chat sent event_id={}", event.eventId());
         });
+    }
+
+    // Server thread. True when the event was queued: the link was up when it was checked.
+    private static boolean sendIfConnected(BridgeClient bridge, BridgeMessage event) {
+        if (bridge.state() != BridgeState.CONNECTED) {
+            return false;
+        }
+        bridge.send(event);
+        return true;
     }
 
     private static String modVersion() {

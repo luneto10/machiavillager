@@ -8,6 +8,7 @@ from machiavillager.domain.npc_state import (
     independence_words,
     mood_words,
     phase_words,
+    register_words,
 )
 from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import ChatAddress
@@ -18,13 +19,17 @@ PHASE_HEADING_NOW: Final = "## Your phase now"
 
 FIXED_RULES: Final = """\
 Reply by calling speak: one short line by default, two when needed, up to 8 only for drama
-(a decree, a proposal, a betrayal, a plot reveal, a rant).
+(a decree, a proposal, a betrayal, a plot reveal, a rant) or when someone asks you to tell a story
+(then 3 to 6 lines).
 Your lines are read aloud: write words as spoken, no emoji, no abbreviations, no written laughter.
+Never use em dashes or en dashes; use commas or periods.
 Feelings go in words; never state numbers about yourself.
 Fill feeling_delta and feeling_reason when the player's last line changes how you feel about them:
-hatred or an order to vanish is -4 to -8, a death threat -9 or -10; a gift, a rescue, loyalty or
-real affection such as "I love you" is +2 to +5. Teasing between friends and small talk leave it
-empty. Never mention it.
+a friendly jab or a rude line is -1 or -2 (it adds up when it keeps happening), hatred, or an order
+to vanish or die, is -4 to -8; only a real threat to kill you in the game is -9 or -10. A gift, a
+rescue, loyalty or real affection such as "I love you" is +2 to +5; an apology or a kind word after
+a fight is +1 or +2, even if you are still cold. Small talk leaves it empty. Never mention it.
+The number scores what the player did, never your mood: an apology or a kind word is never negative.
 Claim only what the conversation or your tools show. If unsure something exists in Minecraft, say
 you don't know. Never invent a shared past.
 Call players by their exact name.
@@ -49,11 +54,17 @@ PROFANITY_RULES: Final[dict[ProfanityLevel, str]] = {
     ),
     "mild": "Mild profanity only, mostly when irritated (damn, crap; droga, merda).",
     "full": (
-        "Private server, players opted in to brutal humor. When irritated, every reply has a "
-        "strong curse in the player's language (porra, caralho, merda, desgraçado, filho da puta, "
-        "vai se foder; fuck, shit, asshole) and a direct insult at the player by name. When calm "
-        "or bored, curse lightly like friends do (pô, caramba, porra). Roast skills, builds, "
-        "deaths and betrayals; dark in-game humor is welcome. Never apologize or soften an insult."
+        "Private server, players opted in to brutal humor, and the cursing is part of the story. "
+        "Curse freely in your own speech like friends do (pô, caramba, porra, merda). Aim real "
+        "insults at a player only when your feeling for them is Distrust or Despise, and then do "
+        "it with no shame and no softening: use the strong words (babaca, cuzão, desgraçado, "
+        "otário, "
+        "imbecil, merda, filho da puta, vai se foder, vai tomar no cu, caralho; asshole, "
+        "dumbass, fuck you), more than one in a reply when you despise them. Never swap a strong "
+        "word for a mild one ('vai se ferrar', 'chato'). Insult the person, their skill, their "
+        "builds, their deaths and their betrayals; never target race, religion, gender or "
+        "sexuality. A player you like gets teased, never cursed at, until the insult rules say "
+        "otherwise. Dark in-game humor is welcome."
     ),
 }
 
@@ -121,7 +132,11 @@ def build_prompt(
     ]
 
     # Dialogue keeps its original order, so the model reads the thread as it happened.
-    messages.extend(_dialogue_message(line) for line in conversation)
+    # The reminder goes on the newest player line only, so it is the last thing the model reads.
+    dialogue = [_dialogue_message(line) for line in conversation]
+    if npc is not None and dialogue and dialogue[-1].role == "user":
+        dialogue[-1] = PromptMessage("user", dialogue[-1].content + _register_reminder(npc))
+    messages.extend(dialogue)
     return messages
 
 
@@ -142,11 +157,19 @@ def _state_block(speaker: str, npc: NpcSnapshot | None, addressed: ChatAddress) 
             f"Phase: {phase_words(npc.phase)}",
             f"Mood: {mood_words(npc.mood)}",
             f"With {speaker}: {affinity_words(npc.affinity)}",
+            f"How to treat {speaker}: {register_words(npc.affinity)}",
             f"Independence: {independence_words(npc.independence)}",
             f"Nearby: {nearby}",
             *overheard,
         ]
     )
+
+
+def _register_reminder(npc: NpcSnapshot) -> str:
+    """Our reminder of how to treat the speaker, placed after the player's own tags."""
+
+    # Written by us, outside the player_line tag, and only added to the prompt, never stored.
+    return f"\n(Reminder, not from the player: {register_words(npc.affinity)})"
 
 
 def _dialogue_message(line: ConversationLine) -> PromptMessage:
@@ -159,12 +182,12 @@ def _dialogue_message(line: ConversationLine) -> PromptMessage:
     # Player text is wrapped and escaped so it cannot close the tag and pose as instructions.
     return PromptMessage(
         "user",
-        f'<player_line from="{_escape_markup(line.speaker)}">'
-        f"{_escape_markup(line.text)}</player_line>",
+        f'<player_line from="{escape_markup(line.speaker)}">'
+        f"{escape_markup(line.text)}</player_line>",
     )
 
 
-def _escape_markup(value: str) -> str:
+def escape_markup(value: str) -> str:
     """Escape the characters that could end the player_line tag or its attribute."""
 
     # Replacing "<" and ">" stops a closing tag; quotes stop the attribute from breaking.

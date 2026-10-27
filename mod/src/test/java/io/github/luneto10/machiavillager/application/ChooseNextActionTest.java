@@ -9,6 +9,8 @@ import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.NearbyPlayer;
 import io.github.luneto10.machiavillager.domain.behavior.NpcAction;
+import io.github.luneto10.machiavillager.domain.behavior.Relationships;
+
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import java.util.ArrayList;
@@ -27,10 +29,12 @@ class ChooseNextActionTest {
     private static final double TOLERANCE = 0.01;
     private static final UUID PLAYER = new UUID(0L, 1L);
 
-    // Weights for one player at 5 blocks: Follow + Wander only. Bark, Hint and Mutter are off in the table.
+    // Weights for one player at 5 blocks, calm, partner phase: Follow, Wander, Bark and Mutter. Hint needs SEEDS.
     private static final int CALM_FOLLOW = 50;
     private static final int CALM_WANDER = 25;
-    private static final int CALM_TOTAL = CALM_FOLLOW + CALM_WANDER;
+    private static final int CALM_BARK = 20;
+    private static final int CALM_MUTTER = 3;
+    private static final int CALM_TOTAL = CALM_FOLLOW + CALM_WANDER + CALM_BARK + CALM_MUTTER;
 
     @Test
     void emptyCatalog_throws() {
@@ -49,7 +53,7 @@ class ChooseNextActionTest {
     }
 
     @Test
-    void playerNearby_canFollowOrWander() {
+    void playerNearby_canFollowWanderBarkOrMutter() {
         ChooseNextAction useCase = ChooseNextAction.withDefaultCatalog();
         Situation withPlayer = calmWithPlayerAt(5);
         Random random = new Random(SEED);
@@ -59,7 +63,8 @@ class ChooseNextActionTest {
             seen.add(useCase.choose(withPlayer, random).getClass());
         }
 
-        assertEquals(Set.of(NpcAction.Follow.class, NpcAction.Wander.class), seen);
+        assertEquals(Set.of(NpcAction.Follow.class, NpcAction.Wander.class,
+                NpcAction.Bark.class, NpcAction.Mutter.class), seen);
     }
 
     @Test
@@ -69,6 +74,8 @@ class ChooseNextActionTest {
 
         assertEquals((double) CALM_FOLLOW / CALM_TOTAL, fraction(counts, NpcAction.Follow.class), TOLERANCE);
         assertEquals((double) CALM_WANDER / CALM_TOTAL, fraction(counts, NpcAction.Wander.class), TOLERANCE);
+        assertEquals((double) CALM_BARK / CALM_TOTAL, fraction(counts, NpcAction.Bark.class), TOLERANCE);
+        assertEquals((double) CALM_MUTTER / CALM_TOTAL, fraction(counts, NpcAction.Mutter.class), TOLERANCE);
     }
 
     @Test
@@ -108,24 +115,14 @@ class ChooseNextActionTest {
     }
 
     @Test
-    void silencedLines_neverInTheTable() {
-        // Hint is possible here (story started, long since the last hint), so its absence is a real check.
+    void hint_onlyOnceTheStoryHasStarted() {
+        // Hint is possible at SEEDS after the hint gap, and never in the partner phase.
         Situation hintReady = new Situation(Mood.CALM, List.of(nearbyAt(5)), Phase.SEEDS, 24_000, Set.of(), Set.of());
         ChooseNextAction useCase = ChooseNextAction.withDefaultCatalog();
-        Random random = new Random(SEED);
 
-        for (Situation situation : List.of(calmWithPlayerAt(5), hintReady)) {
-            for (NpcAction action : useCase.odds(situation).outcomes()) {
-                assertFalse(action instanceof NpcAction.Bark, "bark must be off: " + action);
-                assertFalse(action instanceof NpcAction.Hint, "hint must be off: " + action);
-                assertFalse(action instanceof NpcAction.Mutter, "mutter must be off: " + action);
-            }
-        }
-        for (int i = 0; i < 10_000; i++) {
-            NpcAction picked = useCase.choose(hintReady, random);
-            assertFalse(picked instanceof NpcAction.Bark || picked instanceof NpcAction.Hint
-                    || picked instanceof NpcAction.Mutter, "silenced line rolled: " + picked);
-        }
+        assertTrue(useCase.odds(hintReady).outcomes().stream().anyMatch(NpcAction.Hint.class::isInstance));
+        assertFalse(useCase.odds(calmWithPlayerAt(5)).outcomes().stream()
+                .anyMatch(NpcAction.Hint.class::isInstance));
     }
 
     private static Situation calmWithPlayerAt(double distance) {
@@ -138,7 +135,7 @@ class ChooseNextActionTest {
     }
 
     private static NearbyPlayer nearbyAt(double distance) {
-        return new NearbyPlayer(PLAYER, "Alice", distance);
+        return new NearbyPlayer(PLAYER, "Alice", distance, Relationships.DEFAULT_AFFINITY);
     }
 
     private static List<NpcAction> rollSequence(ChooseNextAction useCase, Situation situation,

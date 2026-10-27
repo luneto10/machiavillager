@@ -26,8 +26,10 @@ from machiavillager.application.ports import Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
 from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
+from machiavillager.domain.text_clean import speakable
+from machiavillager.infrastructure.model_params import settings_for_label
 from machiavillager.infrastructure.settings import (
-    LLM_BASE_URLS,
+    AZURE_PROVIDER,
     Settings,
     parse_model_pair,
 )
@@ -68,10 +70,12 @@ class SpeakOutput(BaseModel):
     feeling_delta: int | None = Field(
         default=None,
         description=(
-            "Set it when the player's last line clearly changes how you feel about them: -4 to -8 "
-            "for hatred or an order to vanish, -9 or -10 for a death threat, +2 to +5 for a gift, "
-            "a rescue, loyalty or real affection. Leave it null for small talk, teasing "
-            "between friends and requests."
+            "Set it when the player's last line changes how you feel about them: -1 or -2 for a "
+            "friendly jab or a rude line, -4 to -8 for hatred or an order to vanish or die, "
+            "-9 or -10 "
+            "only for a real threat to kill you in the game, "
+            "+2 to +5 for a gift, a rescue, loyalty or real affection, +1 or +2 for an "
+            "apology or a kind word after a fight. Leave it null for small talk and requests."
         ),
     )
     feeling_reason: str | None = Field(
@@ -113,13 +117,9 @@ class LlmLineWriter:
         self._settings = settings
         self._available = list(available or [])
 
-        # No client retries: a 429 or timeout should fall through to the next model at once.
-        # max_tokens caps a runaway reply's cost and latency.
-        self._request_settings = ModelSettings(
-            timeout=timeout_seconds,
-            max_retries=0,
-            max_tokens=max_tokens,
-        )
+        # Kept so each route builds its own settings: the reply cap and field depend on the model.
+        self._timeout_seconds = timeout_seconds
+        self._max_tokens = max_tokens
 
     @property
     def has_models(self) -> bool:
@@ -134,8 +134,8 @@ class LlmLineWriter:
         # One set for both chains, so a pair listed twice is reported once.
         skipped: set[str] = set()
         available: list[str] = []
-        calm = _build_chain(settings, settings.llm_chain, skipped, available)
-        irritated = _build_chain(settings, settings.llm_chain_irritated, skipped, available)
+        calm = build_chain(settings, settings.llm_chain, skipped, available)
+        irritated = build_chain(settings, settings.llm_chain_irritated, skipped, available)
 
         # One INFO line names what was left out; keys are never printed.
         if skipped:
@@ -158,7 +158,7 @@ class LlmLineWriter:
         """Dev only: answer with this provider:model first, or back to the chains when None.
 
         The chain from settings stays behind it as the fallback. Raises ValueError for an unknown
-        provider or a provider with no key; the message never holds the key.
+        provider or a provider with no key or base URL; the message never holds the key.
         """
 
         # Swapping the route lists is the whole switch: a reply already running keeps the routes
@@ -170,15 +170,30 @@ class LlmLineWriter:
             return
 
         provider, model_id = parse_model_pair(pair)
-        key = self._settings.llm_key(provider) if self._settings is not None else None
-        if key is None:
+        settings = self._settings
+        key = settings.llm_key(provider) if settings is not None else None
+        if settings is None or key is None:
             raise ValueError(f"no key set for provider {provider!r}")
 
+        # Azure has no fixed host, so a missing base URL is refused the same way as a missing key.
+        base_url = settings.llm_base_url(provider)
+        if base_url is None:
+            raise ValueError(f"no base URL set for provider {provider!r}")
+
         # The override goes first in both chains; the chains from settings stay behind it.
-        override: Pair = (pair, _build_model(provider, model_id, key))
+        override: Pair = (pair, build_model(model_id, base_url, key))
         self._calm_routes = _build_routes([override, *self._calm_pairs])
         self._irritated_routes = _build_routes([override, *self._irritated_pairs])
         logger.info("LLM model override set to %s", pair)
+
+    def _settings_for(self, label: str) -> ModelSettings:
+        """The request settings for one route. The reply cap bounds cost and latency."""
+
+        return settings_for_label(
+            label,
+            max_tokens=self._max_tokens,
+            timeout_seconds=self._timeout_seconds,
+        )
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         """Return the fitted lines with model and latency. No lines means he chose silence.
@@ -212,10 +227,11 @@ class LlmLineWriter:
                     prompt,
                     message_history=history,
                     instructions=instructions,
-                    model_settings=self._request_settings,
+                    model_settings=self._settings_for(label),
                 )
             except (ModelAPIError, UnexpectedModelBehavior) as error:
                 # A bad answer from one model does not end the chain; the next model gets its turn.
+                # Azure content filters answer 400 (ModelHTTPError): the next model takes over.
                 errors.append(error)
                 # Type name only: the error text can hold player words or provider details.
                 # The HTTP status (429 rate limit, 404 no access) says why; it holds no player text.
@@ -230,8 +246,8 @@ class LlmLineWriter:
 
             elapsed_ms = (time.perf_counter() - started) * 1000
 
-            # The model's lines may be longer or more numerous than the mod accepts, so fit them.
-            lines = fit_to_speak(result.output.lines)
+            # Emoji are read aloud as nonsense, so they go first; then the lines are fitted.
+            lines = fit_to_speak(speakable(result.output.lines))
 
             # An empty list is a choice to stay quiet, so it is logged as one instead of replaced.
             outcome = "reply" if lines else "chose silence"
@@ -298,7 +314,7 @@ def _build_agent(model: Model) -> Agent[None, SpeakOutput]:
     )
 
 
-def _build_chain(
+def build_chain(
     settings: Settings,
     chain_text: str,
     skipped: set[str],
@@ -315,10 +331,15 @@ def _build_chain(
 
         # A provider without a key would fail with 401 on every call, so the pair is left out.
         key = settings.llm_key(provider)
-        if key is None:
+        base_url = settings.llm_base_url(provider)
+        if key is None or base_url is None:
             skipped.add(pair)
+
+            # Azure's URL is per resource, so a missing one is named here; the key is never shown.
+            if provider == AZURE_PROVIDER and base_url is None:
+                logger.info("LLM pair %s skipped, MACHIAVILLAGER_AZURE_BASE_URL is not set", pair)
             continue
-        pairs.append((pair, _build_model(provider, model_id, key)))
+        pairs.append((pair, build_model(model_id, base_url, key)))
 
         # Listed once even when both chains name it, for the dev model suggestions.
         if pair not in available:
@@ -326,10 +347,10 @@ def _build_chain(
     return pairs
 
 
-def _build_model(provider: str, model_id: str, key: str) -> OpenAIChatModel:
-    """One OpenAI-compatible chat model pointed at its provider."""
+def build_model(model_id: str, base_url: str, key: str) -> OpenAIChatModel:
+    """One OpenAI-compatible chat model pointed at its provider's base URL."""
 
-    client = OpenAIProvider(base_url=LLM_BASE_URLS[provider], api_key=key)
+    client = OpenAIProvider(base_url=base_url, api_key=key)
 
     # gpt-oss reasons before it answers; low effort keeps the reply inside the time budget.
     model_settings = (

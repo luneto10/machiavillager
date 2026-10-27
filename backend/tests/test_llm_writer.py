@@ -9,7 +9,9 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.ports import Feeling
-from machiavillager.application.prompt_builder import PromptMessage
+from machiavillager.application.prompt_builder import ConversationLine, PromptMessage, build_prompt
+from machiavillager.domain.npc_state import register_words
+from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
 from machiavillager.infrastructure.llm_writer import (
     CANNED_LINES,
@@ -141,6 +143,24 @@ def test_every_model_failing_speaks_a_canned_line(caplog):
     assert "timed out" not in caplog.text
 
 
+def test_an_emoji_is_spoken_without_it():
+    writer = _writer(_chain(_answers("Ah para você, luneto10 é? 😊")))
+
+    assert _reply(writer) == ["Ah para você, luneto10 é?"]
+
+
+def test_an_em_dash_is_spoken_as_a_comma():
+    writer = _writer(_chain(_answers("meu chapéu é lendário — só aparece pra quem acredita.")))
+
+    assert _reply(writer) == ["meu chapéu é lendário, só aparece pra quem acredita."]
+
+
+def test_a_line_that_is_only_emoji_is_dropped():
+    writer = _writer(_chain(_answers("😊", "Valeu, mano!")))
+
+    assert _reply(writer) == ["Valeu, mano!"]
+
+
 def test_overlong_output_is_fitted_before_it_is_returned():
     too_many = [f"line {number}" for number in range(MAX_SPEAK_LINES + 2)]
     too_long = "w" * (MAX_LINE_LENGTH + 10)
@@ -265,12 +285,20 @@ def test_requests_send_the_default_max_tokens_cap():
     assert seen[0]["max_tokens"] == 800
 
 
-def test_max_tokens_setting_reaches_the_writer():
-    settings = Settings(groq_api_key="x", llm_max_tokens=123, _env_file=None)
+def test_max_tokens_setting_reaches_the_request():
+    seen: list[ModelSettings | None] = []
 
-    writer = LlmLineWriter.from_settings(settings)
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.model_settings)
+        return _speak("hi")
 
-    assert writer._request_settings["max_tokens"] == 123
+    model = FunctionModel(reply, model_name="fake-ok")
+    writer = LlmLineWriter([("groq:fake-ok", model)], [], timeout_seconds=4.0, max_tokens=123)
+
+    _reply(writer)
+
+    assert seen[0] is not None
+    assert seen[0]["max_tokens"] == 123
 
 
 def _labelled_writer(calm: Model) -> LlmLineWriter:
@@ -385,6 +413,26 @@ def test_use_model_refuses_an_unknown_provider():
 
     with pytest.raises(ValueError, match="unknown provider"):
         writer.use_model("openai:gpt-4o")
+
+
+def test_the_reminder_reaches_the_models_final_user_prompt():
+    seen: list[str] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        # The last request's last part is the prompt the agent sends for this turn.
+        seen.append(messages[-1].parts[-1].content)
+        return _speak("hi")
+
+    npc = NpcSnapshot(
+        phase="seeds", mood="irritated", affinity=70, independence=63, nearby_players=[]
+    )
+    line = ConversationLine("luneto10", "you are useless", from_npc=False)
+    prompt = build_prompt("Persona.", "luneto10", [line], npc)
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+
+    asyncio.run(writer.write_reply(prompt, irritated=False))
+
+    assert seen[0].endswith("\n(Reminder, not from the player: " + register_words(70) + ")")
 
 
 def _feeling_model(delta: int, reason: str) -> FunctionModel:

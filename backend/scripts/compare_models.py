@@ -3,7 +3,8 @@
 Run from backend/:
     uv run python scripts/compare_models.py --models groq:openai/gpt-oss-20b,groq:qwen/qwen3.8-27b
 
-Each model is a provider:model pair. A provider with no key in the repo-root .env is skipped.
+Each model is a provider:model pair. A provider with no key in the repo-root .env is skipped; Azure
+also needs MACHIAVILLAGER_AZURE_BASE_URL, and its model part is the deployment name.
 
 Each model gets the same scenarios several times. A reply counts as valid only when it is a
 speak call whose arguments pass SpeakArgs. The output is a latency and validity table, then the
@@ -21,9 +22,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from pydantic import ValidationError
+from pydantic_ai.settings import ModelSettings
 
 from machiavillager.domain.protocol.actions import SpeakArgs
-from machiavillager.infrastructure.settings import LLM_BASE_URLS, Settings, parse_model_pair
+from machiavillager.infrastructure.model_params import request_settings
+from machiavillager.infrastructure.settings import Settings, parse_model_pair
 
 # The shortlist from ADR 0005: the chosen chain plus the fastest rejected model as a baseline.
 # NVIDIA's /models lists far more than a free key can call; most others return 404.
@@ -42,6 +45,7 @@ PAUSE_BETWEEN_CALLS_S = 2.1
 MAX_RATE_LIMIT_RETRIES = 3
 DEFAULT_RETRY_AFTER_S = 5.0
 REQUEST_TIMEOUT_S = 60.0
+MAX_REPLY_TOKENS = 300
 ERROR_BODY_CHARS = 120
 USER_AGENT = "machiavillager-compare/1"
 
@@ -172,7 +176,9 @@ def fmt(value: float | None, digits: int = 2) -> str:
     return "-" if value is None else f"{value:.{digits}f}"
 
 
-def build_body(model: str, player_text: str, system_prompt: str = SYSTEM_PROMPT) -> dict[str, Any]:
+def build_body(
+    model: str, player_text: str, params: ModelSettings, system_prompt: str = SYSTEM_PROMPT
+) -> dict[str, Any]:
     """Build the chat request for one scenario."""
 
     # Same user line format the game sends, so the test matches the production prompt.
@@ -187,8 +193,14 @@ def build_body(model: str, player_text: str, system_prompt: str = SYSTEM_PROMPT)
         # Forces a tool call, so a plain-text reply shows up as invalid instead of being skipped.
         "tool_choice": "required",
         "temperature": 0.8,
-        "max_tokens": 300,
     }
+
+    # The same helper as the backend picks the reply-cap field for this model.
+    if "max_tokens" in params:
+        body["max_tokens"] = params["max_tokens"]
+    extra_body = params.get("extra_body")
+    if isinstance(extra_body, dict):
+        body.update(extra_body)
 
     # gpt-oss models reason before answering; low effort cuts that latency.
     if model.startswith("openai/gpt-oss"):
@@ -230,11 +242,13 @@ def run_call(
     scenario: str,
     player_text: str,
     system_prompt: str = SYSTEM_PROMPT,
+    *,
+    params: ModelSettings,
 ) -> CallResult:
     """Send one scenario, retrying on 429. Only the successful attempt is timed."""
 
     url = f"{base_url.rstrip('/')}/chat/completions"
-    body = build_body(model, player_text, system_prompt)
+    body = build_body(model, player_text, params, system_prompt)
     for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
         started = time.perf_counter()
         try:
@@ -262,6 +276,8 @@ def run_model(
     runs: int,
     scenarios: tuple[tuple[str, str], ...] = SCENARIOS,
     system_prompt: str = SYSTEM_PROMPT,
+    *,
+    params: ModelSettings,
 ) -> list[CallResult]:
     """Run every scenario `runs` times against one model, pacing calls to the rate limit."""
 
@@ -272,7 +288,9 @@ def run_model(
             if results:
                 time.sleep(PAUSE_BETWEEN_CALLS_S)
             print(f"  {model} {scenario}", file=sys.stderr)
-            results.append(run_call(base_url, headers, model, scenario, text, system_prompt))
+            results.append(
+                run_call(base_url, headers, model, scenario, text, system_prompt, params=params)
+            )
     return results
 
 
@@ -357,32 +375,44 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(error))
 
     settings = Settings()
-    usable: list[tuple[str, str, str]] = []
+    usable: list[tuple[str, str, str, str]] = []
     for provider, model in pairs:
         key = settings.llm_key(provider)
-        # Without a key every call to that provider would fail with 401, so leave it out.
-        if key is None:
-            print(f"skipping {provider}:{model}: no {provider.upper()} key", file=sys.stderr)
+        base_url = settings.llm_base_url(provider)
+        # Without a key or base URL every call to that provider would fail, so leave it out.
+        if key is None or base_url is None:
+            print(
+                f"skipping {provider}:{model}: no {provider.upper()} key or base URL",
+                file=sys.stderr,
+            )
             continue
-        usable.append((provider, model, key))
+        usable.append((provider, model, key, base_url))
 
     # Nothing left to run; say how to fix it instead of printing an empty table.
     if not usable:
         print(
-            "Set MACHIAVILLAGER_GROQ_API_KEY or MACHIAVILLAGER_NVIDIA_API_KEY in the repo-root .env"
+            "Set a provider key in the repo-root .env, e.g. MACHIAVILLAGER_GROQ_API_KEY "
+            "(Azure also needs MACHIAVILLAGER_AZURE_BASE_URL)"
         )
         return 1
 
     results_by_model: dict[str, list[CallResult]] = {}
-    for provider, model, key in usable:
+    for provider, model, key, base_url in usable:
         headers = {
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
             "User-Agent": USER_AGENT,
         }
         name = f"{provider}:{model}"
+        # Per model, because the reply-cap field depends on the deployment (Azure GPT-5/6 differs).
+        params = request_settings(
+            provider,
+            model,
+            max_tokens=MAX_REPLY_TOKENS,
+            timeout_seconds=REQUEST_TIMEOUT_S,
+        )
         results_by_model[name] = run_model(
-            LLM_BASE_URLS[provider], headers, model, args.runs, *SUITES[args.suite]
+            base_url, headers, model, args.runs, *SUITES[args.suite], params=params
         )
 
         # Print each row as soon as its model finishes, so an interrupted run keeps its results.

@@ -80,3 +80,36 @@ Everything runs inside the Java mod: no separate backend.
 
 When a Verity idea conflicts with our hard rules (`AGENTS.md`: the LLM never runs arbitrary
 commands, never blocks the server tick), our rules win.
+
+## What Verity does about relationship, insults, identity and cadence (studied 2026-10-26)
+
+Ideas only for verity-JE; verity-extended is MIT. Paths are repo-relative.
+
+- **Karma** (verity-JE `entity/LLM/actions/Tools.java`, `event/ModEvents.java`): one global float 0-20 saved
+  with the world. The MODEL changes it through tools (get, set, +1, -1) when the player is kind or rude;
+  code also lowers it on damage (about -2) and by loneliness (-1 per ~150 s away). No per-turn cap, no
+  cooldown. Disclosure gates by karma: low never reveals secrets, middle hints, high tells.
+  verity-extended (`compat/KarmaDailyCap.java`, `mixin/VerityKarmaCapMixin.java`) adds a hard daily cap on
+  GAINS only, through the one function every change passes. Ours is stronger: bounded suggestion, mod caps,
+  separate rise and drop waits, a rise soon after a drop at most half of it. Lesson kept: a single choke
+  point for every affinity change.
+- **Insults:** no ladder. Forgiveness needs begging: verity-JE `event/VerityPleadingHandler.java` counts
+  apologies (3 needed). Adopt later: an apology counter and an irritation count (rude turns in a window)
+  that pick the register text (joke, ask to stop, curt, silent).
+- **Identity** (verity-JE `prompts/verity.xml`): never a named model, vendor, assistant or chatbot; asked
+  "are you an AI", answer in character and never explain it is software. Ours: a "Who you are" persona
+  section. Keep the answer playful, never a long sincere lie.
+- **Cadence** (verity-extended `client/VerityAwarenessManager.java`, `ai/AiEventThrottle.java`):
+  event-driven proactive lines with a priority per event, one global cooldown (default 300 s), ONE request
+  in flight and a single deferred slot that only a higher priority replaces, edge-triggered state so events
+  do not repeat, a quiet window after combat, suppressed events merged into the next line ("N more times").
+  Reply length is short by default; stories only when asked. Dedup of identical text within 10 s;
+  no repeating the same sentence twice in a row.
+- **Personality content:** only fixed lists of likes, dislikes, lore and secrets. No random "on his mind"
+  topic injection: that would be ours (a rotating daily-life line with a no-repeat window).
+- **Memory** (verity-extended `memory/ConversationContext.java`, `ai/ContextTrimmer.java`,
+  `proxy/PromptInjections.java`): last 12 turns verbatim, older turns in a rolling summary (~800 chars,
+  refreshed at most once per 60 s, off the request path), old tool output cut hard, changing context put at
+  the TAIL of the prompt so the static prefix stays cacheable.
+- **Silence:** not a model choice anywhere; it comes from code (cooldowns, quiet windows, dedup, in-flight
+  guard). Ours to add: a sulk (empty reply) at low affinity after repeated insults.

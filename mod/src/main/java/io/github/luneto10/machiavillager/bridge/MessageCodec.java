@@ -12,9 +12,11 @@ import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
 import io.github.luneto10.machiavillager.domain.bridge.Hello;
+import io.github.luneto10.machiavillager.domain.bridge.LinesNeededEvent;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
 import io.github.luneto10.machiavillager.domain.bridge.ProtocolRules;
@@ -134,6 +136,7 @@ public final class MessageCodec {
         return switch (string(object, "action")) {
             case "speak" -> speakAction(object);
             case "suggest_relationship" -> suggestRelationship(object);
+            case "deliver_lines" -> deliverLines(object);
             default -> throw new DecodeException("unknown action");
         };
     }
@@ -147,6 +150,18 @@ public final class MessageCodec {
                 string(args, REASON),
                 object.get("timeout_ms").getAsInt(),
                 optionalString(object, IN_REPLY_TO));
+    }
+
+    // The schema has already checked that lines is an array of strings, so the mapping can trust it.
+    private static DeliverLinesAction deliverLines(JsonObject object) {
+        JsonObject args = object.getAsJsonObject("args");
+        return new DeliverLinesAction(
+                string(object, REQUEST_ID),
+                string(args, "kind"),
+                string(args, "phase"),
+                string(args, "mood"),
+                lines(args.getAsJsonArray("lines")),
+                object.get("timeout_ms").getAsInt());
     }
 
     private static SpeakAction speakAction(JsonObject object) {
@@ -178,7 +193,22 @@ public final class MessageCodec {
 
     // "event" carries several kinds; the event name decides which record the object becomes.
     private static BridgeMessage event(JsonObject object) {
-        return "dev_model".equals(string(object, "event")) ? devModel(object) : playerChat(object);
+        return switch (string(object, "event")) {
+            case "dev_model" -> devModel(object);
+            case "lines_needed" -> linesNeeded(object);
+            default -> playerChat(object);
+        };
+    }
+
+    // The mod writes this event; decoding it keeps the contract examples round-tripping.
+    private static LinesNeededEvent linesNeeded(JsonObject object) {
+        JsonObject data = object.getAsJsonObject("data");
+        return new LinesNeededEvent(
+                string(object, EVENT_ID),
+                OffsetDateTime.parse(string(object, "occurred_at")).toInstant(),
+                string(data, "kind"),
+                string(data, "phase"),
+                string(data, "mood"));
     }
 
     private static DevModelEvent devModel(JsonObject object) {
@@ -238,9 +268,11 @@ public final class MessageCodec {
             case Welcome welcome -> welcomeJson(welcome);
             case SpeakAction speak -> speakJson(speak);
             case SuggestRelationshipAction suggest -> suggestRelationshipJson(suggest);
+            case DeliverLinesAction deliver -> deliverLinesJson(deliver);
             case ActionStatus status -> statusJson(status);
             case PlayerChatEvent event -> playerChatJson(event);
             case DevModelEvent event -> devModelJson(event);
+            case LinesNeededEvent event -> linesNeededJson(event);
             case BridgeError error -> errorJson(error);
         };
     }
@@ -310,6 +342,35 @@ public final class MessageCodec {
         JsonObject data = new JsonObject();
         data.addProperty("op", event.op().wireName());
         event.model().ifPresent(name -> data.addProperty("model", name));
+        json.add("data", data);
+        return json;
+    }
+
+    // The deliver_lines action: the lines keep their order, and the envelope matches the other actions.
+    private static JsonObject deliverLinesJson(DeliverLinesAction deliver) {
+        JsonObject json = envelope("action");
+        json.addProperty(REQUEST_ID, deliver.requestId());
+        json.addProperty("action", "deliver_lines");
+        JsonObject args = new JsonObject();
+        args.addProperty("kind", deliver.kind());
+        args.addProperty("phase", deliver.phase());
+        args.addProperty("mood", deliver.mood());
+        args.add("lines", stringArray(deliver.lines()));
+        json.add("args", args);
+        json.addProperty("timeout_ms", deliver.timeoutMs());
+        return json;
+    }
+
+    // The lines_needed event: kind, phase and mood sit under data, the same shape the dev_model event uses.
+    private static JsonObject linesNeededJson(LinesNeededEvent event) {
+        JsonObject json = envelope("event");
+        json.addProperty(EVENT_ID, event.eventId());
+        json.addProperty("event", "lines_needed");
+        json.addProperty("occurred_at", event.occurredAt().toString());
+        JsonObject data = new JsonObject();
+        data.addProperty("kind", event.kind());
+        data.addProperty("phase", event.phase());
+        data.addProperty("mood", event.mood());
         json.add("data", data);
         return json;
     }

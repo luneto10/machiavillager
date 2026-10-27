@@ -601,3 +601,119 @@ def test_the_feeling_reason_is_never_logged_at_info(caplog):
 
     assert "feeling act_0123456789abcdef finished: succeeded" in caplog.text
     assert "threatened him for real" not in caplog.text
+
+
+def test_a_rude_line_with_no_model_feeling_sends_the_floor():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="te odeio"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-4]
+
+
+def test_a_milder_insult_with_no_model_feeling_sends_minus_two():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="Você é um LIXO"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == -2
+    assert suggestion.args.reason == "rude words"
+
+
+def test_a_rude_line_where_the_model_said_plus_two_sends_the_floor():
+    bridge = FakeBridge(_succeeded())
+
+    _run(
+        _handler(FakeWriter(feeling=Feeling(affinity_delta=2, reason="kind")), bridge),
+        _chat_event(text="cala boca"),
+    )
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]
+
+
+def test_a_model_feeling_more_negative_than_the_floor_stays():
+    bridge = FakeBridge(_succeeded())
+
+    _run(
+        _handler(FakeWriter(feeling=Feeling(affinity_delta=-8, reason="real anger")), bridge),
+        _chat_event(text="lixo"),
+    )
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-8]
+
+
+def test_chupa_meus_ovo_with_no_model_feeling_sends_minus_two():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="chupa meus ovo"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == -2
+    assert suggestion.args.reason == "rude words"
+
+
+def test_a_normal_line_sends_no_suggestion():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="bom dia, amigo"))
+
+    assert _suggestions(bridge) == []
+
+
+def test_an_apology_with_no_model_feeling_sends_plus_one():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="desculpa"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == 1
+    assert suggestion.args.reason == "apology"
+
+
+def test_an_apology_the_model_scored_minus_one_becomes_plus_one():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=-1, reason="still grumpy"))
+
+    _run(_handler(writer, bridge), _chat_event(text="desculpa"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [1]
+
+
+def test_warm_words_with_no_model_feeling_send_plus_two():
+    bridge = FakeBridge(_succeeded())
+
+    _run(_handler(FakeWriter(), bridge), _chat_event(text="te amo"))
+
+    suggestion = _suggestions(bridge)[0]
+    assert suggestion.args.affinity_delta == 2
+    assert suggestion.args.reason == "kind words"
+
+
+def test_a_model_feeling_above_the_kindness_floor_stays():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=3, reason="touched"))
+
+    _run(_handler(writer, bridge), _chat_event(text="te amo"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [3]
+
+
+def test_a_chat_message_makes_exactly_one_writer_call():
+    writer = FakeWriter(feeling=Feeling(affinity_delta=1, reason="warm"))
+    bridge = FakeBridge(_succeeded())
+
+    # One writer call per message: the reply carries the feeling, with no second call.
+    _run(_handler(writer, bridge), _chat_event(text="bom dia"))
+
+    assert len(writer.calls) == 1
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [1]
+
+
+def test_a_rude_apology_keeps_the_rudeness_floor():
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(feeling=Feeling(affinity_delta=2, reason="kind"))
+
+    _run(_handler(writer, bridge), _chat_event(text="desculpa seu idiota"))
+
+    assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]

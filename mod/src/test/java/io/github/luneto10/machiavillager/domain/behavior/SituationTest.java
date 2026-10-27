@@ -36,7 +36,15 @@ class SituationTest {
     @Test
     void negativeDistance_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> new NearbyPlayer(UUID.randomUUID(), "Alice", -1.0));
+                () -> new NearbyPlayer(UUID.randomUUID(), "Alice", -1.0, Relationships.DEFAULT_AFFINITY));
+    }
+
+    @Test
+    void affinityOutsideZeroToHundred_throws() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new NearbyPlayer(UUID.randomUUID(), "Alice", 5.0, -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NearbyPlayer(UUID.randomUUID(), "Alice", 5.0, Relationships.MAX + 1));
     }
 
     // Calm mood, partner phase, no hint history: the story has not started yet.
@@ -45,6 +53,6 @@ class SituationTest {
     }
 
     private static NearbyPlayer player(double distance) {
-        return new NearbyPlayer(UUID.randomUUID(), "Alice", distance);
+        return new NearbyPlayer(UUID.randomUUID(), "Alice", distance, Relationships.DEFAULT_AFFINITY);
     }
 }

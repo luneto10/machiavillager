@@ -12,6 +12,7 @@ from typing import Any, Final
 from starlette.datastructures import State
 
 from machiavillager.api.bridge.ids import new_request_id
+from machiavillager.application.handle_lines_needed import HandleLinesNeeded
 from machiavillager.application.handle_player_chat import HandlePlayerChat, reply_action
 from machiavillager.application.ports import BridgeUnavailable, GameBridge
 from machiavillager.domain.protocol import (
@@ -19,6 +20,7 @@ from machiavillager.domain.protocol import (
     MAX_TIMEOUT_MS,
     DevModelData,
     DevModelEvent,
+    LinesNeededEvent,
     ModEvent,
     PlayerChatEvent,
     SpeakAction,
@@ -40,6 +42,13 @@ async def handle_event(event: ModEvent, app_state: State) -> None:
     # The model switch needs no reply and never reaches the chat path, so it returns here.
     if isinstance(event, DevModelEvent):
         _apply_dev_model(event.data, app_state)
+        return
+
+    # A batch is written in the background and sent on its own, so it never touches the chat path.
+    if isinstance(event, LinesNeededEvent):
+        logger.info("lines_needed event_id=%s kind=%s", event.event_id, event.data.kind)
+        if app_state.handle_lines_needed is not None:
+            _spawn(_deliver_lines(app_state.handle_lines_needed, event))
         return
 
     # Ids and the address only: the chat text itself is never logged at INFO.
@@ -82,6 +91,14 @@ async def _reply_to_chat(handler: HandlePlayerChat, event: PlayerChatEvent) -> N
     except Exception as error:
         # Only the type name: the error text can hold player words or provider details.
         logger.warning("player chat reply failed: %s", type(error).__name__)
+
+
+async def _deliver_lines(handler: HandleLinesNeeded, event: LinesNeededEvent) -> None:
+    try:
+        await handler(event)
+    except Exception as error:
+        # Only the type name, as for chat: the error text can hold provider details.
+        logger.warning("lines batch failed: %s", type(error).__name__)
 
 
 def echo_action(event: PlayerChatEvent) -> SpeakAction:

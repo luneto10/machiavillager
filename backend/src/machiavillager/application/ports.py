@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from machiavillager.application.prompt_builder import PromptMessage
-from machiavillager.domain.protocol import BackendAction, TerminalStatus
+from machiavillager.domain.protocol import BackendAction, LineKind, TerminalStatus
+from machiavillager.domain.protocol.common import NpcMood, NpcPhase
 
 
 class BridgeUnavailable(Exception):
@@ -46,6 +47,16 @@ class LineWriter(Protocol):
 
     async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
         """Return the reply: 0-8 lines that fit speak, where an empty list means he chose silence.
+
+        Never raises for provider problems.
+        """
+
+
+class BatchWriter(Protocol):
+    """Writes one batch of lines for one key: the kind, the phase and the mood."""
+
+    async def write_batch(self, kind: LineKind, phase: NpcPhase, mood: NpcMood) -> list[str]:
+        """Return the raw candidate lines; the caller checks them. [] on any failure.
 
         Never raises for provider problems.
         """

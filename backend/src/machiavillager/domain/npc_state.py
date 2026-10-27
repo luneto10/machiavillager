@@ -20,6 +20,37 @@ AFFINITY_BANDS: Final[tuple[tuple[int, str], ...]] = (
     (79, "you like them"),
     (100, "you adore them"),
 )
+# How he talks to a player at each affinity band, same edges as AFFINITY_BANDS.
+REGISTER_BANDS: Final[tuple[tuple[int, str], ...]] = (
+    (
+        19,
+        "Be openly rude to them: curse and insult them with strong words and no shame, "
+        "refuse favors. "
+        "Never call them a friend or a partner; if asked whether you hate them, answer coldly "
+        "and honestly. If their last line is an apology or a kind word, stay cold but accept it "
+        "a little and curse less.",
+    ),
+    (
+        39,
+        "Be firm and curt. A jab or a light curse is fine; no heavy insults yet. "
+        "Do not call them a friend yet. If their last line is an apology, accept it grudgingly.",
+    ),
+    (
+        59,
+        "Take teasing as a joke. If they keep insulting you, say it annoys you and ask them to "
+        "stop.",
+    ),
+    (
+        79,
+        "Take insults as jokes and tease back lightly. If it keeps going, say it stings and ask "
+        "kindly. Never curse at them.",
+    ),
+    (
+        100,
+        "Treat them like family: laugh off insults and tease back warmly. If it keeps going, say "
+        "it hurts and ask them to stop. Never curse at them.",
+    ),
+)
 INDEPENDENCE_BANDS: Final[tuple[tuple[int, str], ...]] = (
     (24, "you still feel like their loyal partner"),
     (49, "you are getting restless"),
@@ -45,6 +76,13 @@ def affinity_words(value: int) -> str:
 
     # Affinity uses the shared 0..100 scale; anything outside it is a bug upstream, not a band.
     return _band_words(value, AFFINITY_BANDS)
+
+
+def register_words(value: int) -> str:
+    """Tell him how to talk to one player, given his affinity for them."""
+
+    # Same edges as affinity, so the register always matches the word for how he feels.
+    return _band_words(value, REGISTER_BANDS)
 
 
 def independence_words(value: int) -> str:
