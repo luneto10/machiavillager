@@ -264,19 +264,28 @@ def test_the_reminder_ends_the_newest_player_line(affinity):
         "</player_line>\n(Reminder, not from the player: "
         + register_words(affinity)
         + " "
-        + WHERE_REMINDER.format(where="the Overworld, x 120, y 64, z -340")
+        + WHERE_REMINDER
         + ")"
     )
 
 
-def test_a_despised_player_still_gets_his_coordinates_in_the_last_reminder():
-    npc = NPC.model_copy(update={"affinity": 5, "dimension": "minecraft:the_nether"})
+def test_a_despised_player_still_gets_the_place_rule_in_the_last_reminder():
+    npc = NPC.model_copy(update={"affinity": 5})
 
     last = build_prompt(PERSONA, "luneto10", [PLAYER_TURN], npc)[-1]
 
     assert "refuse favors" in last.content
-    assert "always give your dimension and coordinates" in last.content
-    assert last.content.endswith("the Nether, x 120, y 64, z -340.)")
+    assert "answer with your dimension and {coords}, even if you refuse" in last.content
+
+
+def test_the_place_rule_keeps_a_come_request_apart():
+    assert "if it asks you to come, answer only about coming" in WHERE_REMINDER
+
+
+def test_his_coordinates_never_reach_the_model_as_numbers():
+    prompt = build_prompt(PERSONA, "Luciano", [PLAYER_TURN], NPC)
+
+    assert not any("-340" in message.content for message in prompt)
 
 
 def test_no_reminder_without_game_state():
@@ -307,10 +316,10 @@ def test_the_stored_line_keeps_only_what_the_player_said():
     assert "Reminder" not in stored.text
 
 
-def test_state_block_says_where_he_is_with_coordinates():
+def test_state_block_names_his_dimension_only():
     state = _state(build_prompt(PERSONA, "Luciano", [], NPC))
 
-    assert "Where you are: the Overworld, x 120, y 64, z -340" in state
+    assert "Where you are: the Overworld" in state
 
 
 @pytest.mark.parametrize(
@@ -337,5 +346,5 @@ def test_private_chat_tells_him_only_the_player_reads_it():
     assert "Overheard" not in state
 
 
-def test_rules_let_him_state_his_coordinates():
-    assert "except where you are" in FIXED_RULES
+def test_rules_tell_him_to_write_the_coordinates_placeholder():
+    assert "Write your coordinates as {coords}" in FIXED_RULES

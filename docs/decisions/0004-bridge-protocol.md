@@ -182,7 +182,8 @@ Unknown fields are rejected, never silently ignored.
   the usual `speak` with `to`, private text only (decision 7). A private line never interrupts his
   public speech.
 - **Where he is:** the `npc` snapshot always carries `dimension` (a namespaced id), `x`, `y` and `z`,
-  so he can answer "where are you?" truthfully. The prompt allows him to say coordinates.
+  so he can answer "where are you?" truthfully. The model only sees his dimension and writes
+  `{coords}`; the backend fills in the digits, so they are exact and never spelled out.
 - **The mod decides whether he comes:** the snapshot carries `if_asked_to_come`, checked in this order:
   `other_dimension` (he never crosses a portal), `refuses` (he is not calm, or affinity is not above
   independence), `just_came` (he went to this player less than 30 seconds ago), otherwise `comes`.

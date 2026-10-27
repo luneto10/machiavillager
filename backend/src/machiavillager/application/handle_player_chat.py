@@ -17,6 +17,8 @@ from machiavillager.application.prompt_builder import (
     ProfanityLevel,
     build_prompt,
 )
+from machiavillager.application.speak_fit import fit_to_speak
+from machiavillager.domain.npc_state import COORDS_PLACEHOLDER, coords_words
 from machiavillager.domain.protocol import (
     MAX_TIMEOUT_MS,
     PROTOCOL_VERSION,
@@ -24,6 +26,7 @@ from machiavillager.domain.protocol import (
     ComeToAction,
     ComeToArgs,
     Interrupted,
+    NpcSnapshot,
     PlayerChatEvent,
     SpeakAction,
     SpeakArgs,
@@ -135,6 +138,16 @@ def suggest_action(
         timeout_ms=SUGGESTION_TIMEOUT_MS,
         in_reply_to=event.event_id,
     )
+
+
+def fill_coords(lines: list[str], npc: NpcSnapshot | None) -> list[str]:
+    """Put his real coordinates where the model wrote the placeholder, then fit the lines again."""
+
+    # Without game state there is nothing to fill, so the placeholder is dropped, never spoken.
+    coords = coords_words(npc.x, npc.y, npc.z) if npc is not None else ""
+
+    # Filling makes a line longer, so the speak limits are applied again afterwards.
+    return fit_to_speak([line.replace(COORDS_PLACEHOLDER, coords) for line in lines])
 
 
 def come_action(event: PlayerChatEvent, request_id: str) -> ComeToAction:
@@ -251,6 +264,7 @@ class HandlePlayerChat:
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
 
         reply = await self._writer.write_reply(messages, irritated=irritated)
+        lines = fill_coords(reply.lines, npc)
 
         # Only the count is logged, so a silent reply shows up without any of his words in the log.
         logger.info("reply %s lines=%d", event.event_id, len(reply.lines))
@@ -268,14 +282,14 @@ class HandlePlayerChat:
             await self._send_quick(come_action(event, self._new_request_id()), "come_to")
 
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
-        if not reply.lines:
+        if not lines:
             logger.info("stayed silent event_id=%s", event.event_id)
             return
 
         # Model and latency are only sent in dev mode; reply_action leaves out a None.
         action = reply_action(
             event,
-            reply.lines,
+            lines,
             self._new_request_id(),
             model=reply.model if self._show_model else None,
             latency_ms=reply.latency_ms if self._show_model else None,
@@ -286,7 +300,7 @@ class HandlePlayerChat:
             logger.info("reply %s not sent: no mod is connected", action.request_id)
             return
 
-        self._remember(key, reply.lines, status)
+        self._remember(key, lines, status)
         logger.info("reply %s finished: %s", action.request_id, status.status)
 
     async def _suggest(self, event: PlayerChatEvent, feeling: Feeling) -> None:

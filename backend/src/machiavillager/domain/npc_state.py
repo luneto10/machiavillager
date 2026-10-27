@@ -76,11 +76,14 @@ COME_RULES: Final[dict[ComeAnswer, str]] = {
     "comes": "you go to them: agree in your own words and set come to true",
     "refuses": "you refuse: they should come to you",
     "other_dimension": (
-        "you never cross a portal for anyone: refuse and tell them your dimension and "
-        "coordinates so they can come to you"
+        "you never cross a portal for anyone: refuse, name your dimension and write {coords} so "
+        "they can come to you"
     ),
     "just_came": "you just went to them: say you were just there and they should wait a bit",
 }
+# The model writes this where his coordinates go and the backend fills it in, so the digits are
+# exact and never spelled out as words.
+COORDS_PLACEHOLDER: Final = "{coords}"
 MOOD_LABELS: Final[dict[NpcMood, str]] = {
     "calm": "calm",
     "bored": "bored",
@@ -116,11 +119,18 @@ def phase_words(phase: NpcPhase) -> str:
     return PHASE_LABELS[phase]
 
 
-def place_words(dimension: str, x: int, y: int, z: int) -> str:
-    """Say where he is: the dimension by name and his block coordinates."""
+def dimension_words(dimension: str) -> str:
+    """Name the dimension he is in."""
+
+    # A modded dimension has no usual name, so its id is shown as is.
+    return DIMENSION_NAMES.get(dimension, dimension)
+
+
+def coords_words(x: int, y: int, z: int) -> str:
+    """His block coordinates in digits, as they replace the placeholder in his line."""
 
     # Coordinates are the one number he may state: players need them to find him.
-    return f"{DIMENSION_NAMES.get(dimension, dimension)}, x {x}, y {y}, z {z}"
+    return f"x {x}, y {y}, z {z}"
 
 
 def come_words(answer: ComeAnswer) -> str:
