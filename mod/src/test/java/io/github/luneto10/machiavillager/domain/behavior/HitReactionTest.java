@@ -25,6 +25,14 @@ class HitReactionTest {
     }
 
     @Test
+    void lightTap_costsTwoAffinity_notTen() {
+        Relationships after = new HitReaction().apply(Relationships.initial(), ALICE, START);
+
+        // Pinned to the number: a punch is a small offense, not a death threat.
+        assertEquals(48, after.affinityOf(ALICE));
+    }
+
+    @Test
     void spamHits_countOncePerCooldown() {
         HitReaction reaction = new HitReaction();
         Relationships relations = Relationships.initial();
