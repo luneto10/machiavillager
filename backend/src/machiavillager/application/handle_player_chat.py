@@ -24,6 +24,7 @@ from machiavillager.domain.protocol import (
     SuggestRelationshipArgs,
     TerminalStatus,
 )
+from machiavillager.domain.rudeness import rudeness_floor
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,22 @@ def reply_action(
         in_reply_to=event.event_id,
         **action_fields,
     )
+
+
+def apply_rudeness_floor(text: str, feeling: Feeling | None) -> Feeling | None:
+    """Stop the model from softening a clear insult: affinity drops at least to the floor."""
+
+    # Nothing rude in his words: the model's feeling stands as it was.
+    floor = rudeness_floor(text)
+    if floor >= 0:
+        return feeling
+
+    # A feeling already at or below the floor is kept, so a harsher model reply is not undone.
+    if feeling is not None and feeling.affinity_delta <= floor:
+        return feeling
+
+    logger.info("feeling floor applied: %d", floor)
+    return Feeling(affinity_delta=floor, reason="rude words")
 
 
 def suggest_action(
@@ -205,9 +222,12 @@ class HandlePlayerChat:
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
         reply = await self._writer.write_reply(messages, irritated=irritated)
 
+        # Floor reads his newest line only. The dev echo never gets here, so it is never floored.
+        feeling = apply_rudeness_floor(event.data.text, reply.feeling)
+
         # The feeling goes first: it is instant, while the speak below can take seconds.
-        if reply.feeling is not None:
-            await self._suggest(event, reply.feeling)
+        if feeling is not None:
+            await self._suggest(event, feeling)
 
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
         if not reply.lines:

@@ -9,7 +9,9 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.ports import Feeling
-from machiavillager.application.prompt_builder import PromptMessage
+from machiavillager.application.prompt_builder import ConversationLine, PromptMessage, build_prompt
+from machiavillager.domain.npc_state import register_words
+from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
 from machiavillager.infrastructure.llm_writer import (
     CANNED_LINES,
@@ -385,6 +387,26 @@ def test_use_model_refuses_an_unknown_provider():
 
     with pytest.raises(ValueError, match="unknown provider"):
         writer.use_model("openai:gpt-4o")
+
+
+def test_the_reminder_reaches_the_models_final_user_prompt():
+    seen: list[str] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        # The last request's last part is the prompt the agent sends for this turn.
+        seen.append(messages[-1].parts[-1].content)
+        return _speak("hi")
+
+    npc = NpcSnapshot(
+        phase="seeds", mood="irritated", affinity=70, independence=63, nearby_players=[]
+    )
+    line = ConversationLine("luneto10", "you are useless", from_npc=False)
+    prompt = build_prompt("Persona.", "luneto10", [line], npc)
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+
+    asyncio.run(writer.write_reply(prompt, irritated=False))
+
+    assert seen[0].endswith("\n(Reminder, not from the player: " + register_words(70) + ")")
 
 
 def _feeling_model(delta: int, reason: str) -> FunctionModel:

@@ -125,7 +125,11 @@ def build_prompt(
     ]
 
     # Dialogue keeps its original order, so the model reads the thread as it happened.
-    messages.extend(_dialogue_message(line) for line in conversation)
+    # The reminder goes on the newest player line only, so it is the last thing the model reads.
+    dialogue = [_dialogue_message(line) for line in conversation]
+    if npc is not None and dialogue and dialogue[-1].role == "user":
+        dialogue[-1] = PromptMessage("user", dialogue[-1].content + _register_reminder(npc))
+    messages.extend(dialogue)
     return messages
 
 
@@ -152,6 +156,13 @@ def _state_block(speaker: str, npc: NpcSnapshot | None, addressed: ChatAddress) 
             *overheard,
         ]
     )
+
+
+def _register_reminder(npc: NpcSnapshot) -> str:
+    """Our reminder of how to treat the speaker, placed after the player's own tags."""
+
+    # Written by us, outside the player_line tag, and only added to the prompt, never stored.
+    return f"\n(Reminder, not from the player: {register_words(npc.affinity)})"
 
 
 def _dialogue_message(line: ConversationLine) -> PromptMessage:
