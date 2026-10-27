@@ -7,11 +7,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import io.github.luneto10.machiavillager.domain.behavior.ComeAnswer;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeError;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.ComeToAction;
 import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
@@ -137,6 +139,7 @@ public final class MessageCodec {
             case "speak" -> speakAction(object);
             case "suggest_relationship" -> suggestRelationship(object);
             case "deliver_lines" -> deliverLines(object);
+            case "come_to" -> comeTo(object);
             default -> throw new DecodeException("unknown action");
         };
     }
@@ -150,6 +153,13 @@ public final class MessageCodec {
                 string(args, REASON),
                 object.get("timeout_ms").getAsInt(),
                 optionalString(object, IN_REPLY_TO));
+    }
+
+    private static ComeToAction comeTo(JsonObject object) {
+        return new ComeToAction(
+                string(object, REQUEST_ID),
+                uuid(object.getAsJsonObject("args"), "player"),
+                object.get("timeout_ms").getAsInt());
     }
 
     // The schema has already checked that lines is an array of strings, so the mapping can trust it.
@@ -246,7 +256,12 @@ public final class MessageCodec {
                 Mood.valueOf(string(npc, "mood").toUpperCase(Locale.ROOT)),
                 npc.get("affinity").getAsInt(),
                 npc.get("independence").getAsInt(),
-                nearby));
+                nearby,
+                string(npc, "dimension"),
+                npc.get("x").getAsInt(),
+                npc.get("y").getAsInt(),
+                npc.get("z").getAsInt(),
+                ComeAnswer.fromWire(string(npc, "if_asked_to_come"))));
     }
 
     private static BridgeError error(JsonObject object) {
@@ -269,6 +284,7 @@ public final class MessageCodec {
             case SpeakAction speak -> speakJson(speak);
             case SuggestRelationshipAction suggest -> suggestRelationshipJson(suggest);
             case DeliverLinesAction deliver -> deliverLinesJson(deliver);
+            case ComeToAction come -> comeToJson(come);
             case ActionStatus status -> statusJson(status);
             case PlayerChatEvent event -> playerChatJson(event);
             case DevModelEvent event -> devModelJson(event);
@@ -361,6 +377,17 @@ public final class MessageCodec {
         return json;
     }
 
+    private static JsonObject comeToJson(ComeToAction come) {
+        JsonObject json = envelope("action");
+        json.addProperty(REQUEST_ID, come.requestId());
+        json.addProperty("action", "come_to");
+        JsonObject args = new JsonObject();
+        args.addProperty("player", come.player().toString());
+        json.add("args", args);
+        json.addProperty("timeout_ms", come.timeoutMs());
+        return json;
+    }
+
     // The lines_needed event: kind, phase and mood sit under data, the same shape the dev_model event uses.
     private static JsonObject linesNeededJson(LinesNeededEvent event) {
         JsonObject json = envelope("event");
@@ -434,6 +461,11 @@ public final class MessageCodec {
             names.add(name);
         }
         json.add("nearby_players", names);
+        json.addProperty("dimension", npc.dimension());
+        json.addProperty("x", npc.x());
+        json.addProperty("y", npc.y());
+        json.addProperty("z", npc.z());
+        json.addProperty("if_asked_to_come", npc.ifAskedToCome().wireName());
         return json;
     }
 

@@ -22,6 +22,11 @@ NPC = NpcSnapshot(
     affinity=37,
     independence=63,
     nearby_players=["Ana", "Luciano"],
+    dimension="minecraft:overworld",
+    x=120,
+    y=64,
+    z=-340,
+    if_asked_to_come="refuses",
 )
 
 

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.luneto10.machiavillager.domain.behavior.ComeAnswer;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
@@ -97,7 +98,8 @@ class ProtocolContractTest {
                 "hi",
                 Addressed.NAME,
                 Optional.empty(),
-                Optional.of(new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"))));
+                Optional.of(new NpcSnapshot(Phase.SEEDS, Mood.BORED, 37, 63, List.of("Luciano", "Ana"),
+                        "minecraft:overworld", 120, 64, -340, ComeAnswer.COMES)));
 
         List<String> errors = SCHEMA.errors(MessageCodec.encode(event));
 

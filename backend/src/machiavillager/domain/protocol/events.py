@@ -10,12 +10,16 @@ from pydantic import AwareDatetime, Field, StringConstraints, model_validator
 
 from machiavillager.domain.protocol.common import (
     MAX_CHAT_TEXT_LENGTH,
+    MAX_HORIZONTAL_COORDINATE,
     MAX_NEARBY_PLAYERS,
     MAX_RELATIONSHIP_SCORE,
+    MAX_VERTICAL_COORDINATE,
     MIN_RELATIONSHIP_SCORE,
     ChatAddress,
     ClosedModel,
+    ComeAnswer,
     ConversationId,
+    Dimension,
     EnvelopeModel,
     EventId,
     LineKind,
@@ -65,6 +69,36 @@ class NpcSnapshot(ClosedModel):
             "Names of the players within reach of him, up to 16. Empty when nobody is near. "
             'Set by the mod. Example: ["Luciano", "Ana"].'
         ),
+    )
+    dimension: Dimension = Field(
+        description=(
+            "The dimension he is in, as a namespaced id. Set by the mod. "
+            'Example: "minecraft:the_nether".'
+        )
+    )
+    x: int = Field(
+        ge=-MAX_HORIZONTAL_COORDINATE,
+        le=MAX_HORIZONTAL_COORDINATE,
+        description="His block x coordinate. Set by the mod. Example: 120.",
+    )
+    y: int = Field(
+        ge=-MAX_VERTICAL_COORDINATE,
+        le=MAX_VERTICAL_COORDINATE,
+        description="His block y coordinate. Set by the mod. Example: 64.",
+    )
+    z: int = Field(
+        ge=-MAX_HORIZONTAL_COORDINATE,
+        le=MAX_HORIZONTAL_COORDINATE,
+        description="His block z coordinate. Set by the mod. Example: -340.",
+    )
+    if_asked_to_come: ComeAnswer = Field(
+        description=(
+            "What he does if the player who spoke asks him to come, decided by the mod. "
+            '"comes": he is calm and cares about the player, so a come_to would be accepted. '
+            '"refuses": he is not calm or does not care enough. '
+            '"other_dimension": the player is in another dimension, and he never crosses one. '
+            'Example: "comes".'
+        )
     )
 
 

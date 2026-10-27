@@ -1,5 +1,6 @@
 package io.github.luneto10.machiavillager.minecraft.bridge;
 
+import io.github.luneto10.machiavillager.domain.behavior.ComeAnswer;
 import io.github.luneto10.machiavillager.domain.behavior.Hearing;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.EventIds;
@@ -16,8 +17,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Builds the player_chat event for a line that calls him by name, with his live state. Server thread only: it reads
- * the world and the story data.
+ * Builds the player_chat event for a line he hears or a private @m message, with his live state. Server thread
+ * only: it reads the world and the story data.
  */
 public final class PlayerChatReporter {
     // The schema allows at most this many names in the snapshot.
@@ -29,18 +30,21 @@ public final class PlayerChatReporter {
     private PlayerChatReporter() {}
 
     /**
-     * The event for this line, or empty when he cannot hear it: he must be loaded, in the speaker's dimension,
-     * and the speaker must be within reach. The addressed reason comes from the caller, which decided it.
+     * The event for this line, or empty when he cannot get it: he must be loaded and, unless the line is private,
+     * in the speaker's dimension and within reach. The addressed reason comes from the caller, which decided it.
      */
     public static Optional<PlayerChatEvent> build(
             MinecraftServer server, ServerPlayer sender, String text, Addressed addressed) {
         Optional<MachiavillagerEntity> found = MachiavillagerLookup.find(server);
-        if (found.isEmpty() || !(sender.level() instanceof ServerLevel level)) {
+        if (found.isEmpty() || !(found.get().level() instanceof ServerLevel level)) {
             return Optional.empty();
         }
         MachiavillagerEntity npc = found.get();
+        // A private message is text, not voice: it reaches him at any distance and from any dimension.
         // Distance across dimensions means nothing, so the other dimension is refused first.
-        if (npc.level() != level || npc.distanceToSqr(sender) > REACH_SQR) {
+        boolean heard = addressed == Addressed.PRIVATE
+                || (sender.level() == level && npc.distanceToSqr(sender) <= REACH_SQR);
+        if (!heard) {
             return Optional.empty();
         }
 
@@ -57,15 +61,23 @@ public final class PlayerChatReporter {
     }
 
     // Phase and independence come from the story, mood from the brain, affinity toward this speaker.
+    // His place and the come rule let him answer "where are you?" and "come here" truthfully.
     private static NpcSnapshot snapshot(
             MinecraftServer server, ServerLevel level, MachiavillagerEntity npc, ServerPlayer sender) {
         StoryData story = StoryData.get(server);
+        ComeAnswer ifAskedToCome = ComeAnswer.decide(
+                npc.mood(), story.relationships().caresAbout(sender.getUUID()), sender.level() == level);
         return new NpcSnapshot(
                 story.progress().phase(),
                 npc.mood(),
                 story.relationships().affinityOf(sender.getUUID()),
                 story.relationships().independence(),
-                nearbyNames(level, npc));
+                nearbyNames(level, npc),
+                level.dimension().identifier().toString(),
+                npc.getBlockX(),
+                npc.getBlockY(),
+                npc.getBlockZ(),
+                ifAskedToCome);
     }
 
     // Living, non-spectator players within reach of him. The schema caps the list, so the rest are left out.

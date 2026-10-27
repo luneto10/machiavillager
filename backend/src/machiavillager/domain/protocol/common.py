@@ -48,6 +48,10 @@ MAX_FEELING_REASON_LENGTH: Final = 120
 # MAX_LINE_LENGTH, which limits speech.
 MAX_BATCH_LINES: Final = 30
 MAX_BATCH_LINE_LENGTH: Final = 160
+# Block coordinates stay inside the vanilla world border and build height limits.
+MAX_HORIZONTAL_COORDINATE: Final = 30_000_000
+MAX_VERTICAL_COORDINATE: Final = 2_048
+MAX_DIMENSION_LENGTH: Final = 64
 
 # Identifiers are prefixed so a log line shows what kind of id it is.
 ACTION_ID_PATTERN: Final = r"^act_[A-Za-z0-9]{8,32}$"
@@ -80,6 +84,17 @@ ChatAddress = Literal["name", "conversation", "near", "butt_in", "private"]
 # Mod's Phase and Mood enums, lowercased.
 NpcPhase = Literal["partner", "seeds", "proposal", "regime", "war"]
 NpcMood = Literal["calm", "bored", "irritated"]
+# What he does if the speaker asks him to come, decided by the mod from his mood, how much he
+# cares about the speaker and whether they share a dimension.
+ComeAnswer = Literal["comes", "refuses", "other_dimension"]
+# A namespaced dimension id such as minecraft:the_nether. The pattern keeps markup out of the
+# prompt, where the id is written as is.
+Dimension = Annotated[
+    str,
+    StringConstraints(
+        min_length=3, max_length=MAX_DIMENSION_LENGTH, pattern=r"^[a-z0-9_.-]+:[a-z0-9_./-]+$"
+    ),
+]
 # Minecraft names use letters, digits and underscore only. The pattern also keeps a name from
 # carrying markup into the prompt, where it is written unescaped.
 # provider:model, e.g. groq:qwen/qwen3.8-27b. Only the length is checked: ids are free text.

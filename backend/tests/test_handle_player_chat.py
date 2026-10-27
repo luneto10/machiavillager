@@ -151,6 +151,11 @@ def _npc(mood: str) -> NpcSnapshot:
         affinity=40,
         independence=60,
         nearby_players=["Luciano"],
+        dimension="minecraft:overworld",
+        x=120,
+        y=64,
+        z=-340,
+        if_asked_to_come="refuses",
     )
 
 

@@ -410,7 +410,16 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
         return _speak("hi")
 
     npc = NpcSnapshot(
-        phase="seeds", mood="irritated", affinity=70, independence=63, nearby_players=[]
+        phase="seeds",
+        mood="irritated",
+        affinity=70,
+        independence=63,
+        nearby_players=[],
+        dimension="minecraft:overworld",
+        x=120,
+        y=64,
+        z=-340,
+        if_asked_to_come="refuses",
     )
     line = ConversationLine("luneto10", "you are useless", from_npc=False)
     prompt = build_prompt("Persona.", "luneto10", [line], npc)

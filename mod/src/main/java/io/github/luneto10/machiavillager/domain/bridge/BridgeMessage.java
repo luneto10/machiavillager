@@ -5,6 +5,7 @@ package io.github.luneto10.machiavillager.domain.bridge;
  * exhaustively, so a new type that is not handled fails to compile.
  */
 public sealed interface BridgeMessage
-        permits Hello, Welcome, SpeakAction, SuggestRelationshipAction, DeliverLinesAction, ActionStatus,
+        permits Hello, Welcome, SpeakAction, SuggestRelationshipAction, DeliverLinesAction, ComeToAction,
+                ActionStatus,
                 PlayerChatEvent, DevModelEvent, LinesNeededEvent, BridgeError {
 }

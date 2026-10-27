@@ -16,6 +16,8 @@ from pydantic import Field, TypeAdapter
 
 from machiavillager.domain.protocol.actions import (
     BackendAction,
+    ComeToAction,
+    ComeToArgs,
     DeliverLinesAction,
     DeliverLinesArgs,
     SpeakAction,
@@ -86,6 +88,8 @@ from machiavillager.domain.protocol.statuses import (
 __all__ = [
     "ACTION_ID_PATTERN",
     "BackendAction",
+    "ComeToAction",
+    "ComeToArgs",
     "BatchLine",
     "CANONICAL_UUID_PATTERN",
     "CONVERSATION_ID_PATTERN",

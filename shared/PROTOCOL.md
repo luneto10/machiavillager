@@ -49,6 +49,14 @@
       - [3.3.5.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines`](#oneOf_i2_oneOf_i2_args_lines)
         - [3.3.5.4.1. Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > args > lines > lines items](#oneOf_i2_oneOf_i2_args_lines_items)
     - [3.3.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > DeliverLinesAction > timeout_ms`](#oneOf_i2_oneOf_i2_timeout_ms)
+  - [3.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction`](#oneOf_i2_oneOf_i3)
+    - [3.4.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > v`](#oneOf_i2_oneOf_i3_v)
+    - [3.4.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > type`](#oneOf_i2_oneOf_i3_type)
+    - [3.4.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > request_id`](#oneOf_i2_oneOf_i3_request_id)
+    - [3.4.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > action`](#oneOf_i2_oneOf_i3_action)
+    - [3.4.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > args`](#oneOf_i2_oneOf_i3_args)
+      - [3.4.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > args > player`](#oneOf_i2_oneOf_i3_args_player)
+    - [3.4.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > timeout_ms`](#oneOf_i2_oneOf_i3_timeout_ms)
 - [4. Property `Machiavillager bridge protocol > oneOf > ActionStatus`](#oneOf_i3)
   - [4.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted`](#oneOf_i3_oneOf_i0)
     - [4.1.1. Property `Machiavillager bridge protocol > oneOf > ActionStatus > oneOf > Accepted > v`](#oneOf_i3_oneOf_i0_v)
@@ -103,6 +111,11 @@
         - [5.1.6.5.4. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > independence`](#oneOf_i4_oneOf_i0_data_npc_independence)
         - [5.1.6.5.5. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players`](#oneOf_i4_oneOf_i0_data_npc_nearby_players)
           - [5.1.6.5.5.1. Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > nearby_players > nearby_players items](#oneOf_i4_oneOf_i0_data_npc_nearby_players_items)
+        - [5.1.6.5.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > dimension`](#oneOf_i4_oneOf_i0_data_npc_dimension)
+        - [5.1.6.5.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > x`](#oneOf_i4_oneOf_i0_data_npc_x)
+        - [5.1.6.5.8. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > y`](#oneOf_i4_oneOf_i0_data_npc_y)
+        - [5.1.6.5.9. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > z`](#oneOf_i4_oneOf_i0_data_npc_z)
+        - [5.1.6.5.10. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > if_asked_to_come`](#oneOf_i4_oneOf_i0_data_npc_if_asked_to_come)
     - [5.1.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > conversation_id`](#oneOf_i4_oneOf_i0_conversation_id)
   - [5.2. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent`](#oneOf_i4_oneOf_i1)
     - [5.2.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > DevModelEvent > v`](#oneOf_i4_oneOf_i1_v)
@@ -330,6 +343,7 @@ Specific value: `1`
 | [SpeakAction](#oneOf_i2_oneOf_i0)               |
 | [SuggestRelationshipAction](#oneOf_i2_oneOf_i1) |
 | [DeliverLinesAction](#oneOf_i2_oneOf_i2)        |
+| [ComeToAction](#oneOf_i2_oneOf_i3)              |
 
 ### <a name="oneOf_i2_oneOf_i0"></a>3.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > SpeakAction`
 
@@ -925,6 +939,131 @@ Must be one of:
 | **Required** | Yes       |
 
 **Description:** How long the mod may take before the action is reported as failed with reason timeout, in milliseconds. Between 100 and 120000. Example: 30000.
+
+| Restrictions |             |
+| ------------ | ----------- |
+| **Minimum**  | &ge; 100    |
+| **Maximum**  | &le; 120000 |
+
+### <a name="oneOf_i2_oneOf_i3"></a>3.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction`
+
+**Title:** ComeToAction
+
+|                           |                      |
+| ------------------------- | -------------------- |
+| **Type**                  | `object`             |
+| **Required**              | No                   |
+| **Additional properties** | Not allowed          |
+| **Defined in**            | #/$defs/ComeToAction |
+
+**Description:** Backend asks him to go to a player who called him. The mod checks the same rule again.
+
+| Property                                       | Pattern | Type    | Deprecated | Definition            | Title/Description |
+| ---------------------------------------------- | ------- | ------- | ---------- | --------------------- | ----------------- |
+| + [v](#oneOf_i2_oneOf_i3_v )                   | No      | const   | No         | -                     | V                 |
+| + [type](#oneOf_i2_oneOf_i3_type )             | No      | const   | No         | -                     | Type              |
+| + [request_id](#oneOf_i2_oneOf_i3_request_id ) | No      | string  | No         | -                     | Request Id        |
+| + [action](#oneOf_i2_oneOf_i3_action )         | No      | const   | No         | -                     | Action            |
+| + [args](#oneOf_i2_oneOf_i3_args )             | No      | object  | No         | In #/$defs/ComeToArgs | ComeToArgs        |
+| + [timeout_ms](#oneOf_i2_oneOf_i3_timeout_ms ) | No      | integer | No         | -                     | Timeout Ms        |
+
+#### <a name="oneOf_i2_oneOf_i3_v"></a>3.4.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > v`
+
+**Title:** V
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Wire version of the message. Always 1. A breaking change bumps it.
+
+Specific value: `1`
+
+#### <a name="oneOf_i2_oneOf_i3_type"></a>3.4.2. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > type`
+
+**Title:** Type
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Message kind. Always "action".
+
+Specific value: `"action"`
+
+#### <a name="oneOf_i2_oneOf_i3_request_id"></a>3.4.3. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > request_id`
+
+**Title:** Request Id
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** Generated by the backend: act_ followed by 16 random hex characters. Unique per action; every action_status for this action echoes it. Example: act_3fa9c01b7e2d4f60.
+
+| Restrictions                      |                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^act_[A-Za-z0-9]{8,32}$``` [Test](https://regex101.com/?regex=%5Eact_%5BA-Za-z0-9%5D%7B8%2C32%7D%24) |
+
+#### <a name="oneOf_i2_oneOf_i3_action"></a>3.4.4. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > action`
+
+**Title:** Action
+
+|              |         |
+| ------------ | ------- |
+| **Type**     | `const` |
+| **Required** | Yes     |
+
+**Description:** Name of the allowlisted action. "come_to" makes him follow the player, teleporting next to them when far. Sent only when the snapshot said he comes.
+
+Specific value: `"come_to"`
+
+#### <a name="oneOf_i2_oneOf_i3_args"></a>3.4.5. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > args`
+
+**Title:** ComeToArgs
+
+|                           |                    |
+| ------------------------- | ------------------ |
+| **Type**                  | `object`           |
+| **Required**              | Yes                |
+| **Additional properties** | Not allowed        |
+| **Defined in**            | #/$defs/ComeToArgs |
+
+**Description:** Arguments for come_to. See ComeToArgs.
+
+| Property                                    | Pattern | Type   | Deprecated | Definition | Title/Description |
+| ------------------------------------------- | ------- | ------ | ---------- | ---------- | ----------------- |
+| + [player](#oneOf_i2_oneOf_i3_args_player ) | No      | string | No         | -          | Player            |
+
+##### <a name="oneOf_i2_oneOf_i3_args_player"></a>3.4.5.1. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > args > player`
+
+**Title:** Player
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+| **Format**   | `uuid`   |
+
+**Description:** The player who asked him to come, in canonical 8-4-4-4-12 form. Set by the backend from the player_chat event it answers. Example: "7f3c2a10-5b1e-4c8d-9a2f-1e2d3c4b5a69".
+
+| Restrictions                      |                                                                                                                                                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Must match regular expression** | ```^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$``` [Test](https://regex101.com/?regex=%5E%5B0-9a-fA-F%5D%7B8%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B4%7D-%5B0-9a-fA-F%5D%7B12%7D%24) |
+
+#### <a name="oneOf_i2_oneOf_i3_timeout_ms"></a>3.4.6. Property `Machiavillager bridge protocol > oneOf > item 2 > oneOf > ComeToAction > timeout_ms`
+
+**Title:** Timeout Ms
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** How long the mod may take before the action is reported as failed with reason timeout, in milliseconds. Between 100 and 120000. Example: 5000.
 
 | Restrictions |             |
 | ------------ | ----------- |
@@ -1665,13 +1804,18 @@ Must be one of:
 
 **Description:** His state when the player spoke. Set by the mod. Optional: without it the backend answers without game state.
 
-| Property                                                        | Pattern | Type             | Deprecated | Definition | Title/Description |
-| --------------------------------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
-| + [phase](#oneOf_i4_oneOf_i0_data_npc_phase )                   | No      | enum (of string) | No         | -          | Phase             |
-| + [mood](#oneOf_i4_oneOf_i0_data_npc_mood )                     | No      | enum (of string) | No         | -          | Mood              |
-| + [affinity](#oneOf_i4_oneOf_i0_data_npc_affinity )             | No      | integer          | No         | -          | Affinity          |
-| + [independence](#oneOf_i4_oneOf_i0_data_npc_independence )     | No      | integer          | No         | -          | Independence      |
-| - [nearby_players](#oneOf_i4_oneOf_i0_data_npc_nearby_players ) | No      | array of string  | No         | -          | Nearby Players    |
+| Property                                                            | Pattern | Type             | Deprecated | Definition | Title/Description |
+| ------------------------------------------------------------------- | ------- | ---------------- | ---------- | ---------- | ----------------- |
+| + [phase](#oneOf_i4_oneOf_i0_data_npc_phase )                       | No      | enum (of string) | No         | -          | Phase             |
+| + [mood](#oneOf_i4_oneOf_i0_data_npc_mood )                         | No      | enum (of string) | No         | -          | Mood              |
+| + [affinity](#oneOf_i4_oneOf_i0_data_npc_affinity )                 | No      | integer          | No         | -          | Affinity          |
+| + [independence](#oneOf_i4_oneOf_i0_data_npc_independence )         | No      | integer          | No         | -          | Independence      |
+| - [nearby_players](#oneOf_i4_oneOf_i0_data_npc_nearby_players )     | No      | array of string  | No         | -          | Nearby Players    |
+| + [dimension](#oneOf_i4_oneOf_i0_data_npc_dimension )               | No      | string           | No         | -          | Dimension         |
+| + [x](#oneOf_i4_oneOf_i0_data_npc_x )                               | No      | integer          | No         | -          | X                 |
+| + [y](#oneOf_i4_oneOf_i0_data_npc_y )                               | No      | integer          | No         | -          | Y                 |
+| + [z](#oneOf_i4_oneOf_i0_data_npc_z )                               | No      | integer          | No         | -          | Z                 |
+| + [if_asked_to_come](#oneOf_i4_oneOf_i0_data_npc_if_asked_to_come ) | No      | enum (of string) | No         | -          | If Asked To Come  |
 
 ###### <a name="oneOf_i4_oneOf_i0_data_npc_phase"></a>5.1.6.5.1. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > phase`
 
@@ -1774,6 +1918,87 @@ Must be one of:
 | **Min length**                    | 1                                                                                   |
 | **Max length**                    | 16                                                                                  |
 | **Must match regular expression** | ```^[A-Za-z0-9_]+$``` [Test](https://regex101.com/?regex=%5E%5BA-Za-z0-9_%5D%2B%24) |
+
+###### <a name="oneOf_i4_oneOf_i0_data_npc_dimension"></a>5.1.6.5.6. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > dimension`
+
+**Title:** Dimension
+
+|              |          |
+| ------------ | -------- |
+| **Type**     | `string` |
+| **Required** | Yes      |
+
+**Description:** The dimension he is in, as a namespaced id. Set by the mod. Example: "minecraft:the_nether".
+
+| Restrictions                      |                                                                                                                         |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Min length**                    | 3                                                                                                                       |
+| **Max length**                    | 64                                                                                                                      |
+| **Must match regular expression** | ```^[a-z0-9_.-]+:[a-z0-9_./-]+$``` [Test](https://regex101.com/?regex=%5E%5Ba-z0-9_.-%5D%2B%3A%5Ba-z0-9_.%2F-%5D%2B%24) |
+
+###### <a name="oneOf_i4_oneOf_i0_data_npc_x"></a>5.1.6.5.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > x`
+
+**Title:** X
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** His block x coordinate. Set by the mod. Example: 120.
+
+| Restrictions |                |
+| ------------ | -------------- |
+| **Minimum**  | &ge; -30000000 |
+| **Maximum**  | &le; 30000000  |
+
+###### <a name="oneOf_i4_oneOf_i0_data_npc_y"></a>5.1.6.5.8. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > y`
+
+**Title:** Y
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** His block y coordinate. Set by the mod. Example: 64.
+
+| Restrictions |            |
+| ------------ | ---------- |
+| **Minimum**  | &ge; -2048 |
+| **Maximum**  | &le; 2048  |
+
+###### <a name="oneOf_i4_oneOf_i0_data_npc_z"></a>5.1.6.5.9. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > z`
+
+**Title:** Z
+
+|              |           |
+| ------------ | --------- |
+| **Type**     | `integer` |
+| **Required** | Yes       |
+
+**Description:** His block z coordinate. Set by the mod. Example: -340.
+
+| Restrictions |                |
+| ------------ | -------------- |
+| **Minimum**  | &ge; -30000000 |
+| **Maximum**  | &le; 30000000  |
+
+###### <a name="oneOf_i4_oneOf_i0_data_npc_if_asked_to_come"></a>5.1.6.5.10. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > data > npc > if_asked_to_come`
+
+**Title:** If Asked To Come
+
+|              |                    |
+| ------------ | ------------------ |
+| **Type**     | `enum (of string)` |
+| **Required** | Yes                |
+
+**Description:** What he does if the player who spoke asks him to come, decided by the mod. "comes": he is calm and cares about the player, so a come_to would be accepted. "refuses": he is not calm or does not care enough. "other_dimension": the player is in another dimension, and he never crosses one. Example: "comes".
+
+Must be one of:
+* "comes"
+* "refuses"
+* "other_dimension"
 
 #### <a name="oneOf_i4_oneOf_i0_conversation_id"></a>5.1.7. Property `Machiavillager bridge protocol > oneOf > item 4 > oneOf > PlayerChatEvent > conversation_id`
 
