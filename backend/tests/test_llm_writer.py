@@ -149,6 +149,12 @@ def test_an_emoji_is_spoken_without_it():
     assert _reply(writer) == ["Ah para você, luneto10 é?"]
 
 
+def test_an_em_dash_is_spoken_as_a_comma():
+    writer = _writer(_chain(_answers("meu chapéu é lendário — só aparece pra quem acredita.")))
+
+    assert _reply(writer) == ["meu chapéu é lendário, só aparece pra quem acredita."]
+
+
 def test_a_line_that_is_only_emoji_is_dropped():
     writer = _writer(_chain(_answers("😊", "Valeu, mano!")))
 

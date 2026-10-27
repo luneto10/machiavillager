@@ -238,6 +238,12 @@ def test_fixed_rules_reserve_minus_nine_for_a_real_threat():
     assert "only a real threat to kill you in the game is -9 or -10" in rules
 
 
+def test_fixed_rules_forbid_em_and_en_dashes():
+    rules = build_prompt(PERSONA, "Luciano", [], NPC)[0].content
+
+    assert "Never use em dashes or en dashes; use commas or periods." in rules
+
+
 PLAYER_TURN = ConversationLine("luneto10", "you are useless", from_npc=False)
 
 
