@@ -6,12 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonParser;
 import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
 import io.github.luneto10.machiavillager.domain.bridge.Addressed;
 import io.github.luneto10.machiavillager.domain.bridge.BridgeMessage;
+import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelEvent;
 import io.github.luneto10.machiavillager.domain.bridge.DevModelOp;
+import io.github.luneto10.machiavillager.domain.bridge.LinesNeededEvent;
 import io.github.luneto10.machiavillager.domain.bridge.NpcSnapshot;
 import io.github.luneto10.machiavillager.domain.bridge.Welcome;
 import io.github.luneto10.machiavillager.domain.bridge.PlayerChatEvent;
@@ -188,6 +191,66 @@ class MessageCodecTest {
                 "evt_0123456789abcdef", Instant.parse("2026-10-18T12:00:00Z"), DevModelOp.RESET, Optional.empty())));
 
         assertEquals(DevModelOp.RESET, ((DevModelEvent) message).op());
+    }
+
+    // The deliver_lines and lines_needed examples as the shared folder writes them.
+    private static final String DELIVER_LINES =
+            "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"deliver_lines\","
+                    + "\"args\":{\"kind\":\"hint\",\"phase\":\"seeds\",\"mood\":\"bored\",\"lines\":"
+                    + "[\"{player}, the seeds at {x}, {z} need water.\",\"Check the field at {x}, {z} before dusk.\","
+                    + "\"{player}, you are late.\"]},\"timeout_ms\":30000}";
+    private static final String LINES_NEEDED =
+            "{\"v\":1,\"type\":\"event\",\"event_id\":\"evt_01HZX8K2M9\",\"event\":\"lines_needed\","
+                    + "\"occurred_at\":\"2026-10-18T12:00:00Z\",\"data\":{\"kind\":\"hint\",\"phase\":\"seeds\","
+                    + "\"mood\":\"bored\"}}";
+
+    @Test
+    void decode_readsDeliverLinesExample() {
+        DeliverLinesAction deliver = (DeliverLinesAction) MessageCodec.decode(DELIVER_LINES);
+
+        assertEquals("hint", deliver.kind());
+        assertEquals(3, deliver.lines().size());
+        assertEquals(30000, deliver.timeoutMs());
+    }
+
+    @Test
+    void decode_rejectsDeliverLinesWithoutLines() {
+        String json = "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"deliver_lines\","
+                + "\"args\":{\"kind\":\"hint\",\"phase\":\"seeds\",\"mood\":\"bored\"},\"timeout_ms\":30000}";
+
+        assertThrows(MessageCodec.DecodeException.class, () -> MessageCodec.decode(json));
+    }
+
+    @Test
+    void decode_rejectsDeliverLinesWhenLinesIsNotAnArray() {
+        String json = "{\"v\":1,\"type\":\"action\",\"request_id\":\"act_01HZX8K2M9\",\"action\":\"deliver_lines\","
+                + "\"args\":{\"kind\":\"hint\",\"phase\":\"seeds\",\"mood\":\"bored\",\"lines\":\"hi\"},"
+                + "\"timeout_ms\":30000}";
+
+        assertThrows(MessageCodec.DecodeException.class, () -> MessageCodec.decode(json));
+    }
+
+    @Test
+    void encode_roundTripsDeliverLinesExample() {
+        BridgeMessage decoded = MessageCodec.decode(DELIVER_LINES);
+
+        assertEquals(JsonParser.parseString(DELIVER_LINES), JsonParser.parseString(MessageCodec.encode(decoded)));
+    }
+
+    @Test
+    void decode_readsLinesNeededEvent() {
+        LinesNeededEvent event = (LinesNeededEvent) MessageCodec.decode(LINES_NEEDED);
+
+        assertEquals("hint", event.kind());
+        assertEquals("bored", event.mood());
+    }
+
+    @Test
+    void encode_writesLinesNeededInTheExampleShape() {
+        LinesNeededEvent event = new LinesNeededEvent("evt_01HZX8K2M9", Instant.parse("2026-10-18T12:00:00Z"),
+                "hint", "seeds", "bored");
+
+        assertEquals(JsonParser.parseString(LINES_NEEDED), JsonParser.parseString(MessageCodec.encode(event)));
     }
 
     // Both suggestion examples as the backend writes them: a loss of affinity, then a gain.

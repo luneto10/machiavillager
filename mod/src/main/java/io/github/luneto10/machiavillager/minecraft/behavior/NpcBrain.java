@@ -2,7 +2,6 @@ package io.github.luneto10.machiavillager.minecraft.behavior;
 
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.application.ChooseNextAction;
-import io.github.luneto10.machiavillager.domain.Barks;
 import io.github.luneto10.machiavillager.domain.WeightedDice;
 import io.github.luneto10.machiavillager.domain.behavior.HitReaction;
 import io.github.luneto10.machiavillager.domain.behavior.IndependenceDrift;
@@ -12,6 +11,8 @@ import io.github.luneto10.machiavillager.domain.behavior.Relationships;
 import io.github.luneto10.machiavillager.domain.behavior.Situation;
 import io.github.luneto10.machiavillager.domain.behavior.SummonBlocker;
 import io.github.luneto10.machiavillager.domain.behavior.TeleportPolicy;
+import io.github.luneto10.machiavillager.domain.lines.LineKind;
+import io.github.luneto10.machiavillager.domain.lines.LineRules;
 import io.github.luneto10.machiavillager.domain.meeting.MeetingRules;
 import io.github.luneto10.machiavillager.domain.meeting.RetrySchedule;
 import io.github.luneto10.machiavillager.domain.story.Phase;
@@ -19,6 +20,7 @@ import io.github.luneto10.machiavillager.domain.time.Countdown;
 import io.github.luneto10.machiavillager.domain.time.PerPlayerCooldown;
 import io.github.luneto10.machiavillager.minecraft.BridgeLifecycle;
 import io.github.luneto10.machiavillager.minecraft.meeting.Meeting;
+import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.meeting.SummonFacts;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import io.github.luneto10.machiavillager.minecraft.story.StoryData;
@@ -48,17 +50,6 @@ public final class NpcBrain {
     private static final int STORY_CLOCK_TICKS = 20; // grows once per second
     private static final double PRESENCE_RADIUS = 32.0; // same radius he sees players in
     private static final int PERCENT = 100;
-
-    private static final Barks IDLE_LINES = new Barks(
-            "%s, have you noticed how much the villagers charge for bread?",
-            "Psst, %s. Do you trust the village elder? I don't.",
-            "%s! Lovely day for a little ambition.",
-            "I've been counting emeralds, %s. Not mine. Theirs.");
-
-    private static final Barks HINT_LINES = new Barks(
-            "%1$s... have you seen the village near %2$d, %3$d? So disorganized. Someone should take care of it.",
-            "Between us, %1$s: the village at %2$d, %3$d has too many emeralds and too few leaders.",
-            "%1$s, I walked past %2$d, %3$d. Lovely village. Wasted on its elder.");
 
     private final ChooseNextAction chooser = ChooseNextAction.withDefaultCatalog();
     private NpcAction current = new NpcAction.Wander();
@@ -312,14 +303,7 @@ public final class NpcBrain {
             case NpcAction.Wander wander -> {
                 // Nothing to do here: the vanilla stroll goal runs whenever MOVE is free.
             }
-            case NpcAction.Bark bark -> {
-                // A bark needs the listener online; otherwise there is no one to talk to.
-                Player listener = level.getPlayerByUUID(bark.listener());
-                if (listener != null) {
-                    String line = IDLE_LINES.pick(ThreadLocalRandom.current()).formatted(listener.getPlainTextName());
-                    NpcSpeech.say(npc, line);
-                }
-            }
+            case NpcAction.Bark bark -> bark(npc, level, bark.listener());
             case NpcAction.Hint hint -> giveHint(npc, level, hint.listener());
             case NpcAction.Summon summon -> startSummon(npc, level, summon.target());
             case NpcAction.Mutter() -> mutter(npc, level);
@@ -429,13 +413,26 @@ public final class NpcBrain {
         return level.getServer().getPlayerList().getPlayer(meeting.target());
     }
 
+    /** Says one bark to the listener, taken from the line pools. Silent when the listener left or no line is ready. */
+    private void bark(PathfinderMob npc, ServerLevel level, UUID listenerId) {
+        // A bark needs the listener online; otherwise there is no one to talk to.
+        Player listener = level.getPlayerByUUID(listenerId);
+        Optional<NpcLines> lines = BridgeLifecycle.lines();
+        if (listener == null || lines.isEmpty()) {
+            return;
+        }
+        lines.get().take(LineKind.BARK, currentPhase(level), mood).ifPresent(template ->
+                NpcSpeech.say(npc, LineRules.fill(template, listener.getPlainTextName(), 0, 0)));
+    }
+
     private void giveHint(PathfinderMob npc, ServerLevel level, UUID listenerId) {
         // Reset first, also when nothing is found, so a failed search is not retried for 10 minutes.
         activeTicksSinceHint = 0;
 
         // The listener may have logged out while the decision was waiting.
         Player listener = level.getPlayerByUUID(listenerId);
-        if (listener == null) {
+        Optional<NpcLines> lines = BridgeLifecycle.lines();
+        if (listener == null || lines.isEmpty()) {
             return;
         }
 
@@ -446,38 +443,22 @@ public final class NpcBrain {
             return;
         }
 
-        // Name the player and the village coordinates, so the hint is actionable.
-        BlockPos at = village.get();
-        String line = HINT_LINES.pick(ThreadLocalRandom.current())
-                .formatted(listener.getPlainTextName(), at.getX(), at.getZ());
-        NpcSpeech.say(npc, line);
+        // Taken only once a village is known, so a line is never used up on a hint that cannot name one.
+        lines.get().take(LineKind.HINT, currentPhase(level), mood).ifPresent(template -> {
+            BlockPos at = village.get();
+            NpcSpeech.say(npc, LineRules.fill(template, listener.getPlainTextName(), at.getX(), at.getZ()));
+        });
     }
 
     /** Mutters one line for the current story phase. Only players within whisper range overhear it. */
     private void mutter(PathfinderMob npc, ServerLevel level) {
-        Phase phase = StoryData.get(level.getServer()).progress().phase();
-        NpcSpeech.whisper(npc, mutterLines(phase).pick(ThreadLocalRandom.current()));
+        BridgeLifecycle.lines()
+                .flatMap(lines -> lines.take(LineKind.MUTTER, currentPhase(level), mood))
+                .ifPresent(line -> NpcSpeech.whisper(npc, line));
     }
 
-    /** What he mutters to himself in each story phase. The switch is exhaustive, so a new phase needs lines. */
-    private static Barks mutterLines(Phase phase) {
-        return switch (phase) {
-            case PARTNER -> new Barks(
-                    "Friendship... such a useful word.",
-                    "Count the emeralds. Count them again.");
-            case SEEDS -> new Barks(
-                    "A crown would suit me. Emerald, not gold.",
-                    "Leaders are just people who decided first.");
-            case PROPOSAL -> new Barks(
-                    "They'll say yes. They always say yes.",
-                    "A title for each of them. A leash for each title.");
-            case REGIME -> new Barks(
-                    "Loyalty is a habit. Habits can be trained.",
-                    "The bell rings when I say it rings.");
-            case WAR -> new Barks(
-                    "Traitors whisper too. Louder.",
-                    "If the walls fall, I'll build taller walls.");
-        };
+    private static Phase currentPhase(ServerLevel level) {
+        return StoryData.get(level.getServer()).progress().phase();
     }
 
     private static String describe(NpcAction action, ServerLevel level) {

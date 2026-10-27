@@ -3,16 +3,22 @@ package io.github.luneto10.machiavillager.minecraft.bridge;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.bridge.BridgeClient;
 import io.github.luneto10.machiavillager.domain.bridge.ActionStatus;
+import io.github.luneto10.machiavillager.domain.behavior.Mood;
 import io.github.luneto10.machiavillager.domain.behavior.RelationshipNudges;
+import io.github.luneto10.machiavillager.domain.bridge.DeliverLinesAction;
 import io.github.luneto10.machiavillager.domain.bridge.SpeakAction;
 import io.github.luneto10.machiavillager.domain.bridge.SuggestRelationshipAction;
+import io.github.luneto10.machiavillager.domain.lines.LineKind;
 import io.github.luneto10.machiavillager.domain.speech.SpeechQueue;
 import io.github.luneto10.machiavillager.domain.speech.SpeechRules;
+import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.time.Cooldown;
+import io.github.luneto10.machiavillager.minecraft.lines.NpcLines;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerEntity;
 import io.github.luneto10.machiavillager.minecraft.npc.MachiavillagerLookup;
 import io.github.luneto10.machiavillager.minecraft.npc.NpcSpeech;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.server.MinecraftServer;
@@ -27,6 +33,7 @@ public final class ActionExecutor {
     static final String BUSY = "busy";
     static final String PLAYER_OFFLINE = "player_offline";
     static final String RATE_LIMITED = "rate_limited";
+    static final String INVALID_LINES = "invalid_lines";
 
     private final MinecraftServer server;
     private final BridgeClient bridge;
@@ -36,6 +43,8 @@ public final class ActionExecutor {
     private final ModelLine lastReply;
     // Applies suggested affinity changes; shared with the dev nudge command so both use the same limits.
     private final RelationshipNudger nudger;
+    // The spoken lines: the pools the backend fills, and the fallbacks used while it is down.
+    private final NpcLines lines;
     // The speech in progress, or null while he is silent.
     private ActiveSpeech speech;
 
@@ -45,11 +54,13 @@ public final class ActionExecutor {
             BridgeClient bridge,
             Duration unpromptedWait,
             ModelLine lastReply,
-            RelationshipNudger nudger) {
+            RelationshipNudger nudger,
+            NpcLines lines) {
         this.server = Objects.requireNonNull(server, "server");
         this.bridge = Objects.requireNonNull(bridge, "bridge");
         this.lastReply = Objects.requireNonNull(lastReply, "lastReply");
         this.nudger = Objects.requireNonNull(nudger, "nudger");
+        this.lines = Objects.requireNonNull(lines, "lines");
         long ticks = SpeechRules.toTicks(Objects.requireNonNull(unpromptedWait, "unpromptedWait"));
         this.unpromptedCooldown = ticks > 0 ? Optional.of(new Cooldown(ticks)) : Optional.empty();
     }
@@ -105,6 +116,30 @@ public final class ActionExecutor {
         bridge.send(new ActionStatus.Accepted(id));
         bridge.send(new ActionStatus.Running(id));
         bridge.send(new ActionStatus.Succeeded(id));
+    }
+
+    /**
+     * A batch of lines from the backend for one kind, phase and mood. It is stored, never spoken here. Unknown
+     * spellings or too few valid lines are refused as invalid_lines. Server thread only.
+     */
+    public void deliverLines(DeliverLinesAction action) {
+        String id = action.requestId();
+        Optional<LineKind> kind = LineKind.fromWire(action.kind());
+        Optional<Phase> phase = wireValue(Phase.class, action.phase());
+        Optional<Mood> mood = wireValue(Mood.class, action.mood());
+        // Short-circuit on purpose: the values are read only once all three are known.
+        if (kind.isEmpty() || phase.isEmpty() || mood.isEmpty()
+                || !lines.deliver(kind.get(), phase.get(), mood.get(), action.lines())) {
+            reject(id, INVALID_LINES);
+            return;
+        }
+
+        // Same statuses as a speech that ends at once: accepted, running, then succeeded.
+        bridge.send(new ActionStatus.Accepted(id));
+        bridge.send(new ActionStatus.Running(id));
+        bridge.send(new ActionStatus.Succeeded(id));
+        // Logged by id and count only, never the line text.
+        Machiavillager.LOGGER.info("deliver_lines id={} n={}", id, action.lines().size());
     }
 
     /** Called at the end of every server tick: says the next line when its turn comes, or ends the speech. */
@@ -178,6 +213,15 @@ public final class ActionExecutor {
     private boolean takeRateLimit() {
         long now = server.getTickCount();
         return unpromptedCooldown.map(cooldown -> cooldown.tryUse(now)).orElse(true);
+    }
+
+    // The enum constant with this wire name (lowercase on the wire), or empty when there is none.
+    private static <E extends Enum<E>> Optional<E> wireValue(Class<E> type, String wire) {
+        try {
+            return Optional.of(Enum.valueOf(type, wire.toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException unknown) {
+            return Optional.empty();
+        }
     }
 
     // Logs the refusal reason (never the chat text), so a missing reply can be found in the game log.

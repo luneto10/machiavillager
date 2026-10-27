@@ -4,9 +4,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.luneto10.machiavillager.Machiavillager;
 import io.github.luneto10.machiavillager.domain.behavior.Relationships;
+import io.github.luneto10.machiavillager.domain.lines.LineKey;
+import io.github.luneto10.machiavillager.domain.lines.SavedLinePools;
 import io.github.luneto10.machiavillager.domain.story.Personality;
 import io.github.luneto10.machiavillager.domain.story.Phase;
 import io.github.luneto10.machiavillager.domain.story.StoryProgress;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +37,10 @@ public final class StoryData extends SavedData {
                             .forGetter(data -> data.relationships.affinities()),
                     // Optional, so saves from before summons still load: nobody has opted out yet.
                     Codec.list(UUIDUtil.STRING_CODEC).optionalFieldOf("summon_opt_out", List.of())
-                            .forGetter(data -> List.copyOf(data.summonOptOut)))
+                            .forGetter(data -> List.copyOf(data.summonOptOut)),
+                    // Optional, so saves from before the AI wrote lines still load: no pools yet.
+                    Codec.unboundedMap(Codec.STRING, Codec.list(Codec.STRING)).optionalFieldOf("line_pools", Map.of())
+                            .forGetter(data -> idKeyed(data.linePools)))
             .apply(instance, StoryData::restore));
 
     private static final SavedDataType<StoryData> TYPE = new SavedDataType<>(
@@ -43,15 +49,21 @@ public final class StoryData extends SavedData {
     private StoryProgress progress;
     private Relationships relationships;
     private Set<UUID> summonOptOut;
+    private Map<LineKey, List<String>> linePools;
 
     public StoryData() {
-        this(StoryProgress.initial(), Relationships.initial(), Set.of());
+        this(StoryProgress.initial(), Relationships.initial(), Set.of(), Map.of());
     }
 
-    private StoryData(StoryProgress progress, Relationships relationships, Set<UUID> summonOptOut) {
+    private StoryData(
+            StoryProgress progress,
+            Relationships relationships,
+            Set<UUID> summonOptOut,
+            Map<LineKey, List<String>> linePools) {
         this.progress = progress;
         this.relationships = relationships;
         this.summonOptOut = summonOptOut;
+        this.linePools = linePools;
     }
 
     /** Loads the story of this server, or creates a fresh one the first time. */
@@ -82,6 +94,17 @@ public final class StoryData extends SavedData {
 
     public void setRelationships(Relationships relationships) {
         this.relationships = relationships;
+        setDirty();
+    }
+
+    /** The saved line pools, one per key. Read-only: change them with {@link #setLinePools}. */
+    public Map<LineKey, List<String>> linePools() {
+        return linePools;
+    }
+
+    /** Replaces every saved line pool with an immutable copy, so later changes to the caller's map do not reach it. */
+    public void setLinePools(Map<LineKey, List<String>> pools) {
+        linePools = Map.copyOf(pools);
         setDirty();
     }
 
@@ -124,12 +147,26 @@ public final class StoryData extends SavedData {
             String highestPhase,
             int independence,
             Map<UUID, Integer> affinities,
-            List<UUID> summonOptOut) {
+            List<UUID> summonOptOut,
+            Map<String, List<String>> linePools) {
         StoryProgress restoredProgress =
                 StoryProgress.restored(ambition, Phase.valueOf(phase), Phase.valueOf(highestPhase));
         return new StoryData(
                 restoredProgress,
                 Relationships.restored(affinities, independence),
-                Set.copyOf(summonOptOut));
+                Set.copyOf(summonOptOut),
+                parsePools(linePools));
+    }
+
+    // Validated by the domain: unknown ids and invalid lines are dropped, so an edited save cannot break the bank.
+    private static Map<LineKey, List<String>> parsePools(Map<String, List<String>> saved) {
+        return SavedLinePools.parse(saved);
+    }
+
+    // The codec stores the pools under their text ids, such as "hint:seeds:bored".
+    private static Map<String, List<String>> idKeyed(Map<LineKey, List<String>> pools) {
+        Map<String, List<String>> byId = new HashMap<>();
+        pools.forEach((key, lines) -> byId.put(key.id(), lines));
+        return byId;
     }
 }
