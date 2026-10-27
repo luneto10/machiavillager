@@ -182,6 +182,11 @@ When he dies he respawns after a delay at his home (later: his base), with every
 The death itself is an event: the killer loses affinity, and depending on the phase he comes back
 humbled (independence down) or vengeful (independence up).
 
+**Implemented (#51):** a player who kills him loses half their affinity (98 becomes 49). Lava, falls, mobs and
+`/kill` cost nobody anything. He respawns 60 s after his death, where he fell, with everything he remembers
+(home or base comes with #52). The pending respawn is saved in StoryData, so a restart keeps it. Test it with
+`/machiavillager brain respawn now`. **Not done yet:** the independence change (humbled or vengeful by phase).
+
 ### He speaks through the AI
 
 Lines are written by the LLM, in batches per mood and situation, with real context (who, where,

@@ -23,10 +23,14 @@ from machiavillager.infrastructure.llm_writer import (
     LlmLineWriter,
     Pair,
     _split_messages,
+    _to_feeling,
 )
 from machiavillager.infrastructure.settings import Settings
 
 PLAYER_LINE = '<player_line from="luneto10">hey machi</player_line>'
+
+# The speak tool requires both feeling fields; a plain reply says nothing happened.
+REQUIRED_FEELING = {"feeling_reason": "none", "feeling_delta": 0}
 
 PINNED_CHAIN = "groq:qwen/qwen3.8-27b,groq:openai/gpt-oss-120b,nvidia:nvidia/nemotron-3.5-bolt-e4b"
 
@@ -35,7 +39,7 @@ def _speak(*lines: str) -> ModelResponse:
     """A model reply that calls the speak tool with these lines."""
 
     return ModelResponse(
-        parts=[ToolCallPart(tool_name="speak", args={"lines": list(lines)})],
+        parts=[ToolCallPart(tool_name="speak", args={"lines": list(lines), **REQUIRED_FEELING})],
         model_name="fake-ok",
     )
 
@@ -455,7 +459,7 @@ def _feeling_model(delta: int, reason: str) -> FunctionModel:
     """A fake model that answers with one line and a feeling about the player."""
 
     def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        # The feeling rides along in the speak call, as the optional field the model may fill.
+        # The feeling rides along in the speak call, as the two fields the schema requires.
         args = {"lines": ["Hm."], "feeling_delta": delta, "feeling_reason": reason}
         return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
 
@@ -472,12 +476,24 @@ def test_feeling_comes_back_in_the_reply():
     assert _feeling_from(-6) == Feeling(affinity_delta=-6, reason="threatened me")
 
 
-def test_positive_feeling_is_capped_at_plus_five():
-    assert _feeling_from(9) == Feeling(affinity_delta=5, reason="threatened me")
+def test_to_feeling_clamps_a_gain_to_plus_five():
+    assert _to_feeling(9, "rescued me") == Feeling(affinity_delta=5, reason="rescued me")
 
 
-def test_negative_feeling_is_capped_at_minus_ten():
-    assert _feeling_from(-15) == Feeling(affinity_delta=-10, reason="threatened me")
+def test_to_feeling_clamps_a_loss_to_minus_ten():
+    assert _to_feeling(-15, "threatened me") == Feeling(affinity_delta=-10, reason="threatened me")
+
+
+@pytest.mark.parametrize("delta", [9, -15])
+def test_a_delta_outside_the_scale_is_rejected_like_a_bad_answer(delta):
+    writer = _writer(
+        [
+            ("groq:fake-feel", _feeling_model(delta, "threatened me")),
+            ("groq:fake-ok", _answers("second")),
+        ]
+    )
+
+    assert _reply(writer) == ["second"]
 
 
 def test_zero_feeling_is_no_feeling():
@@ -495,17 +511,21 @@ def test_blank_reason_is_no_feeling():
     assert _feeling_from(-3, "   ") is None
 
 
-def test_speak_without_a_feeling_field_gives_no_feeling():
+def test_speak_with_delta_zero_and_none_gives_no_feeling():
     writer = _writer(_chain(_answers("Hello.")))
 
     assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling is None
+
+
+def test_none_reason_is_no_feeling_even_with_a_delta():
+    assert _to_feeling(-3, "none") is None
 
 
 def _come_model(come: bool) -> FunctionModel:
     """A fake model that answers with one line and says whether he comes."""
 
     def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        args = {"lines": ["Já vou."], "come": come}
+        args = {"lines": ["Já vou."], "come": come, **REQUIRED_FEELING}
         return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
 
     return FunctionModel(reply, model_name="fake-come")
@@ -516,3 +536,35 @@ def test_come_comes_back_in_the_reply(come):
     writer = _writer(_chain(_come_model(come)))
 
     assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).come is come
+
+
+def test_the_speak_tool_requires_the_feeling_fields_before_the_lines():
+    seen: list[dict] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        seen.append(info.output_tools[0].parameters_json_schema)
+        return _speak("hi")
+
+    _reply(_writer(_chain(FunctionModel(reply, model_name="fake-ok"))))
+
+    schema = seen[0]
+    assert {"feeling_reason", "feeling_delta", "lines"} <= set(schema["required"])
+    assert "come" not in schema["required"]
+    assert list(schema["properties"])[:3] == ["feeling_reason", "feeling_delta", "lines"]
+    assert schema["properties"]["feeling_delta"]["minimum"] == -10
+    assert schema["properties"]["feeling_delta"]["maximum"] == 5
+
+
+def test_a_speak_call_missing_feeling_delta_falls_through_to_the_next_model():
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        args = {"lines": ["Hm."], "feeling_reason": "none"}
+        return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
+
+    writer = _writer(
+        [
+            ("groq:fake-missing", FunctionModel(reply, model_name="fake-missing")),
+            ("groq:fake-ok", _answers("second")),
+        ]
+    )
+
+    assert _reply(writer) == ["second"]

@@ -360,3 +360,12 @@ def test_the_other_dimension_refusal_offers_the_coordinates():
     npc = NPC.model_copy(update={"if_asked_to_come": "other_dimension"})
 
     assert "{x}, {y} and {z}" in _state(build_prompt(PERSONA, "Luciano", [], npc))
+
+
+def test_fixed_rules_make_insults_and_threats_negative_even_when_laughed_off():
+    rules = " ".join(FIXED_RULES.split())
+
+    assert (
+        "An insult, a death wish or a threat toward you ALWAYS gets a negative number, "
+        "even when you laugh it off or stay friendly in your reply."
+    ) in rules

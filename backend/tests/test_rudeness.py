@@ -145,3 +145,21 @@ def test_words_that_only_contain_a_new_insult_do_not_match(text):
 def test_kindness_takes_the_highest_match():
     # An apology next to warm words scores as the warm words do.
     assert kindness_floor("desculpa, te amo") == 2
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "queria tanto te matar",
+        "nao, te matar de verdade. Voce no caixao porra",
+        "i will kill you",
+    ],
+)
+def test_threats_and_death_wishes_floor_at_minus_four(text):
+    # The lines from the game, and a threat in English, hit the strongest floor.
+    assert rudeness_floor(text) == -4
+
+
+def test_a_harmless_line_with_te_is_not_a_threat():
+    # "te perder" shares the word "te" with "te matar"; only the whole phrase counts.
+    assert rudeness_floor("nao quero te perder") == 0

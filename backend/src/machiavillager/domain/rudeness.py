@@ -28,6 +28,19 @@ SEVERE_PHRASES: Final = (
     "kill yourself",
     "go die",
     "fuck you",
+    "te matar",
+    "vou te matar",
+    "queria te matar",
+    "queria tanto te matar",
+    "matar voce",
+    "no caixao",
+    "voce no caixao",
+    "quero te ver morto",
+    "kill you",
+    "i will kill you",
+    "i want to kill you",
+    "gonna kill you",
+    "you in a coffin",
 )
 
 # Plain insults and orders to be quiet: merda only counts inside these exact phrases.
@@ -75,6 +88,7 @@ INSULT_PHRASES: Final = (
     "dumbass",
     "bastard",
     "moron",
+    "caixao",
 )
 
 # Mild rudeness: a jab, not an insult.

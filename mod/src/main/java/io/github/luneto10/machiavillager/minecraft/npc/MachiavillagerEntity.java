@@ -155,6 +155,15 @@ public class MachiavillagerEntity extends PathfinderMob {
         return hurt;
     }
 
+    // Death, not removal: onRemoval also runs on unload, and an unloaded chunk must never schedule a respawn.
+    @Override
+    public void die(DamageSource source) {
+        super.die(source);
+        if (level() instanceof ServerLevel serverLevel) {
+            NpcRespawn.onDeath(serverLevel, this, source);
+        }
+    }
+
     // Right-click. Runs on both sides; NpcSpeech only talks on the server, so the line appears once.
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {

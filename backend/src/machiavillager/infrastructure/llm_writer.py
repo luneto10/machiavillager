@@ -63,25 +63,28 @@ MAX_FEELING_DELTA: Final = 5
 class SpeakOutput(BaseModel):
     # No docstring on purpose: PydanticAI appends it to the tool description the model sees.
 
-    lines: list[str] = Field(min_length=0)
-
+    # Feeling first: the model judges the player's last line before it writes the reply.
     # Two flat fields, not one nested object: NVIDIA rejects the $defs a nested model adds, and
     # gpt-oss wrote the object as a string, which Groq answers with a 400.
-    feeling_delta: int | None = Field(
-        default=None,
+    feeling_reason: str = Field(
+        description=(
+            "What the player's last line did to you, a few words: insulted me, apologized, "
+            "small talk. Write none when nothing happened."
+        ),
+    )
+    feeling_delta: int = Field(
+        ge=MIN_FEELING_DELTA,
+        le=MAX_FEELING_DELTA,
         description=(
             "Set it when the player's last line changes how you feel about them: -1 or -2 for a "
             "friendly jab or a rude line, -4 to -8 for hatred or an order to vanish or die, "
-            "-9 or -10 "
-            "only for a real threat to kill you in the game, "
-            "+2 to +5 for a gift, a rescue, loyalty or real affection, +1 or +2 for an "
-            "apology or a kind word after a fight. Leave it null for small talk and requests."
+            "-9 or -10 only for a real threat to kill you in the game, +2 to +5 for a gift, a "
+            "rescue, loyalty or real affection, +1 or +2 for an apology or a kind word after a "
+            "fight. An insult, a death wish or a threat toward you is always negative. "
+            "0 when nothing changes."
         ),
     )
-    feeling_reason: str | None = Field(
-        default=None,
-        description="With feeling_delta: what the player did, a few words. Never shown.",
-    )
+    lines: list[str] = Field(min_length=0)
     come: bool = Field(
         default=False,
         description=(
@@ -284,18 +287,17 @@ class LlmLineWriter:
         )
 
 
-def _to_feeling(delta: int | None, reason: str | None) -> Feeling | None:
-    """Clamp the model's feeling to the writer's range. A zero delta or empty reason means none."""
-
-    if delta is None or reason is None:
-        return None
+def _to_feeling(delta: int, reason: str) -> Feeling | None:
+    """Clamp the model's feeling to the writer's range. A zero delta or no reason means none."""
 
     # Clamped here, before the contract sees it, so a model cannot push past the cap.
     delta = min(max(delta, MIN_FEELING_DELTA), MAX_FEELING_DELTA)
 
     # Trimmed here too: a long reason is cut, not refused, because the lines still matter.
     reason = reason.strip()[:MAX_FEELING_REASON_LENGTH]
-    if delta == 0 or not reason:
+
+    # "none" is the model saying nothing happened, the same as a blank reason.
+    if delta == 0 or not reason or reason.lower() == "none":
         return None
     return Feeling(affinity_delta=delta, reason=reason)
 
