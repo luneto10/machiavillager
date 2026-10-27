@@ -107,5 +107,6 @@ def test_coordinate_placeholders_map_to_digits():
 
 def test_come_words_cover_every_answer():
     assert set(COME_RULES) == {"comes", "refuses", "other_dimension", "just_came"}
-    assert "set come to true" in come_words("comes")
+    assert "you go to them" in come_words("comes")
+    assert "come to true" not in come_words("comes")
     assert "{x}, {y} and {z}" in come_words("other_dimension")

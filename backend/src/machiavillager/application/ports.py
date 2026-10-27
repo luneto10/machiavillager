@@ -40,14 +40,24 @@ class Reply:
     latency_ms: int | None = None
     # Set only when the writer found a real reason to feel differently about the player.
     feeling: Feeling | None = None
-    # True when the player asked him to come and he agreed; the mod's rule still decides.
-    come: bool = False
+
+
+class ReplyTools(Protocol):
+    """What he can look up or do while writing one reply, bound to the chat line it answers."""
+
+    async def where_am_i(self) -> str:
+        """His dimension in words and how to write his coordinates; never the numbers."""
+
+    async def come_to_player(self) -> str:
+        """Ask the game to send him to the speaker; say back, in words, whether he goes."""
 
 
 class LineWriter(Protocol):
     """Turns a built prompt into the lines he speaks."""
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+    async def write_reply(
+        self, messages: list[PromptMessage], *, irritated: bool, tools: ReplyTools | None = None
+    ) -> Reply:
         """Return the reply: 0-8 lines that fit speak, where an empty list means he chose silence.
 
         Never raises for provider problems.

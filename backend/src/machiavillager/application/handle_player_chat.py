@@ -18,7 +18,12 @@ from machiavillager.application.prompt_builder import (
     build_prompt,
 )
 from machiavillager.application.speak_fit import fit_to_speak
-from machiavillager.domain.npc_state import COORDINATE_PLACEHOLDERS, coordinate_values
+from machiavillager.domain.npc_state import (
+    COORDINATE_PLACEHOLDERS,
+    come_words,
+    coordinate_values,
+    dimension_words,
+)
 from machiavillager.domain.protocol import (
     MAX_TIMEOUT_MS,
     PROTOCOL_VERSION,
@@ -35,6 +40,7 @@ from machiavillager.domain.protocol import (
     SuggestRelationshipArgs,
     TerminalStatus,
 )
+from machiavillager.domain.protocol.common import ComeAnswer
 from machiavillager.domain.rudeness import kindness_floor, rudeness_floor
 
 logger = logging.getLogger(__name__)
@@ -172,6 +178,84 @@ def come_action(event: PlayerChatEvent, request_id: str) -> ComeToAction:
     )
 
 
+# What the tools say back to the model. Never the numbers: the backend fills {x}, {y}, {z} in later.
+PLACE_WORDS: Final = (
+    "Tell them, even if you refuse them everything else: name it and write {x}, {y} and {z} where "
+    "the numbers go; the game fills them in."
+)
+NO_PLACE: Final = "You do not know where you are right now; stay vague."
+ON_THE_WAY: Final = "You are on your way to them: say so in your own words."
+CANNOT_GO: Final = "You cannot go right now: say so in your own words."
+# A come the mod still refused, by its reason, told the way the snapshot would have told it.
+COME_REJECTIONS: Final[dict[str, ComeAnswer]] = {"rate_limited": "just_came", "refused": "refuses"}
+
+
+class ChatReplyTools:
+    """What he can look up or do while answering one chat line, bound to that line's event."""
+
+    def __init__(
+        self, event: PlayerChatEvent, bridge: GameBridge, new_request_id: Callable[[], str]
+    ) -> None:
+        self._event = event
+        self._bridge = bridge
+        self._new_request_id = new_request_id
+        # The first answer is kept, so a retry or the next model never sends a second come_to.
+        self._come_answer: str | None = None
+
+    async def where_am_i(self) -> str:
+        """His dimension in words and how to write his coordinates; never the numbers."""
+
+        logger.info("tool where_am_i event_id=%s", self._event.event_id)
+        npc = self._event.data.npc
+        if npc is None:
+            return NO_PLACE
+        return f"You are in {dimension_words(npc.dimension)}. {PLACE_WORDS}"
+
+    async def come_to_player(self) -> str:
+        """Send him to the speaker when the mod's rule allows it; say back whether he goes."""
+
+        if self._come_answer is None:
+            self._come_answer = await self._come()
+        return self._come_answer
+
+    async def _come(self) -> str:
+        npc = self._event.data.npc
+        if npc is None:
+            return CANNOT_GO
+
+        # The mod already decided in the snapshot, so a no is said back without asking it again.
+        if npc.if_asked_to_come != "comes":
+            logger.info(
+                "tool come_to_player event_id=%s: %s", self._event.event_id, npc.if_asked_to_come
+            )
+            return _refusal(npc, npc.if_asked_to_come)
+
+        action = come_action(self._event, self._new_request_id())
+        try:
+            status = await self._bridge.request(action)
+        except Exception as error:
+            # Type name only, as for the other actions; he says he cannot go instead of lying.
+            logger.info(
+                "tool come_to_player %s not sent: %s", action.request_id, type(error).__name__
+            )
+            return CANNOT_GO
+
+        logger.info("tool come_to_player %s finished: %s", action.request_id, status.status)
+        if isinstance(status, Succeeded):
+            return ON_THE_WAY
+        answer = COME_REJECTIONS.get(getattr(status, "reason", ""))
+        return _refusal(npc, answer) if answer is not None else CANNOT_GO
+
+
+def _refusal(npc: NpcSnapshot, answer: ComeAnswer) -> str:
+    """The come rule in words; across dimensions it also names where he is."""
+
+    words = come_words(answer)
+    if answer == "other_dimension":
+        return f"You are in {dimension_words(npc.dimension)}; {words}."
+    return f"{words}."
+
+
 class HandlePlayerChat:
     """Replies to a player's chat in character, remembering what he actually said."""
 
@@ -272,7 +356,9 @@ class HandlePlayerChat:
         )
         irritated = npc is not None and npc.mood == IRRITATED_MOOD
 
-        reply = await self._writer.write_reply(messages, irritated=irritated)
+        # Bound to this line, so the model's tool calls act on this player and this snapshot.
+        tools = ChatReplyTools(event, self._bridge, self._new_request_id)
+        reply = await self._writer.write_reply(messages, irritated=irritated, tools=tools)
         lines = fill_coords(reply.lines, npc)
 
         # Only the count is logged, so a silent reply shows up without any of his words in the log.
@@ -284,11 +370,6 @@ class HandlePlayerChat:
         # The feeling goes first: it is instant, while the speak below can take seconds.
         if feeling is not None:
             await self._suggest(event, feeling)
-
-        # He sets off before he talks, so he does not finish his lines first. Only when the mod's
-        # rule said he comes: the model agreeing is not enough.
-        if reply.come and npc is not None and npc.if_asked_to_come == "comes":
-            await self._send_quick(come_action(event, self._new_request_id()), "come_to")
 
         # Silence is not a line, so nothing is sent or stored; the player's line is already kept.
         if not lines:

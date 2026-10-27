@@ -7,22 +7,23 @@ from typing import Final
 
 import pydantic_ai
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, ToolOutput
-from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
+from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput
+from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
     TextPart,
+    ToolCallPart,
     UserPromptPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
-from machiavillager.application.ports import Feeling, Reply
+from machiavillager.application.ports import Feeling, Reply, ReplyTools
 from machiavillager.application.prompt_builder import PromptMessage
 from machiavillager.application.speak_fit import fit_to_speak
 from machiavillager.domain.protocol.common import MAX_FEELING_REASON_LENGTH, MAX_MODELS
@@ -44,6 +45,9 @@ SPEAK_TOOL_DESCRIPTION: Final = "Say lines out loud in Minecraft chat."
 
 # One output retry per model: a bad answer costs one more try, then the next model takes over.
 MODEL_RETRIES: Final = 1
+
+# A tool call, the lines, and one retry fit in this; a model stuck calling tools falls through.
+REQUEST_LIMIT: Final = 4
 
 # Spoken when no model answers, so he stays in character instead of going silent.
 CANNED_LINES: Final = (
@@ -82,13 +86,6 @@ class SpeakOutput(BaseModel):
         default=None,
         description="With feeling_delta: what the player did, a few words. Never shown.",
     )
-    come: bool = Field(
-        default=False,
-        description=(
-            "True only when the player's last line asks you to come to them and your state says "
-            "you go. False otherwise."
-        ),
-    )
 
 
 class NoUsableModelError(Exception):
@@ -97,8 +94,32 @@ class NoUsableModelError(Exception):
 
 # A model in a chain, with the provider:model label the mod shows for it.
 Pair = tuple[str, Model]
-# A model's agent, built once, with the label it answers under.
-Route = tuple[str, Agent[None, SpeakOutput]]
+# A model's agent, built once, with the label it answers under. Its tools act through the deps.
+Route = tuple[str, Agent[ReplyTools | None, SpeakOutput]]
+
+# Said by a tool when the caller passed no tools, as some tests and dev paths do.
+NO_TOOLS: Final = "You cannot do that right now."
+REPLY_TOOL_NAMES: Final = ("where_am_i", "come_to_player")
+SPEAK_AFTER_TOOLS: Final = "Speak again now that you have the tool's answer, and follow it."
+
+
+# The docstrings are the tool descriptions the model reads, so they say when to call each one.
+async def where_am_i(ctx: RunContext[ReplyTools | None]) -> str:
+    """Look up where you are.
+
+    Call it whenever the player's last line asks where you are, even if you dislike them.
+    """
+
+    return NO_TOOLS if ctx.deps is None else await ctx.deps.where_am_i()
+
+
+async def come_to_player(ctx: RunContext[ReplyTools | None]) -> str:
+    """Go to the player talking to you. Call it only when their last line asks you to come.
+
+    It tells you whether you go; say only that, in your own words.
+    """
+
+    return NO_TOOLS if ctx.deps is None else await ctx.deps.come_to_player()
 
 
 class LlmLineWriter:
@@ -202,20 +223,24 @@ class LlmLineWriter:
             timeout_seconds=self._timeout_seconds,
         )
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+    async def write_reply(
+        self, messages: list[PromptMessage], *, irritated: bool, tools: ReplyTools | None = None
+    ) -> Reply:
         """Return the fitted lines with model and latency. No lines means he chose silence.
 
         Failures speak a canned line, which has no model.
         """
 
         try:
-            return await self._answer(messages, irritated=irritated)
+            return await self._answer(messages, irritated=irritated, tools=tools)
         except Exception as error:
             # Only type names are logged: the error text can hold player words or provider details.
             logger.warning("LLM reply failed, speaking a canned line: %s", _describe(error))
             return Reply(lines=[random.choice(CANNED_LINES)])
 
-    async def _answer(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+    async def _answer(
+        self, messages: list[PromptMessage], *, irritated: bool, tools: ReplyTools | None
+    ) -> Reply:
         """Try the chosen chain's models in order and return the first usable answer."""
 
         routes = self._irritated_routes if irritated else self._calm_routes
@@ -235,8 +260,10 @@ class LlmLineWriter:
                     message_history=history,
                     instructions=instructions,
                     model_settings=self._settings_for(label),
+                    deps=tools,
+                    usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
                 )
-            except (ModelAPIError, UnexpectedModelBehavior) as error:
+            except (ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded) as error:
                 # A bad answer from one model does not end the chain; the next model gets its turn.
                 # Azure content filters answer 400 (ModelHTTPError): the next model takes over.
                 errors.append(error)
@@ -265,7 +292,6 @@ class LlmLineWriter:
                 model=label,
                 latency_ms=round(elapsed_ms),
                 feeling=feeling,
-                come=result.output.come,
             )
 
         # Every model failed: the collected errors go up so write_reply can name them.
@@ -275,10 +301,11 @@ class LlmLineWriter:
         """Log which model answered and what it cost. Never logs the text."""
 
         logger.info(
-            "LLM %s from %s in %.0f ms, tokens in=%s out=%s",
+            "LLM %s from %s in %.0f ms, requests=%s tokens in=%s out=%s",
             outcome,
             label,
             elapsed_ms,
+            usage.requests,
             usage.input_tokens,
             usage.output_tokens,
         )
@@ -307,11 +334,11 @@ def _build_routes(pairs: list[Pair]) -> list[Route]:
     return [(label, _build_agent(model)) for label, model in pairs]
 
 
-def _build_agent(model: Model) -> Agent[None, SpeakOutput]:
-    """An agent whose only output is the speak tool."""
+def _build_agent(model: Model) -> Agent[ReplyTools | None, SpeakOutput]:
+    """An agent whose only output is the speak tool, with where_am_i and come_to_player."""
 
     # The speak tool is the only output, so a plain-text reply is rejected by the agent.
-    return Agent(
+    agent = Agent(
         model,
         output_type=ToolOutput(
             SpeakOutput,
@@ -319,7 +346,24 @@ def _build_agent(model: Model) -> Agent[None, SpeakOutput]:
             description=SPEAK_TOOL_DESCRIPTION,
         ),
         retries=MODEL_RETRIES,
+        deps_type=ReplyTools | None,  # type: ignore[arg-type]
+        tools=[where_am_i, come_to_player],
     )
+    agent.output_validator(_speak_after_tools)
+    return agent
+
+
+def _speak_after_tools(ctx: RunContext[ReplyTools | None], output: SpeakOutput) -> SpeakOutput:
+    """Send the lines back when they came in the same response as a tool call."""
+
+    # Lines written next to a tool call were written before its answer, so they may promise a
+    # come the game refused. The model writes them again with the answer in hand.
+    last = ctx.messages[-1] if ctx.messages else None
+    if isinstance(last, ModelResponse) and any(
+        isinstance(part, ToolCallPart) and part.tool_name in REPLY_TOOL_NAMES for part in last.parts
+    ):
+        raise ModelRetry(SPEAK_AFTER_TOOLS)
+    return output
 
 
 def build_chain(

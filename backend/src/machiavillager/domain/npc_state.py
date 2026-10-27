@@ -73,7 +73,7 @@ DIMENSION_NAMES: Final[dict[str, str]] = {
 }
 # What he does if the speaker asks him to come. The mod decided it; the model only says it.
 COME_RULES: Final[dict[ComeAnswer, str]] = {
-    "comes": "you go to them: agree in your own words and set come to true",
+    "comes": "you go to them: say so in your own words",
     "refuses": "you refuse: they should come to you",
     "other_dimension": (
         "you never cross a portal for anyone: refuse, name your dimension and write {x}, {y} "

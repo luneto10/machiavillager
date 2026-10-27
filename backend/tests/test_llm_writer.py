@@ -3,14 +3,19 @@ import logging
 
 import pytest
 from pydantic_ai.exceptions import ModelHTTPError, ModelTimeoutError
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from machiavillager.application.ports import Feeling
 from machiavillager.application.prompt_builder import (
-    WHERE_REMINDER,
     ConversationLine,
     PromptMessage,
     build_prompt,
@@ -20,6 +25,7 @@ from machiavillager.domain.protocol import NpcSnapshot
 from machiavillager.domain.protocol.common import MAX_LINE_LENGTH, MAX_SPEAK_LINES
 from machiavillager.infrastructure.llm_writer import (
     CANNED_LINES,
+    REQUEST_LIMIT,
     LlmLineWriter,
     Pair,
     _split_messages,
@@ -446,9 +452,7 @@ def test_the_reminder_reaches_the_models_final_user_prompt():
 
     asyncio.run(writer.write_reply(prompt, irritated=False))
 
-    assert seen[0].endswith(
-        "\n(Reminder, not from the player: " + register_words(70) + " " + WHERE_REMINDER + ")"
-    )
+    assert seen[0].endswith("\n(Reminder, not from the player: " + register_words(70) + ")")
 
 
 def _feeling_model(delta: int, reason: str) -> FunctionModel:
@@ -501,18 +505,108 @@ def test_speak_without_a_feeling_field_gives_no_feeling():
     assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).feeling is None
 
 
-def _come_model(come: bool) -> FunctionModel:
-    """A fake model that answers with one line and says whether he comes."""
+class FakeTools:
+    """Stands in for the reply tools. Records which tools the model called."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def where_am_i(self) -> str:
+        self.calls.append("where_am_i")
+        return "You are in the Nether."
+
+    async def come_to_player(self) -> str:
+        self.calls.append("come_to_player")
+        return "You are on your way."
+
+
+def _calls_then_speaks(tool: str) -> FunctionModel:
+    """A fake model that calls one tool, then speaks once the tool's answer is back."""
 
     def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        args = {"lines": ["Já vou."], "come": come}
-        return ModelResponse(parts=[ToolCallPart(tool_name="speak", args=args)], model_name="fake")
+        answered = any(
+            isinstance(part, ToolReturnPart) for message in messages for part in message.parts
+        )
+        if not answered:
+            return ModelResponse(parts=[ToolCallPart(tool_name=tool, args={})], model_name="fake")
+        return _speak("Já vou.")
 
-    return FunctionModel(reply, model_name="fake-come")
+    return FunctionModel(reply, model_name="fake-tool")
 
 
-@pytest.mark.parametrize("come", [True, False])
-def test_come_comes_back_in_the_reply(come):
-    writer = _writer(_chain(_come_model(come)))
+@pytest.mark.parametrize("tool", ["where_am_i", "come_to_player"])
+def test_a_tool_the_model_calls_reaches_the_reply_tools(tool):
+    tools = FakeTools()
+    writer = _writer(_chain(_calls_then_speaks(tool)))
 
-    assert asyncio.run(writer.write_reply(_prompt(), irritated=False)).come is come
+    reply = asyncio.run(writer.write_reply(_prompt(), irritated=False, tools=tools))
+
+    assert tools.calls == [tool]
+    assert reply.lines == ["Já vou."]
+
+
+def test_the_model_is_offered_both_tools():
+    offered: list[str] = []
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        offered.extend(tool.name for tool in info.function_tools)
+        return _speak("hi")
+
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+    asyncio.run(writer.write_reply(_prompt(), irritated=False, tools=FakeTools()))
+
+    assert sorted(offered) == ["come_to_player", "where_am_i"]
+
+
+def test_a_tool_called_alongside_speak_still_runs_and_the_line_waits_for_its_answer():
+    # Some models call a tool and speak in one response; he must not speak before knowing.
+    tools = FakeTools()
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        answered = any(
+            isinstance(part, ToolReturnPart) for message in messages for part in message.parts
+        )
+        if not answered:
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="come_to_player", args={}),
+                    ToolCallPart(tool_name="speak", args={"lines": ["Tô indo!"]}),
+                ],
+                model_name="fake",
+            )
+        return _speak("Já vou, segura aí.")
+
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-parallel")))
+    result = asyncio.run(writer.write_reply(_prompt(), irritated=False, tools=tools))
+
+    assert tools.calls == ["come_to_player"]
+    assert result.lines == ["Já vou, segura aí."]
+
+
+def test_where_am_i_is_called_even_for_a_player_he_dislikes():
+    # A cold register used to win and he dodged "where are you?"; the tool's own description
+    # is what the model reads before deciding to call it.
+    descriptions: dict[str, str] = {}
+
+    def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        descriptions.update({tool.name: tool.description or "" for tool in info.function_tools})
+        return _speak("hi")
+
+    writer = _writer(_chain(FunctionModel(reply, model_name="fake-ok")))
+    asyncio.run(writer.write_reply(_prompt(), irritated=False, tools=FakeTools()))
+
+    assert "even if you dislike them" in descriptions["where_am_i"]
+
+
+def test_a_model_stuck_calling_tools_falls_through_to_the_next():
+    tools = FakeTools()
+
+    def stuck(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[ToolCallPart(tool_name="where_am_i", args={})], model_name="x")
+
+    looping = FunctionModel(stuck, model_name="fake-loop")
+    writer = _writer(_chain(looping, _answers("Tô no Nether.")))
+    result = asyncio.run(writer.write_reply(_prompt(), irritated=False, tools=tools))
+
+    assert result.lines == ["Tô no Nether."]
+    assert len(tools.calls) <= REQUEST_LIMIT

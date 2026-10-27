@@ -17,6 +17,7 @@ from machiavillager.application.handle_player_chat import (
 )
 from machiavillager.application.ports import BridgeUnavailable, Feeling, Reply
 from machiavillager.application.prompt_builder import PromptMessage
+from machiavillager.domain.npc_state import COME_RULES
 from machiavillager.domain.protocol import (
     PROTOCOL_VERSION,
     ComeToAction,
@@ -25,6 +26,7 @@ from machiavillager.domain.protocol import (
     NpcSnapshot,
     PlayerChatData,
     PlayerChatEvent,
+    Rejected,
     SpeakAction,
     Succeeded,
     SuggestRelationshipAction,
@@ -48,9 +50,11 @@ class FakeWriter:
         model: str | None = None,
         latency_ms: int | None = None,
         feeling: Feeling | None = None,
-        come: bool = False,
+        tool_calls: tuple[str, ...] = (),
     ):
-        self._come = come
+        # The tools a model would call while writing, in order; their answers are kept.
+        self._tool_calls = tool_calls
+        self.tool_results: list[str] = []
         self._lines = list(lines)
         self._gate = gate
         self._model = model
@@ -58,8 +62,12 @@ class FakeWriter:
         self._feeling = feeling
         self.calls: list[tuple[list[PromptMessage], bool]] = []
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+    async def write_reply(
+        self, messages: list[PromptMessage], *, irritated: bool, tools: Any = None
+    ) -> Reply:
         self.calls.append((messages, irritated))
+        for name in self._tool_calls:
+            self.tool_results.append(await getattr(tools, name)())
         if self._gate is not None:
             await self._gate.wait()
         return Reply(
@@ -67,7 +75,6 @@ class FakeWriter:
             model=self._model,
             latency_ms=self._latency_ms,
             feeling=self._feeling,
-            come=self._come,
         )
 
 
@@ -103,6 +110,16 @@ def _interrupted(spoken: int, of: int) -> Interrupted:
         status="interrupted",
         spoken=spoken,
         of=of,
+    )
+
+
+def _rejected(reason: str) -> Rejected:
+    return Rejected(
+        v=PROTOCOL_VERSION,
+        type="action_status",
+        request_id=REQUEST_ID,
+        status="rejected",
+        reason=reason,
     )
 
 
@@ -495,7 +512,7 @@ def test_held_lines_join_the_thread_even_when_the_reply_fails():
     gate = asyncio.Event()
 
     class ExplodingWriter(FakeWriter):
-        async def write_reply(self, messages, *, irritated):
+        async def write_reply(self, messages, *, irritated, tools=None):
             await gate.wait()
             raise RuntimeError("provider down")
 
@@ -728,38 +745,74 @@ def test_a_rude_apology_keeps_the_rudeness_floor():
     assert [a.args.affinity_delta for a in _suggestions(bridge)] == [-2]
 
 
-def test_come_is_sent_before_the_speak_when_he_comes():
+def test_come_to_player_reaches_the_mod_before_the_speak():
     bridge = FakeBridge(_succeeded())
     event = _chat_event(text="vem aqui", addressed="private", npc=_npc("calm", "comes"))
 
-    _run(_handler(FakeWriter(("Já vou.",), come=True), bridge), event)
+    _run(_handler(FakeWriter(("Já vou.",), tool_calls=("come_to_player",)), bridge), event)
 
     assert [type(a) for a in bridge.actions] == [ComeToAction, SpeakAction]
     assert str(bridge.actions[0].args.player) == PLAYER_UUID
 
 
+def test_come_to_player_is_sent_at_most_once_per_line():
+    # A retry or the next model in the chain may call the tool again; he must not set off twice.
+    bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(tool_calls=("come_to_player", "come_to_player"))
+
+    _run(_handler(writer, bridge), _chat_event(npc=_npc("calm", "comes")))
+
+    assert [type(a) for a in bridge.actions] == [ComeToAction, SpeakAction]
+    assert writer.tool_results[0] == writer.tool_results[1]
+
+
 @pytest.mark.parametrize("answer", ["refuses", "other_dimension", "just_came"])
-def test_come_is_never_sent_when_the_mod_said_no_even_if_the_model_agreed(answer):
+def test_come_to_player_sends_nothing_when_the_rule_says_no(answer):
     bridge = FakeBridge(_succeeded())
-    event = _chat_event(addressed="private", npc=_npc("calm", answer))
+    writer = FakeWriter(tool_calls=("come_to_player",))
 
-    _run(_handler(FakeWriter(come=True), bridge), event)
+    _run(_handler(writer, bridge), _chat_event(npc=_npc("calm", answer)))
 
     assert [type(a) for a in bridge.actions] == [SpeakAction]
+    assert COME_RULES[answer] in writer.tool_results[0]
 
 
-def test_come_is_not_sent_when_the_model_did_not_agree():
+def test_the_other_dimension_refusal_names_where_he_is_without_the_numbers():
+    writer = FakeWriter(tool_calls=("come_to_player",))
+
+    _run(
+        _handler(writer, FakeBridge(_succeeded())), _chat_event(npc=_npc("calm", "other_dimension"))
+    )
+
+    assert "the Overworld" in writer.tool_results[0]
+    assert "-340" not in writer.tool_results[0]
+
+
+def test_a_come_the_mod_rejects_as_rate_limited_is_told_as_just_came():
+    bridge = FakeBridge(_rejected("rate_limited"))
+    writer = FakeWriter(tool_calls=("come_to_player",))
+
+    _run(_handler(writer, bridge), _chat_event(npc=_npc("calm", "comes")))
+
+    assert COME_RULES["just_came"] in writer.tool_results[0]
+
+
+def test_where_am_i_names_the_dimension_and_the_placeholders_never_the_numbers():
+    writer = FakeWriter(tool_calls=("where_am_i",))
+
+    _run(_handler(writer, FakeBridge(_succeeded())), _chat_event(npc=_npc("calm")))
+
+    assert "the Overworld" in writer.tool_results[0]
+    assert "{x}, {y} and {z}" in writer.tool_results[0]
+    assert "120" not in writer.tool_results[0]
+    assert "-340" not in writer.tool_results[0]
+
+
+def test_without_game_state_the_tools_send_nothing():
     bridge = FakeBridge(_succeeded())
+    writer = FakeWriter(tool_calls=("where_am_i", "come_to_player"))
 
-    _run(_handler(FakeWriter(), bridge), _chat_event(npc=_npc("calm", "comes")))
-
-    assert [type(a) for a in bridge.actions] == [SpeakAction]
-
-
-def test_come_without_game_state_is_not_sent():
-    bridge = FakeBridge(_succeeded())
-
-    _run(_handler(FakeWriter(come=True), bridge), _chat_event(npc=None))
+    _run(_handler(writer, bridge), _chat_event(npc=None))
 
     assert [type(a) for a in bridge.actions] == [SpeakAction]
 

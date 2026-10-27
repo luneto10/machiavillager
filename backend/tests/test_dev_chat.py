@@ -143,7 +143,9 @@ def test_echo_truncates_a_long_line_to_the_protocol_limit():
 class _FixedWriter:
     """Stands in for the LLM: answers with fixed lines, so no network is used."""
 
-    async def write_reply(self, messages: list[PromptMessage], *, irritated: bool) -> Reply:
+    async def write_reply(
+        self, messages: list[PromptMessage], *, irritated: bool, tools: object = None
+    ) -> Reply:
         return Reply(lines=["Ah, Luciano.", "Sit down."])
 
 
